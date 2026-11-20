@@ -14,9 +14,23 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] (2026-11-20)
+## [0.7.0] (2026-11-20)
 
 ### Added
+- Add `.github/workflows/review.yml`, the reusable engine workflow.
+  - One resolve job validates `personas_ref`, the persona, and the cap
+    inputs. It resolves the pull request, `same_repository`, the review
+    modes, and the earlier review comments.
+  - A fork pull request gets a `skipped` check per mode and no secret.
+    `fork_review: true` runs every review in the `fork-review` environment.
+  - Each mode runs `engine/run_review.py` and publishes a check run with
+    annotations, one fenced comment per head SHA, a step summary, and an
+    artifact with `result.json`.
+  - No step checks out the pull request head. The token reaches only the
+    head fetch step. `MODEL_API_KEY` reaches only the review step.
+  - The workflow uses the decision 22 action pins and Python 3.14.
+- Add `tests/test_review_workflow.py` for the workflow contract, pins,
+  checkout credentials, fork rule, secret scope, and script expressions.
 - Add `engine/run_review.py`. It reviews one mode end to end and writes
   `result.json`. The most severe chunk verdict wins. Unreviewed files forbid
   APPROVE. An invalid reply gets one retry with a validation note. A second
