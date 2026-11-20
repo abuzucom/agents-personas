@@ -105,7 +105,7 @@ def read_usage(usage_path: Path) -> dict:
 
 
 def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
-                 json_mode: str | None) -> ChunkResult:
+                 json_mode: str | None, finding_rules: dict | None = None) -> ChunkResult:
     """Review one envelope with at most one retry after an invalid reply."""
     work = case_path.parent
     note = ""
@@ -121,7 +121,8 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
             diagnostics = review_output.clean_text(completed.stderr.strip(), MAX_PROBLEM_CHARS)
             raise ReviewError(f"model command failed with exit code {completed.returncode}: {diagnostics}")
         try:
-            verdict, payload = check_review_response.validate_response(completed.stdout, json_mode)
+            verdict, payload = check_review_response.validate_response(
+                completed.stdout, json_mode, finding_rules)
         except check_review_response.ResponseError as error:
             problem = str(error)[:MAX_PROBLEM_CHARS]
             note = "\n\n" + RETRY_NOTE.format(problem=problem) + "\n"
@@ -162,7 +163,8 @@ def run_mode(options: RunOptions) -> dict:
     prompt_text = reviewers.prompt_path(persona_dir, entry["prompt"]).read_text(encoding="utf-8")
     system_prompt = envelope.with_fence_rule(prompt_text)
     case_dir = options.out_dir / "case" / "envelopes"
-    results = [review_chunk(options, system_prompt, case_dir / chunk["envelope"], entry.get("json_mode"))
+    results = [review_chunk(options, system_prompt, case_dir / chunk["envelope"], entry.get("json_mode"),
+                            entry.get("finding_rules"))
                for chunk in case["chunks"]]
     verdict, reasons = review_output.combine_verdicts([item.verdict for item in results], case["unreviewed"])
     result = {

@@ -1,0 +1,74 @@
+# Label caller for an adopting repository: .github/workflows/persona-review-labels.yml
+#
+# A maintainer adds a review:<persona> label to request an optional review.
+# Each new push to a labeled pull request reviews again. These checks stay
+# optional in branch protection. Replace the all-zero SHA with one
+# agents-personas commit SHA in every uses: pin and every personas_ref. The
+# adorno, generay, and havel wrappers land with their migrations.
+#
+# pull_request_target runs this file from the base branch, so a pull request
+# cannot edit the caller. The engine reads the head as git objects and never
+# executes it. Fork pull requests get a skipped check and no secret.
+
+name: persona-review-labels
+
+on:
+  pull_request_target:
+    types: [labeled, synchronize]
+
+concurrency:
+  group: persona-review-labels-${{ github.event.pull_request.number }}-${{ github.event.label.name || 'push' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  adorno:
+    if: contains(github.event.pull_request.labels.*.name, 'review:adorno')
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    uses: abuzucom/agents-personas/.github/workflows/adorno-ui-review.yml@0000000000000000000000000000000000000000
+    with:
+      personas_ref: "0000000000000000000000000000000000000000"
+    secrets:
+      MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+
+  generay:
+    if: contains(github.event.pull_request.labels.*.name, 'review:generay')
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    uses: abuzucom/agents-personas/.github/workflows/generay-time-review.yml@0000000000000000000000000000000000000000
+    with:
+      personas_ref: "0000000000000000000000000000000000000000"
+    secrets:
+      MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+
+  generay-sync:
+    if: contains(github.event.pull_request.labels.*.name, 'review:generay-sync')
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    uses: abuzucom/agents-personas/.github/workflows/generay-time-review.yml@0000000000000000000000000000000000000000
+    with:
+      personas_ref: "0000000000000000000000000000000000000000"
+      modes: sync
+    secrets:
+      MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+
+  havel:
+    if: contains(github.event.pull_request.labels.*.name, 'review:havel')
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    uses: abuzucom/agents-personas/.github/workflows/havel-privacy-review.yml@0000000000000000000000000000000000000000
+    with:
+      personas_ref: "0000000000000000000000000000000000000000"
+    secrets:
+      MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}

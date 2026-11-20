@@ -26,8 +26,20 @@ CAP_CEILINGS = {"max_chunks": 50, "max_envelope_bytes": ENVELOPE_BYTE_CEILING}
 CAP_DEFAULTS = {"max_chunks": 20, "max_envelope_bytes": ENVELOPE_BYTE_CEILING}
 # json_mode names the VERDICT_JSON mode value a persona prompt emits, for
 # example "PR" in the foucault contract. Without it the engine skips the check.
-MODE_KEYS = frozenset({"prompt", "review", "context", "default", "json_mode", *CAP_CEILINGS})
-MODE_FLAGS = ("review", "context", "default")
+MODE_KEYS = frozenset({"prompt", "review", "context", "local", "default", "json_mode", "finding_rules",
+                       "verdict_line", "verdicts", *CAP_CEILINGS})
+# A local mode runs only on a workstation through engine/run_eval.py. Its
+# prompt answers on its own verdict line, for example "RISK: HIGH". A review
+# mode answers on the engine VERDICT line, which the CI validator gates on.
+LOCAL_VERDICT_KEYS = ("verdict_line", "verdicts")
+DEFAULT_VERDICT_LINE = "VERDICT"
+DEFAULT_VERDICTS = ("APPROVE", "BLOCK", "NEEDS-HUMAN")
+# finding_rules declares persona finding fields the shared validator checks.
+# keys is the exact key set of each finding. The engine needs file and line
+# for annotations, so keys must keep both.
+FINDING_RULE_KEYS = frozenset({"keys", "severities", "class_prefix"})
+REQUIRED_FINDING_KEYS = ("file", "line")
+MODE_FLAGS = ("review", "context", "local", "default")
 NAME_CHARACTERS = frozenset(string.ascii_lowercase + string.digits + "-")
 
 
@@ -92,6 +104,31 @@ def prompt_path(persona_dir: Path, relative: object) -> Path:
     return candidate
 
 
+def _is_string_list(value: object) -> bool:
+    """Return whether a value is a non-empty list of non-empty strings."""
+    return (isinstance(value, list) and bool(value)
+            and all(isinstance(item, str) and item for item in value))
+
+
+def finding_rule_findings(rules: object) -> list[str]:
+    """Return schema findings for one finding_rules block."""
+    if not isinstance(rules, dict):
+        return ["'finding_rules' must be a JSON object"]
+    findings = [f"finding_rules: unknown key '{key}'" for key in sorted(set(rules) - FINDING_RULE_KEYS)]
+    if "keys" in rules:
+        if not _is_string_list(rules["keys"]):
+            findings.append("finding_rules: 'keys' must be a list of strings")
+        else:
+            findings += [f"finding_rules: 'keys' must include '{key}'"
+                         for key in REQUIRED_FINDING_KEYS if key not in rules["keys"]]
+    if "severities" in rules and not _is_string_list(rules["severities"]):
+        findings.append("finding_rules: 'severities' must be a list of strings")
+    prefix = rules.get("class_prefix")
+    if "class_prefix" in rules and not (isinstance(prefix, str) and prefix and prefix.isascii()):
+        findings.append("finding_rules: 'class_prefix' must be a non-empty ASCII string")
+    return findings
+
+
 def _is_cap_value(value: object, ceiling: int) -> bool:
     """Return whether a cap is an integer from 1 to its ceiling."""
     return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= ceiling
@@ -127,6 +164,34 @@ def _unknown_keys(document: dict, allowed: frozenset, label: str) -> list[str]:
     return [f"{label}: unknown key '{key}'" for key in sorted(set(document) - allowed)]
 
 
+def _is_printable_ascii(value: object) -> bool:
+    """Return whether a value is a short printable ASCII string."""
+    return (isinstance(value, str) and value.isascii() and value.isprintable()
+            and 0 < len(value) <= MAX_NAME_LENGTH)
+
+
+def _verdict_key_findings(label: str, mode: dict) -> list[str]:
+    """Return findings for verdict_line and verdicts on one mode."""
+    declared = [key for key in LOCAL_VERDICT_KEYS if key in mode]
+    if not declared:
+        return []
+    findings = []
+    if mode.get("local") is not True or mode.get("review") is True:
+        findings.append(f"{label}: {', '.join(declared)} need a local-only mode (local true, review false)")
+    if "verdict_line" in mode and not _is_printable_ascii(mode["verdict_line"]):
+        findings.append(f"{label}: 'verdict_line' must be printable ASCII of 1 to {MAX_NAME_LENGTH} characters")
+    verdicts = mode.get("verdicts")
+    if "verdicts" in mode and not (_is_string_list(verdicts) and all(map(_is_printable_ascii, verdicts))):
+        findings.append(f"{label}: 'verdicts' must be a list of printable ASCII strings")
+    return findings
+
+
+def verdict_rules(mode: dict) -> tuple[str, tuple[str, ...]]:
+    """Return the verdict line label and the allowed verdicts of one mode."""
+    label = mode.get("verdict_line", DEFAULT_VERDICT_LINE)
+    return label, tuple(mode.get("verdicts", DEFAULT_VERDICTS))
+
+
 def _mode_findings(persona_dir: Path, name: str, mode: object) -> list[str]:
     """Return schema findings for one mode entry."""
     label = f"{persona_dir.name} mode '{name}'"
@@ -141,12 +206,13 @@ def _mode_findings(persona_dir: Path, name: str, mode: object) -> list[str]:
     for cap, ceiling in CAP_CEILINGS.items():
         if cap in mode and not _is_cap_value(mode[cap], ceiling):
             findings.append(f"{label}: '{cap}' must be an integer from 1 to {ceiling}")
-    json_mode = mode.get("json_mode")
-    if "json_mode" in mode and not (isinstance(json_mode, str) and json_mode.isascii()
-                                    and json_mode.isprintable() and 0 < len(json_mode) <= MAX_NAME_LENGTH):
+    if "finding_rules" in mode:
+        findings += [f"{label}: {item}" for item in finding_rule_findings(mode["finding_rules"])]
+    if "json_mode" in mode and not _is_printable_ascii(mode["json_mode"]):
         findings.append(f"{label}: 'json_mode' must be printable ASCII of 1 to {MAX_NAME_LENGTH} characters")
-    if not mode.get("review") and not mode.get("context"):
-        findings.append(f"{label}: no delivery (set review or context to true)")
+    findings += _verdict_key_findings(label, mode)
+    if not any(mode.get(flag) is True for flag in ("review", "context", "local")):
+        findings.append(f"{label}: no delivery (set review, context, or local to true)")
     try:
         path = prompt_path(persona_dir, mode.get("prompt"))
     except ReviewerError as error:
