@@ -10,7 +10,7 @@ repository.
 | `eval/cases/quality/<case>/` | `eval/cases/<case>/` with mode `PR` | none |
 | `eval/cases/file/<case>/` | `eval/cases/<case>/` with mode `File` | none |
 | `eval/cases/piece/<case>/` | `eval/cases/<case>/` with mode `Piece` | none |
-| `scripts/quality_checks/` | `scripts/quality_checks/` | none |
+| `scripts/quality_checks/` | `scripts/quality_checks/` | `dependencies.py` warns on a non-object JSON manifest |
 | `scripts/check_code_quality.py` | `scripts/check_code_quality.py` | none |
 | `scripts/check_quality_policy.py` | `scripts/check_quality_policy.py` | none |
 | `scripts/review_report.py` | `scripts/review_report.py` | none |
@@ -20,7 +20,7 @@ repository.
 | `review_hooks.py` | `ci/run_review.py` and `ci/build_pr_case.py` | engine hook functions |
 | `eval/extra_checks.py` | `eval/run_eval.py` | euler checks beyond the engine core |
 
-Every case file and every unchanged script matches its source byte for byte.
+Every case file and every script marked none matches its source byte for byte.
 The mode directory comes from the `mode` field in each `expected.json`. The
 `quality` directory holds the `PR` cases. The pull request review mode
 carries the name `quality`.

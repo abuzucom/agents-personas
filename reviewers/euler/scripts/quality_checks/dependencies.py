@@ -98,7 +98,12 @@ def load_json(path: Path) -> dict:
         # reaches this parser in the checker process.
         sys.stderr.write(f"warning: skipped {path}: {type(error).__name__}. Reduce the nesting to check it.\n")
         return {}
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        # A deep array can parse where the C stack allows it, as on macOS
+        # with Python 3.14. A manifest must still be an object.
+        sys.stderr.write(f"warning: skipped {path}: expected a JSON object. Fix the manifest to check it.\n")
+        return {}
+    return data
 
 
 def normalize_package(name: str) -> str:

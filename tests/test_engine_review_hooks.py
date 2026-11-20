@@ -38,7 +38,7 @@ from pathlib import Path
 
 
 def trusted_context(head_dir, changed, patches, options):
-    seen = sorted(str(path.relative_to(head_dir)) for path in Path(head_dir).rglob("*") if path.is_file())
+    seen = sorted(path.relative_to(head_dir).as_posix() for path in Path(head_dir).rglob("*") if path.is_file())
     Path(options["record"]).write_text(json.dumps({"seen": seen, "changed": changed,
                                                    "patched": sorted(patches), "options": options}))
     python_files = [path for path in sorted(changed) if path.endswith(".py")]
