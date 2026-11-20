@@ -16,7 +16,8 @@ other repository secret. The prescan runs in the build step. That step holds
 no secret. Every euler hook runs in a child process with an allowlisted
 environment that holds no credential. The child starts in an empty
 temporary home. It keeps network access and read access to the runner
-filesystem. The plan records that limit as decision 32. Only the review step holds `MODEL_API_KEY`.
+filesystem. The plan records that limit as decision 32. On Linux, the
+engine process is non-dumpable. A hook cannot read the key from `/proc`. Only the review step holds `MODEL_API_KEY`.
 
 Each limit names its test:
 

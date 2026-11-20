@@ -503,7 +503,9 @@ jobs:
                      --out-dir "$RUNNER_TEMP/review" --stage review)
           if [ -n "$MAX_CHUNKS" ]; then arguments+=(--max-chunks "$MAX_CHUNKS"); fi
           if [ -n "$MAX_ENVELOPE_BYTES" ]; then arguments+=(--max-envelope-bytes "$MAX_ENVELOPE_BYTES"); fi
-          python3 .agents-personas/engine/run_review.py "${arguments[@]}"
+          # exec replaces the shell, so no shell process keeps MODEL_API_KEY in
+          # its /proc environ beside the engine.
+          exec python3 .agents-personas/engine/run_review.py "${arguments[@]}"
 
       - name: Render review output
         if: ${{ always() && steps.run.outcome == 'success' }}
