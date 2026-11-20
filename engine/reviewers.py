@@ -24,7 +24,9 @@ ENVELOPE_BYTE_CEILING = 976_000 - 16_384 - 32_768 - 4_096 - 65_536
 # Each chunk costs up to two model calls. The ceiling bounds one run's cost.
 CAP_CEILINGS = {"max_chunks": 50, "max_envelope_bytes": ENVELOPE_BYTE_CEILING}
 CAP_DEFAULTS = {"max_chunks": 20, "max_envelope_bytes": ENVELOPE_BYTE_CEILING}
-MODE_KEYS = frozenset({"prompt", "review", "context", "default", *CAP_CEILINGS})
+# json_mode names the VERDICT_JSON mode value a persona prompt emits, for
+# example "PR" in the foucault contract. Without it the engine skips the check.
+MODE_KEYS = frozenset({"prompt", "review", "context", "default", "json_mode", *CAP_CEILINGS})
 MODE_FLAGS = ("review", "context", "default")
 NAME_CHARACTERS = frozenset(string.ascii_lowercase + string.digits + "-")
 
@@ -139,6 +141,10 @@ def _mode_findings(persona_dir: Path, name: str, mode: object) -> list[str]:
     for cap, ceiling in CAP_CEILINGS.items():
         if cap in mode and not _is_cap_value(mode[cap], ceiling):
             findings.append(f"{label}: '{cap}' must be an integer from 1 to {ceiling}")
+    json_mode = mode.get("json_mode")
+    if "json_mode" in mode and not (isinstance(json_mode, str) and json_mode.isascii()
+                                    and json_mode.isprintable() and 0 < len(json_mode) <= MAX_NAME_LENGTH):
+        findings.append(f"{label}: 'json_mode' must be printable ASCII of 1 to {MAX_NAME_LENGTH} characters")
     if not mode.get("review") and not mode.get("context"):
         findings.append(f"{label}: no delivery (set review or context to true)")
     try:

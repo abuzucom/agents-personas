@@ -14,9 +14,19 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] (2026-11-20)
+## [0.6.0] (2026-11-20)
 
 ### Added
+- Add `engine/run_review.py`. It reviews one mode end to end and writes
+  `result.json`. The most severe chunk verdict wins. Unreviewed files forbid
+  APPROVE. An invalid reply gets one retry with a validation note. A second
+  invalid reply fails the run. An adapter capacity exit records
+  NEEDS-HUMAN.
+- Add `engine/review_output.py`. It renders the check name, the conclusion,
+  the annotations, the comment with its header line, and the run metrics.
+  With `fail_on_block` off, BLOCK and NEEDS-HUMAN conclude `neutral`.
+- Add the optional `json_mode` key to each `reviewer.json` mode. It names
+  the `VERDICT_JSON` mode value the persona prompt emits.
 - List the review engine scripts in `hooks/workflow-scripts.txt`. The
   command gate allows `check_reviewers.py`, `render_context.py`, and
   `check_review_response.py`. `build_pr_case.py` routes to consent.
