@@ -224,3 +224,7 @@ __marimo__/
 
 # Gate adoption staging area (scripts/complete_gate_adoption.py)
 .gate-staging/
+
+# Comment and pull request body drafts for scripts/trusted_gh.py. Drafts never
+# belong in commits.
+.comment-drafts/
