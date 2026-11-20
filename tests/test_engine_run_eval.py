@@ -84,6 +84,7 @@ class StructureTest(unittest.TestCase):
         self.assertEqual(findings, [])
         self.assertEqual([(case["mode"], case["prompt_mode"]) for case in cases],
                          [("review", "PR"), ("file", "File")])
+        self.assertTrue(all(Path(case["dir"]).name == case["name"] for case in cases))
 
     def test_every_local_verdict_spelling_is_accepted(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -154,6 +155,18 @@ class ExtensionTest(unittest.TestCase):
             fixture.add_case("review", "no-ticket", _expected("BLOCK"))
             _cases, findings = fixture.collect()
         self.assertEqual(findings, ["review/no-ticket: needs ticket"])
+
+    def test_validate_case_sees_the_loaded_case(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = PersonaFixture(directory)
+            fixture.add_extension(
+                'def validate_case(case):\n'
+                '    return [] if "diff.patch" in case["files"] else ["needs diff.patch"]\n')
+            fixture.add_case("review", "patch-pr", _expected("BLOCK"))
+            fixture.add_case("review", "python-pr", _expected("BLOCK"), inputs=("input.py",))
+            cases, findings = fixture.collect()
+        self.assertEqual([case["name"] for case in cases], ["patch-pr"])
+        self.assertEqual(findings, ["review/python-pr: needs diff.patch"])
 
     def test_extension_symlink_is_refused(self):
         with tempfile.TemporaryDirectory() as directory:

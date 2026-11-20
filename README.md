@@ -5,6 +5,7 @@ Pull request reviewer personas on one shared review engine.
 | Persona | Function | Wrapper |
 |---|---|---|
 | foucault | security | `.github/workflows/foucault-security-review.yml` |
+| euler | quality | `.github/workflows/euler-quality-review.yml` |
 
 - `docs/migration.md` maps old callers to the wrappers.
 - `examples/` holds the always-on caller and the label caller.

@@ -1,0 +1,33 @@
+name: euler-quality-review-pr
+
+# Self-review: euler reviews this repository's pull requests after the
+# Convention Sync Check finishes. A workflow_run job runs the workflow files
+# and engine of the default branch, so a pull request cannot change the
+# prompt, the prescan, or the adapter that receives the provider key.
+
+on:
+  workflow_run:
+    workflows: [Convention Sync Check]
+    types: [completed]
+
+concurrency:
+  group: euler-quality-review-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  euler:
+    if: github.event.workflow_run.event == 'pull_request'
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/euler-quality-review.yml
+    with:
+      personas_ref: ${{ github.sha }}
+      # Test files and eval cases hold flagged patterns on purpose.
+      exclude_paths: "tests/** reviewers/*/eval/cases/**"
+    secrets:
+      MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}

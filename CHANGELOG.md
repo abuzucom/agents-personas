@@ -14,9 +14,28 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.0] (2026-11-20)
+## [0.9.0] (2026-11-20)
 
 ### Added
+- Add the euler persona under `reviewers/euler/`. It holds `QUALITY.md`,
+  `DATA.md`, `PROVENANCE.md`, the deterministic prescan, and all 41 eval
+  cases from `abuzucom/euler` at `9488a8c`. The `quality` mode reviews pull
+  requests. The `file`, `piece`, and `wholesale` modes run locally.
+- Add persona review hooks in `engine/persona_hooks.py`. A persona's
+  `review_hooks.py` can add trusted context per chunk, check each reply, and
+  force a verdict. The euler prescan, the QUALITY.md reply rules, and BLOCK
+  on a blocking prescan finding run as euler hooks.
+- Add `persona_options` to `review.yml` and `options` to `reviewer.json`.
+  The engine rejects an option the manifest does not declare.
+- Split each review into a build step and a review step. Persona hooks run
+  in the build step. That step holds no provider key.
+- Add the `validate_case` eval hook and the case directory to each eval case.
+- Add the euler wrapper `.github/workflows/euler-quality-review.yml`.
+- Add the euler self-review caller `.github/workflows/euler-quality-review-pr.yml`.
+- Pin LF line endings for `reviewers/euler/QUALITY.md`.
+- Allow the synthetic `alice` home path in `tests/test_euler_code_quality.py`
+  through `.local-path-allowlist`. The active human approved the entry.
+- Record decisions 28 to 31 in `docs/plans/consolidation.md`.
 - Add the foucault persona under `reviewers/foucault/`. It holds `AUDIT.md`,
   `DATA.md`, `PROVENANCE.md`, and all 68 eval cases from `abuzucom/foucault`
   at `9ec9681`. The `security` mode reviews pull requests. The `file`,
@@ -56,6 +75,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   checkout credentials, fork rule, secret scope, and script expressions.
 
 ### Changed
+- `tests/test_review_workflow.py` lists `persona_options` among the optional
+  inputs. The active human approved that existing test edit.
+- `tests/test_engine_run_eval.py` adds a `validate_case` test and a case
+  directory assertion. The active human approved that existing test edit.
 - `tests/test_review_workflow.py` lists `paths` among the optional inputs.
   The active human approved that existing test edit.
 - NEEDS-HUMAN warns and never blocks CI. `engine/review_output.py` concludes

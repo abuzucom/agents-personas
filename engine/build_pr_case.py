@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Build fenced review envelopes for one pull request mode.
 
-Ported from `abuzucom/euler` `ci/build_pr_case.py` without the euler prescan.
+Ported from `abuzucom/euler` `ci/build_pr_case.py`. A persona trusted_context
+hook, such as the euler prescan, reads the head tree as plain files.
 The builder reads the base-to-head diff from git objects and never checks
 out the head. It splits large diffs by file into chunks under the mode's
 byte budget. Binary files, undecodable paths, overlong paths, single files
@@ -17,17 +18,25 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 try:
     import envelope
+    import persona_hooks
     import reviewers
 except ImportError:
-    from engine import envelope, reviewers
+    from engine import envelope, persona_hooks, reviewers
 
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
+LS_TREE_FIELDS = 3
+CAT_FILE_HEADER_FIELDS = 3
+# Symlinks (120000) and submodules (160000) stay unwritten.
+REGULAR_FILE_MODES = frozenset({b"100644", b"100755"})
+TRUSTED_CONTEXT_NAME = "trusted_context.json"
 # json.dumps wraps a string in two quote bytes.
 JSON_QUOTE_BYTES = 2
 BINARY_NUMSTAT = b"-"
@@ -56,9 +65,11 @@ class BuildOptions:
     pr_number: int
     max_chunks: int
     max_envelope_bytes: int
+    hooks: Any = None
+    persona_options: dict = field(default_factory=dict)
 
 
-def run_git(repo: Path, *args: str) -> bytes:
+def run_git(repo: Path, *args: str, stdin: bytes | None = None) -> bytes:
     """Run git with an argument array and return raw stdout.
 
     GIT_LITERAL_PATHSPECS stops a pull request path such as '*' from acting as a pattern.
@@ -67,7 +78,7 @@ def run_git(repo: Path, *args: str) -> bytes:
     if executable is None:
         raise RuntimeError("git not found on PATH. Install git before the build.")
     environment = {**os.environ, "GIT_LITERAL_PATHSPECS": "1"}
-    result = subprocess.run([executable, "-C", str(repo), *args], capture_output=True,
+    result = subprocess.run([executable, "-C", str(repo), *args], input=stdin, capture_output=True,
                             check=False, env=environment)
     if result.returncode != 0:
         detail = result.stderr.decode("utf-8", errors="replace").strip()
@@ -189,7 +200,83 @@ def chunk_metadata_bound(base: str, head: str, pr_number: int, max_chunks: int, 
             "chunk": f"{max_chunks}/{max_chunks}", "changed_files": paths, "unreviewed": paths}
 
 
-def chunk_budget(options: BuildOptions, changed: list[str]) -> int:
+def list_head_blobs(repo: Path, head: str) -> list[tuple[str, str]]:
+    """Return object ID and path pairs for the regular files in the head tree."""
+    raw = run_git(repo, "ls-tree", "-r", "-z", "--full-tree", head)
+    blobs = []
+    for record in raw.split(b"\0"):
+        # The first tab separates metadata from the path. Tabs in names stay in the path.
+        meta, _, raw_path = record.partition(b"\t")
+        fields = meta.split(b" ")
+        if len(fields) != LS_TREE_FIELDS or fields[0] not in REGULAR_FILE_MODES:
+            continue
+        try:
+            path = raw_path.decode("utf-8")
+        except UnicodeDecodeError:
+            # read_diff already lists an undecodable changed path as unreviewed.
+            continue
+        blobs.append((fields[2].decode("ascii"), path))
+    return blobs
+
+
+def read_blobs(repo: Path, object_ids: list[str]) -> list[bytes]:
+    """Return blob bodies in request order from one git cat-file --batch call.
+
+    Each object arrives as an '<id> <type> <size>' header line, exactly size
+    body bytes, and one newline. The size locates the next header, so a
+    newline inside a body never shifts the parse.
+    """
+    request = "".join(f"{object_id}\n" for object_id in object_ids).encode("ascii")
+    output = run_git(repo, "cat-file", "--batch", stdin=request)
+    bodies = []
+    offset = 0
+    for object_id in object_ids:
+        header_end = output.index(b"\n", offset)
+        header = output[offset:header_end].split(b" ")
+        if len(header) != CAT_FILE_HEADER_FIELDS or header[1] != b"blob":
+            raise RuntimeError(f"git cat-file returned no blob for {object_id}. Fetch the head revision.")
+        start = header_end + 1
+        end = start + int(header[2])
+        bodies.append(output[start:end])
+        offset = end + 1
+    if offset != len(output):
+        raise RuntimeError(f"git cat-file output has {len(output) - offset} unparsed trailing bytes.")
+    return bodies
+
+
+def extract_head(repo: Path, head: str, target: Path) -> None:
+    """Write the head tree's regular files into target straight from git objects.
+
+    git archive would apply the head commit's export-ignore and export-subst
+    attributes. A pull request could then hide or rewrite files before a
+    hook reads them.
+    """
+    blobs = list_head_blobs(repo, head)
+    root = Path(target).resolve()
+    destinations = [(root / path).resolve() for _, path in blobs]
+    # Check every destination before the first write.
+    for (_, path), destination in zip(blobs, destinations, strict=True):
+        if not destination.is_relative_to(root):
+            raise RuntimeError(f"head tree path {path!r} escapes the extraction directory. Review it by hand.")
+    for destination, body in zip(destinations, read_blobs(repo, [object_id for object_id, _ in blobs]),
+                                 strict=True):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(body)
+
+
+def collect_trusted_context(options: BuildOptions, changed: list[str], patches: dict[str, str]) -> dict:
+    """Return the persona hook context, or an empty result without a hook."""
+    hook = getattr(options.hooks, "trusted_context", None)
+    if hook is None:
+        return {"context": {}, "unreviewed": []}
+    with tempfile.TemporaryDirectory() as directory:
+        tree = Path(directory)
+        extract_head(options.repo, options.head, tree)
+        result = hook(tree, list(changed), dict(patches), dict(options.persona_options))
+    return persona_hooks.check_context_result(result, changed)
+
+
+def chunk_budget(options: BuildOptions, changed: list[str], context: dict | None = None) -> int:
     """Return the per-chunk patch budget in escaped UTF-8 bytes.
 
     The skeleton holds every path, the largest metadata, and empty patches.
@@ -198,7 +285,7 @@ def chunk_budget(options: BuildOptions, changed: list[str]) -> int:
     metadata = chunk_metadata_bound(options.base, options.head, options.pr_number,
                                     options.max_chunks, changed)
     skeleton = envelope.build_envelope(options.persona, options.mode, dict.fromkeys(changed, ""),
-                                       options.title, options.body, metadata)
+                                       options.title, options.body, metadata, context=context)
     budget = options.max_envelope_bytes - len(skeleton.encode("utf-8"))
     if budget < 1:
         raise ValueError(f"the pull request text and file list fill the {options.max_envelope_bytes}-byte "
@@ -234,9 +321,13 @@ def build(options: BuildOptions) -> None:
     validate_options(options)
     changed, binary, patches, undecodable = read_diff(options)
     patches, unreviewable = split_unreviewable(patches)
-    chunks, oversized = pack_chunks(patches, chunk_budget(options, changed), escaped_size)
+    trusted = collect_trusted_context(options, changed, patches)
+    # The skeleton holds every context item, so each chunk subset fits too.
+    budget = chunk_budget(options, changed, trusted["context"])
+    chunks, oversized = pack_chunks(patches, budget, escaped_size)
     chunks, overflow = limit_chunks(chunks, options.max_chunks)
     unreviewed = sorted(binary) + undecodable + unreviewable + oversized + overflow
+    unreviewed += [path for path in trusted["unreviewed"] if path not in unreviewed]
     envelopes_dir = options.out_dir / "envelopes"
     envelopes_dir.mkdir(parents=True, exist_ok=True)
     manifest_chunks = []
@@ -244,13 +335,15 @@ def build(options: BuildOptions) -> None:
         metadata = chunk_metadata(options, f"{index}/{len(chunks)}", changed, unreviewed)
         text = envelope.build_envelope(options.persona, options.mode,
                                        {path: patches[path] for path in files},
-                                       options.title, options.body, metadata)
+                                       options.title, options.body, metadata,
+                                       context=persona_hooks.chunk_context(trusted["context"], files))
         if len(text.encode("utf-8")) > options.max_envelope_bytes:
             raise RuntimeError(f"envelope {index} exceeds {options.max_envelope_bytes} bytes. "
                                "Lower max_envelope_bytes and rerun.")
         name = f"{index:03d}.json"
         write_text_lf(envelopes_dir / name, text)
         manifest_chunks.append({"envelope": name, "files": files})
+    write_json(options.out_dir / TRUSTED_CONTEXT_NAME, trusted["context"])
     write_json(options.out_dir / "manifest.json", {
         "persona": options.persona, "mode": options.mode, "pr_number": options.pr_number,
         "base_sha": options.base, "head_sha": options.head, "changed_files": changed,

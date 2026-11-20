@@ -4,7 +4,7 @@
 # "foucault / security" and "euler / quality" checks as required in branch
 # protection. Replace the all-zero SHA with one agents-personas commit SHA in
 # every uses: pin and every personas_ref. Replace "CI" with the name of the CI
-# workflow. The euler wrapper lands with the euler migration.
+# workflow.
 #
 # A required check posted from workflow_run attaches to the head SHA. A
 # skipped CI run posts no review check, so branch protection waits. See
@@ -46,5 +46,6 @@ jobs:
     uses: abuzucom/agents-personas/.github/workflows/euler-quality-review.yml@0000000000000000000000000000000000000000
     with:
       personas_ref: "0000000000000000000000000000000000000000"
+      exclude_paths: "tests/**"
     secrets:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}

@@ -16,7 +16,14 @@ MAX_NAME_LENGTH = 32
 # Context output lands in an agent prompt. The cap keeps one mode well under
 # the policy size budget a client loads beside it.
 MAX_CONTEXT_BYTES = 32 * 1024
-TOP_LEVEL_KEYS = frozenset({"persona", "function", "modes"})
+TOP_LEVEL_KEYS = frozenset({"persona", "function", "modes", "options"})
+# options declares the caller values a persona accepts through the
+# persona_options workflow input, for example euler's exclude_paths.
+OPTION_KEYS = frozenset({"type", "default"})
+OPTION_TYPES = {"string": str, "integer": int, "boolean": bool}
+OPTION_NAME_CHARACTERS = frozenset(string.ascii_lowercase + string.digits + "_")
+MAX_OPTION_CHARS = 4096
+OPTION_WHITESPACE = frozenset("\n\t")
 # euler's envelope budget: a 976,000-token context minus the reply, the
 # prompt, the chat template, and the retry note. A byte-level tokenizer emits
 # at most one token per UTF-8 byte, so the byte count bounds the tokens.
@@ -236,6 +243,76 @@ def _identity_findings(persona_dir: Path, document: dict) -> list[str]:
     return findings
 
 
+def is_option_name(name: object) -> bool:
+    """Return whether an option name is lowercase snake case."""
+    return (isinstance(name, str) and 0 < len(name) <= MAX_NAME_LENGTH and name[0].isalpha()
+            and all(character in OPTION_NAME_CHARACTERS for character in name))
+
+
+def _option_value_problem(name: str, kind: str, value: object) -> str | None:
+    """Return why a value does not fit an option type, or None when it fits."""
+    expected = OPTION_TYPES[kind]
+    # bool subclasses int. An integer option must refuse true and false.
+    if not isinstance(value, expected) or (expected is int and isinstance(value, bool)):
+        article = "an" if kind == "integer" else "a"
+        return f"option '{name}' must be {article} {kind}"
+    # Newlines and tabs stay legal. A YAML block scalar carries a glob list that way.
+    allowed = all(character in OPTION_WHITESPACE or (character.isascii() and character.isprintable())
+                  for character in value) if expected is str else True
+    if not allowed:
+        return f"option '{name}' must be printable ASCII"
+    if expected is str and len(value) > MAX_OPTION_CHARS:
+        return f"option '{name}' holds at most {MAX_OPTION_CHARS} characters"
+    return None
+
+
+def option_findings(options: object) -> list[str]:
+    """Return schema findings for the top-level options block."""
+    if not isinstance(options, dict):
+        return ["'options' must be a JSON object"]
+    findings = []
+    for name, spec in options.items():
+        if not is_option_name(name):
+            findings.append(f"invalid option name '{name}'")
+            continue
+        if not isinstance(spec, dict):
+            findings.append(f"option '{name}' must be a JSON object")
+            continue
+        findings += [f"option '{name}': unknown key '{key}'" for key in sorted(set(spec) - OPTION_KEYS)]
+        kind = spec.get("type")
+        if kind not in OPTION_TYPES:
+            findings.append(f"option '{name}': type must be one of {sorted(OPTION_TYPES)}")
+        elif "default" not in spec or _option_value_problem(name, kind, spec["default"]):
+            findings.append(f"option '{name}': default does not match type '{kind}'")
+    return findings
+
+
+def resolve_options(manifest: dict, requested: str) -> dict:
+    """Return the declared option values with caller values applied.
+
+    An empty request keeps every default. A request is a JSON object whose
+    keys the manifest declares and whose values fit the declared types.
+    """
+    declared = manifest.get("options", {})
+    resolved = {name: spec["default"] for name, spec in declared.items()}
+    if not requested.strip():
+        return resolved
+    try:
+        values = json.loads(requested)
+    except ValueError as error:
+        raise ReviewerError(f"persona_options must hold a JSON object ({error})") from error
+    if not isinstance(values, dict):
+        raise ReviewerError("persona_options must hold a JSON object")
+    for name, value in values.items():
+        if name not in declared:
+            raise ReviewerError(f"undeclared option '{name}' for persona '{manifest['persona']}'")
+        problem = _option_value_problem(name, declared[name]["type"], value)
+        if problem:
+            raise ReviewerError(problem)
+        resolved[name] = value
+    return resolved
+
+
 def validate_persona(persona_dir: Path) -> list[str]:
     """Return every schema finding for one persona directory."""
     persona_dir = Path(persona_dir)
@@ -245,6 +322,8 @@ def validate_persona(persona_dir: Path) -> list[str]:
         return [str(error)]
     findings = _unknown_keys(document, TOP_LEVEL_KEYS, persona_dir.name)
     findings += _identity_findings(persona_dir, document)
+    if "options" in document:
+        findings += [f"{persona_dir.name}: {item}" for item in option_findings(document["options"])]
     modes = document.get("modes")
     if not isinstance(modes, dict) or not modes:
         return findings + [f"{persona_dir.name}: declares no modes"]

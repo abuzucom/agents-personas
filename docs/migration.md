@@ -82,3 +82,38 @@ foucault's File, Piece, and Wholesale modes run locally as the `file`,
 `piece`, and `wholesale` modes. `reviewers/foucault/eval/README.md` shows the
 commands. `python reviewers/foucault/scripts/check_audit_policy.py` replaces
 `make audit-check` for the prompt checks.
+
+## euler
+
+euler moves from `abuzucom/euler` to the `euler` persona.
+
+| Old | New |
+|---|---|
+| `abuzucom/euler/.github/workflows/quality-review.yml@<sha>` | `abuzucom/agents-personas/.github/workflows/euler-quality-review.yml@<sha>` |
+| `quality_ref` | `personas_ref` |
+| `pr_number` (number, required) | `pr_number` (string, optional, resolved when empty) |
+| `base_sha`, `head_sha` (required) | `base_sha`, `head_sha` (optional, resolved when empty) |
+| `pr_title`, `pr_body` | none. The engine reads both from the pull request |
+| `fail_on_block` gates BLOCK and NEEDS-HUMAN | `fail_on_block` gates BLOCK. NEEDS-HUMAN warns and concludes neutral |
+| `fork_review` | `fork_review` |
+| `exclude_paths` | `exclude_paths` |
+| `max_chunks` (number, default 20) | `max_chunks` (number, default 20) |
+| none | `modes`, empty selects `quality` |
+| none | `paths` |
+| none | `model_call_command`, `pr_comment`, `head_repo_url`, `head_repo_full_name` |
+
+The secret stays `MODEL_API_KEY` with `required: false`. The `fork-review`
+environment name stays unchanged.
+
+The check run name is `euler / quality`. The comment uses the shared layout
+with a `## Euler quality review: <VERDICT>` heading.
+
+Two behaviors change with the engine:
+
+- A second invalid reply fails the mode run. The euler workflow recorded
+  NEEDS-HUMAN for that chunk.
+- The prescan runs in a build step without the provider key. The euler
+  workflow ran it in a separate job.
+
+euler's File, Piece, and Wholesale modes run locally as the `file`, `piece`,
+and `wholesale` modes. `reviewers/euler/eval/README.md` shows the commands.
