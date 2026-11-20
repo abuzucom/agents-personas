@@ -34,7 +34,12 @@ sys.stdout.write(steps[index])
 # file1.py unreviewed. A reply passes validate_reply only when it resolves
 # every flagged item. A blocking item forces BLOCK.
 HOOKS_SOURCE = """import json
+import os
 from pathlib import Path
+
+# Each import records its process. The review stage must import in a child only.
+with open(Path(__file__).with_name("imports.log"), "a") as log:
+    log.write(f"{os.getpid()}\\n")
 
 
 def case_context(head_dir, changed, patches, options):
@@ -48,12 +53,18 @@ def case_context(head_dir, changed, patches, options):
 
 
 def validate_reply(payload, response, envelope):
+    import os
+    if "MODEL_API_KEY" in os.environ:
+        return ["the provider key reached the hook"]
     wanted = {item["id"] for item in envelope["REVIEW_TARGET"]["prescan"]}
     resolved = {item.get("id") for item in payload.get("prescan", [])}
     return [f"prescan item {item} lacks a resolution" for item in sorted(wanted - resolved)]
 
 
 def forced_verdict(context):
+    import os
+    if "MODEL_API_KEY" in os.environ:
+        return ("BLOCK", "the provider key reached the hook")
     blocking = [item["id"] for item in context.get("prescan", []) if item["blocking"]]
     return ("BLOCK", f"blocking prescan items {blocking}") if blocking else None
 """
@@ -85,7 +96,7 @@ def _reply(verdict: str, prescan_ids=()) -> str:
 
 
 class HookFixture(unittest.TestCase):
-    """A persona with review hooks and a repository whose head adds three files."""
+    """A persona with review hooks and a repository with a head that adds three files."""
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -337,6 +348,39 @@ class ReviewStageTest(HookFixture):
         result = run_review.run_mode(self.options(stage="review"))
         self.assertIn("Built", json.dumps(self.sent_envelopes()[0]))
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
+
+    def test_review_stage_hooks_never_see_the_provider_key(self):
+        run_review.run_mode(self.options(stage="build"))
+        self.script(_reply("APPROVE", ("P1", "P2")))
+        previous = os.environ.get("MODEL_API_KEY")
+        os.environ["MODEL_API_KEY"] = "synthetic-test-value"
+        try:
+            result = run_review.run_mode(self.options(stage="review"))
+        finally:
+            if previous is None:
+                del os.environ["MODEL_API_KEY"]
+            else:
+                os.environ["MODEL_API_KEY"] = previous
+        self.assertEqual(result["verdict"], "NEEDS-HUMAN")
+        self.assertNotIn("the provider key reached the hook", result["reasons"])
+
+    def test_review_stage_imports_the_hooks_in_a_child_only(self):
+        run_review.run_mode(self.options(stage="build"))
+        log = self.persona_dir / "imports.log"
+        log.unlink()
+        self.script(_reply("APPROVE", ("P1", "P2")))
+        run_review.run_mode(self.options(stage="review"))
+        importers = log.read_text(encoding="utf-8").split()
+        self.assertTrue(importers)
+        self.assertNotIn(str(os.getpid()), importers)
+
+    def test_review_stage_rejects_a_case_built_for_another_input(self):
+        run_review.run_mode(self.options(stage="build"))
+        changes = {"base": self.head, "pr_number": 4, "requested_caps": {"max_chunks": 5},
+                   "persona_options": '{"blocking": "x"}'}
+        for name, value in changes.items():
+            with self.subTest(changed=name), self.assertRaisesRegex(run_review.ReviewError, "Rerun the build"):
+                run_review.run_mode(self.options(stage="review", **{name: value}))
 
     def test_review_stage_without_a_built_case_fails(self):
         with self.assertRaisesRegex(run_review.ReviewError, "run the build stage first"):

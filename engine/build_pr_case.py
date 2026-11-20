@@ -383,6 +383,11 @@ def validate_options(options: BuildOptions) -> None:
         raise ValueError(f"max_chunks {options.max_chunks} is below 1. Pass a positive chunk limit.")
 
 
+def options_digest(persona_options: dict) -> str:
+    """Return the SHA-256 of the resolved persona options in canonical JSON."""
+    return envelope.digest(persona_options)
+
+
 def write_text_lf(path: Path, text: str) -> None:
     """Write UTF-8 text with LF line endings on every platform.
 
@@ -428,6 +433,8 @@ def build(options: BuildOptions) -> None:
     write_json(options.out_dir / CASE_CONTEXT_NAME, hook_context["context"])
     write_json(options.out_dir / "manifest.json", {
         "persona": options.persona, "mode": options.mode, "pr_number": options.pr_number,
+        "max_chunks": options.max_chunks, "max_envelope_bytes": options.max_envelope_bytes,
+        "persona_options_sha256": options_digest(options.persona_options),
         "base_sha": options.base, "head_sha": options.head, "changed_files": changed,
         "unreviewed": unreviewed, "chunks": manifest_chunks,
     })

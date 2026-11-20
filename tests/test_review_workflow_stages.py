@@ -45,13 +45,14 @@ class StageTest(unittest.TestCase):
     def test_review_step_reads_the_built_case(self):
         step = _step("Run review")
         self.assertIn("--stage review", step["run"])
-        self.assertNotIn("PERSONA_OPTIONS", step["env"])
+        # The review stage checks the options digest against the built case.
+        self.assertEqual(step["env"]["PERSONA_OPTIONS"], "${{ inputs.persona_options }}")
 
-    def test_persona_options_reach_only_the_build_step(self):
+    def test_persona_options_reach_only_the_two_stage_steps(self):
         for job in ("review", "fork-review"):
             names = {step["name"] for step in _review_steps(job) if "persona_options" in yaml.safe_dump(step)}
             with self.subTest(job=job):
-                self.assertEqual(names, {"Build review case"})
+                self.assertEqual(names, {"Build review case", "Run review"})
 
 
 if __name__ == "__main__":

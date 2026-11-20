@@ -35,7 +35,7 @@ def parse_added_lines(patch: str) -> list[int]:
             in_hunk = True
         elif not in_hunk:
             # The ---/+++ file headers precede the first hunk. Inside a hunk,
-            # an added line whose content starts with "++" is still content.
+            # an added line with content that starts with "++" is still content.
             continue
         elif line.startswith("+"):
             added.append(line_number)

@@ -30,7 +30,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Move the changed and unreviewed path lists from `TRUSTED_CONTEXT` into
   `REVIEW_TARGET`. An author chooses every path. Trusted metadata keeps the
   counts. The active human approved two skeleton edits in the existing
-  `tests/test_engine_build_pr_case.py`. The euler prescan, the QUALITY.md reply rules, and BLOCK
+  `tests/test_engine_build_pr_case.py`.
+- Run review-stage hooks through `engine/run_hook.py` in a child process
+  without `MODEL_API_KEY`. The review process never imports the hook file.
+- The review stage rejects a built case when the base, pull request number,
+  caps, or persona options differ. The manifest records each one. The euler prescan, the QUALITY.md reply rules, and BLOCK
   on a blocking prescan finding run as euler hooks.
 - Add `persona_options` to `review.yml` and `options` to `reviewer.json`.
   The engine rejects an option the manifest does not declare.

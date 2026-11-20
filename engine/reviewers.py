@@ -290,8 +290,8 @@ def option_findings(options: object) -> list[str]:
 def resolve_options(manifest: dict, requested: str) -> dict:
     """Return the declared option values with caller values applied.
 
-    An empty request keeps every default. A request is a JSON object whose
-    keys the manifest declares and whose values fit the declared types.
+    An empty request keeps every default. A request is a JSON object. The
+    manifest declares each key, and each value fits its declared type.
     """
     declared = manifest.get("options", {})
     resolved = {name: spec["default"] for name, spec in declared.items()}
