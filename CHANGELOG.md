@@ -31,6 +31,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - The workflow uses the decision 22 action pins and Python 3.14.
 - Add `tests/test_review_workflow.py` for the workflow contract, pins,
   checkout credentials, fork rule, secret scope, and script expressions.
+
+### Changed
+- NEEDS-HUMAN warns and never blocks CI. `engine/review_output.py` concludes
+  `neutral` for NEEDS-HUMAN whatever `fail_on_block` says. The rendered
+  output carries a `warning` line. `review.yml` prints it as a `::warning`
+  annotation. `fail_on_block` now gates BLOCK only. The active human
+  approved the decision 21 change and the existing test edit.
 - Add `engine/run_review.py`. It reviews one mode end to end and writes
   `result.json`. The most severe chunk verdict wins. Unreviewed files forbid
   APPROVE. An invalid reply gets one retry with a validation note. A second

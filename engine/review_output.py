@@ -23,6 +23,9 @@ TRUNCATION_NOTE = "\n\n[Report truncated by the review engine.]"
 CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 SEVERITY_LEVELS = {"CRITICAL": "failure", "HIGH": "failure", "MEDIUM": "warning"}
 FLAG_VALUES = {"true": True, "false": False}
+# The workflow prints this line as a ::warning annotation. A fixed template
+# and a validated check name keep workflow command syntax out of it.
+NEEDS_HUMAN_WARNING = "{check} needs a human review. The check concludes neutral and blocks no merge."
 
 
 def combine_verdicts(verdicts: list[str], unreviewed: list[str]) -> tuple[str, list[str]]:
@@ -46,10 +49,22 @@ def combine_verdicts(verdicts: list[str], unreviewed: list[str]) -> tuple[str, l
 
 
 def conclusion(verdict: str, fail_on_block: bool) -> str:
-    """Return the check conclusion for a verdict (decision 21)."""
+    """Return the check conclusion for a verdict (decision 21).
+
+    NEEDS-HUMAN warns and never blocks. fail_on_block gates BLOCK only.
+    """
     if verdict == "APPROVE":
         return "success"
-    return "failure" if fail_on_block else "neutral"
+    if verdict == "BLOCK" and fail_on_block:
+        return "failure"
+    return "neutral"
+
+
+def warning(result: dict) -> str:
+    """Return the run warning for a NEEDS-HUMAN result, or an empty string."""
+    if result["verdict"] != "NEEDS-HUMAN":
+        return ""
+    return NEEDS_HUMAN_WARNING.format(check=check_name(result["persona"], result["mode"]))
 
 
 def check_name(persona: str, mode: str) -> str:
@@ -124,6 +139,7 @@ def render(result: dict, fail_on_block: bool) -> dict:
         "summary": summary(result),
         "annotations": annotations(result.get("findings", []), result.get("changed_files", [])),
         "comment_body": comment_body(result),
+        "warning": warning(result),
     }
 
 
