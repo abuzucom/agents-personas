@@ -154,11 +154,32 @@ def validate(text: str, context: ReviewContext, classes: dict) -> list[str]:
     return problems
 
 
+def is_engine_envelope(envelope: dict) -> bool:
+    """Return True for an agents-personas engine envelope.
+
+    The engine names the persona in TRUSTED_CONTEXT and keeps the prescan
+    and the unreviewed paths in REVIEW_TARGET. The euler envelope of the
+    eval runner keeps both in TRUSTED_CONTEXT.
+    """
+    return "persona" in envelope.get("TRUSTED_CONTEXT", {})
+
+
+def unreviewed_from_envelope(envelope: dict) -> list[str]:
+    """Return the unreviewed paths that one envelope records."""
+    if is_engine_envelope(envelope):
+        return envelope["REVIEW_TARGET"].get("unreviewed", [])
+    return envelope["TRUSTED_CONTEXT"].get("metadata", {}).get("unreviewed", [])
+
+
 def context_from_envelope(envelope: dict, unreviewed: list[str]) -> ReviewContext:
     """Return the validation context for one envelope."""
     target = envelope["REVIEW_TARGET"]
-    prescan = envelope["TRUSTED_CONTEXT"].get("prescan", [])
-    return ReviewContext(envelope["mode"], set(target["files"]), {item["id"] for item in prescan}, unreviewed)
+    if is_engine_envelope(envelope):
+        # The engine quality mode answers as QUALITY.md mode PR.
+        mode, prescan = "PR", target.get("prescan", [])
+    else:
+        mode, prescan = envelope["mode"], envelope["TRUSTED_CONTEXT"].get("prescan", [])
+    return ReviewContext(mode, set(target["files"]), {item["id"] for item in prescan}, unreviewed)
 
 
 def main() -> int:
@@ -171,8 +192,7 @@ def main() -> int:
     envelope = json.loads(args.envelope.read_text(encoding="utf-8"))
     # build_pr_case records the unreviewed files in each envelope. run_review
     # passes the same list. The CLI and the pipeline enforce one rule.
-    unreviewed = envelope["TRUSTED_CONTEXT"].get("metadata", {}).get("unreviewed", [])
-    context = context_from_envelope(envelope, unreviewed)
+    context = context_from_envelope(envelope, unreviewed_from_envelope(envelope))
     problems = validate(args.report.read_text(encoding="utf-8"), context, load_classes(args.policy))
     for problem in problems:
         sys.stderr.write(f"error: {problem}\n")

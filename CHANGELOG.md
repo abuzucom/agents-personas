@@ -45,6 +45,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add the euler self-review caller `.github/workflows/euler-quality-review-pr.yml`.
 - Pin LF line endings for `reviewers/euler/QUALITY.md`.
 - The euler dependency check warns when a JSON manifest is not an object.
+- The euler reply CLI reads the engine envelope layout and the euler eval
+  layout.
   A deep array parses on Python 3.14 where the C stack allows it.
 - Allow the synthetic `alice` home path in `tests/test_euler_code_quality.py`
   through `.local-path-allowlist`. The active human approved the entry.
