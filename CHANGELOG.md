@@ -14,9 +14,19 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] (2026-11-20)
+## [0.3.0] (2026-11-20)
 
 ### Added
+- Add `engine/model_providers.json`, the single provider table.
+- Add `engine/call_model.py`, ported from `abuzucom/foucault`. It reports
+  token usage per request and writes it to `USAGE_FILE`. `MODEL_PROVIDER`
+  selects a table entry by name. A transient status gets one retry.
+- Add `engine/run_model_command.py`, ported from `abuzucom/foucault`. It
+  runs the caller's adapter script without a shell. The script must stay
+  inside the caller workspace.
+- Add `engine/check_review_response.py`, ported from `abuzucom/foucault`.
+  It enforces the shared verdict contract, the expected mode, and a file
+  and line for each finding.
 - Add the persona manifest schema in `engine/reviewers.py`. A manifest
   declares modes with review delivery, context delivery, or both. Exactly
   one mode is the default.
