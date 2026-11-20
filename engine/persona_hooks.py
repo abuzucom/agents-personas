@@ -3,12 +3,13 @@
 A persona can ship reviewers/<name>/review_hooks.py with these optional
 functions:
 
-- trusted_context(head_dir, changed, patches, options) -> dict
+- case_context(head_dir, changed, patches, options) -> dict
   Runs in the build stage, which holds no provider key. head_dir holds the
   head tree as plain files. The engine never executes them. The result is
   {"context": {key: [item, ...]}, "unreviewed": [path, ...]}. Each item
   names a changed "file". Each chunk envelope carries the items of its own
-  files under TRUSTED_CONTEXT[key].
+  files under REVIEW_TARGET[key]. An item can quote pull request text, so
+  it stays in the untrusted section.
 - validate_reply(payload, response, envelope) -> list[str]
   Returns problems with a reply that passed the engine validator. A problem
   triggers the same single retry as an engine problem.
@@ -52,28 +53,28 @@ def load_review_hooks(persona_dir: Path) -> ModuleType | None:
 def _check_items(key: object, items: object, changed: set[str]) -> None:
     """Reject a context entry that is not a list of items on changed files."""
     if not isinstance(key, str) or not key:
-        raise ValueError("trusted_context keys must be non-empty strings")
+        raise ValueError("case_context keys must be non-empty strings")
     if not isinstance(items, list) or not all(isinstance(item, dict) and isinstance(item.get("file"), str)
                                               for item in items):
-        raise ValueError(f"trusted_context '{key}' must be a list of objects with a file")
+        raise ValueError(f"case_context '{key}' must be a list of objects with a file")
     outside = sorted({item["file"] for item in items} - changed)
     if outside:
-        raise ValueError(f"trusted_context '{key}' names files outside the changed files: {outside[:5]}")
+        raise ValueError(f"case_context '{key}' names files outside the changed files: {outside[:5]}")
 
 
 def check_context_result(result: object, changed: list[str]) -> dict:
-    """Return a trusted_context result after checking its shape."""
+    """Return a case_context result after checking its shape."""
     if not isinstance(result, dict) or set(result) != CONTEXT_RESULT_KEYS:
-        raise ValueError("trusted_context result is not an object with exactly the keys context and unreviewed")
+        raise ValueError("case_context result is not an object with exactly the keys context and unreviewed")
     context, unreviewed = result["context"], result["unreviewed"]
     if not isinstance(context, dict):
-        raise ValueError("trusted_context context must be an object")
+        raise ValueError("case_context context must be an object")
     changed_set = set(changed)
     for key, items in context.items():
         _check_items(key, items, changed_set)
     if not isinstance(unreviewed, list) or not all(isinstance(path, str) and path in changed_set
                                                    for path in unreviewed):
-        raise ValueError("trusted_context unreviewed must list changed files")
+        raise ValueError("case_context unreviewed must list changed files")
     return result
 
 

@@ -75,7 +75,7 @@ class TrustedContextTest(unittest.TestCase):
         (self.tree / "src" / "util.py").write_text(MUTABLE_DEFAULT, encoding="utf-8")
 
     def context(self, patches: dict, exclude: str = "") -> dict:
-        return hooks.trusted_context(self.tree, sorted(patches), patches, {"exclude_paths": exclude})
+        return hooks.case_context(self.tree, sorted(patches), patches, {"exclude_paths": exclude})
 
     def test_blocking_candidate_on_an_added_line(self):
         result = self.context({"src/app.py": _patch(EMPTY_CATCH)})
@@ -178,7 +178,7 @@ class EngineRunTest(unittest.TestCase):
 
     def prescan_ids(self) -> list[str]:
         sent = json.loads((self.out / "case" / "envelopes" / "001.json").read_text(encoding="utf-8"))
-        return [item["id"] for item in sent["TRUSTED_CONTEXT"]["prescan"]]
+        return [item["id"] for item in sent["REVIEW_TARGET"]["prescan"]]
 
     def test_blocking_prescan_forces_block_over_a_model_approve(self):
         run_review.run_mode(self.options(stage="build"))

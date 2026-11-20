@@ -37,7 +37,7 @@ HOOKS_SOURCE = """import json
 from pathlib import Path
 
 
-def trusted_context(head_dir, changed, patches, options):
+def case_context(head_dir, changed, patches, options):
     seen = sorted(path.relative_to(head_dir).as_posix() for path in Path(head_dir).rglob("*") if path.is_file())
     Path(options["record"]).write_text(json.dumps({"seen": seen, "changed": changed,
                                                    "patched": sorted(patches), "options": options}))
@@ -48,7 +48,7 @@ def trusted_context(head_dir, changed, patches, options):
 
 
 def validate_reply(payload, response, envelope):
-    wanted = {item["id"] for item in envelope["TRUSTED_CONTEXT"]["prescan"]}
+    wanted = {item["id"] for item in envelope["REVIEW_TARGET"]["prescan"]}
     resolved = {item.get("id") for item in payload.get("prescan", [])}
     return [f"prescan item {item} lacks a resolution" for item in sorted(wanted - resolved)]
 
@@ -167,21 +167,82 @@ class HeadTreeTest(HookFixture):
         self.assertFalse((target / "link.py").exists())
 
 
+class HeadTreeLimitTest(HookFixture):
+    """Extraction skips oversized blobs and stops at the tree budget."""
+
+    def add_head_file(self, name: str, size: int) -> str:
+        (self.repo / name).write_bytes(b"x" * size)
+        _git(self.repo, "add", name)
+        _git(self.repo, "commit", "-q", "-m", name)
+        return _git(self.repo, "rev-parse", "HEAD")
+
+    def tree_dir(self) -> Path:
+        target = Path(self.temp.name) / "tree"
+        target.mkdir()
+        return target
+
+    def test_blob_over_the_file_cap_is_skipped_and_reported(self):
+        head = self.add_head_file("big.bin", 4096)
+        target = self.tree_dir()
+        skipped = builder.extract_head(self.repo, head, target, max_blob_bytes=1024)
+        self.assertEqual(skipped, ["big.bin"])
+        self.assertFalse((target / "big.bin").exists())
+        self.assertTrue((target / "keep.txt").is_file())
+
+    def test_tree_over_the_total_cap_raises(self):
+        head = self.add_head_file("big.bin", 4096)
+        with self.assertRaisesRegex(builder.HeadTreeTooLarge, "exceeds"):
+            builder.extract_head(self.repo, head, self.tree_dir(), max_tree_bytes=2048)
+
+    def test_small_read_batches_write_every_file(self):
+        target = self.tree_dir()
+        builder.extract_head(self.repo, self.head, target, batch_bytes=1)
+        written = sorted(path.relative_to(target).as_posix() for path in target.rglob("*") if path.is_file())
+        self.assertEqual(written, ["file1.py", "keep.txt", "notes.md", "pkg/file0.py"])
+
+    def test_oversized_changed_file_becomes_unreviewed(self):
+        options = builder.BuildOptions(
+            repo=self.repo, base=self.base, head=self.head, out_dir=self.out, persona="euler", mode="quality",
+            title="T", body="B", pr_number=1, max_chunks=20, max_envelope_bytes=200_000,
+            hooks=run_review.persona_hooks.load_review_hooks(self.persona_dir),
+            persona_options={"record": str(self.record), "blocking": ""}, max_blob_bytes=4)
+        result = builder.collect_case_context(options, ["file1.py", "notes.md", "pkg/file0.py"], {})
+        self.assertEqual(sorted(set(result["unreviewed"])), ["file1.py", "notes.md", "pkg/file0.py"])
+        seen = json.loads(self.record.read_text(encoding="utf-8"))["seen"]
+        self.assertEqual(seen, [])
+
+    def test_tree_over_budget_skips_the_hook_and_marks_every_change(self):
+        options = builder.BuildOptions(
+            repo=self.repo, base=self.base, head=self.head, out_dir=self.out, persona="euler", mode="quality",
+            title="T", body="B", pr_number=1, max_chunks=20, max_envelope_bytes=200_000,
+            hooks=run_review.persona_hooks.load_review_hooks(self.persona_dir),
+            persona_options={"record": str(self.record), "blocking": ""}, max_tree_bytes=8)
+        changed = ["file1.py", "notes.md", "pkg/file0.py"]
+        result = builder.collect_case_context(options, changed, {})
+        self.assertEqual(result, {"context": {}, "unreviewed": changed})
+        self.assertFalse(self.record.exists())
+
+
 class EnvelopeContextTest(unittest.TestCase):
-    """Persona context joins TRUSTED_CONTEXT and its digest."""
+    """Persona context joins the untrusted REVIEW_TARGET and its digest.
+
+    Hook items can quote pull request text, so TRUSTED_CONTEXT never holds them.
+    """
 
     def build(self, context):
         return json.loads(envelope.build_envelope("euler", "quality", {"a.py": "+x\n"}, "T", "B", {},
                                                   context=context))
 
-    def test_context_keys_join_trusted_context_and_digest(self):
+    def test_context_keys_join_case_context_and_digest(self):
         with_item = self.build({"prescan": [{"id": "P1", "file": "a.py"}]})
         without = self.build({"prescan": []})
-        self.assertEqual(with_item["TRUSTED_CONTEXT"]["prescan"], [{"id": "P1", "file": "a.py"}])
-        self.assertNotEqual(with_item["TRUSTED_CONTEXT"]["sha256"], without["TRUSTED_CONTEXT"]["sha256"])
+        self.assertEqual(with_item["REVIEW_TARGET"]["prescan"], [{"id": "P1", "file": "a.py"}])
+        self.assertNotIn("prescan", with_item["TRUSTED_CONTEXT"])
+        self.assertNotEqual(with_item["REVIEW_TARGET"]["sha256"], without["REVIEW_TARGET"]["sha256"])
+        self.assertEqual(with_item["TRUSTED_CONTEXT"]["sha256"], without["TRUSTED_CONTEXT"]["sha256"])
 
     def test_reserved_key_is_rejected(self):
-        for key in ("metadata", "persona", "note", "sha256"):
+        for key in ("title", "body", "files", "note", "sha256"):
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, "reserved"):
                 self.build({key: []})
 
@@ -222,7 +283,7 @@ class HookResultTest(unittest.TestCase):
 
 
 class BuildStageTest(HookFixture):
-    """The build stage runs trusted_context and calls no model."""
+    """The build stage runs case_context and calls no model."""
 
     def test_build_stage_writes_the_case_without_a_model_call(self):
         self.script()
@@ -234,7 +295,7 @@ class BuildStageTest(HookFixture):
         record = json.loads(self.record.read_text(encoding="utf-8"))
         self.assertEqual(record["seen"], ["file1.py", "keep.txt", "notes.md", "pkg/file0.py"])
         self.assertEqual(record["options"]["blocking"], "")
-        context = json.loads((self.out / "case" / "trusted_context.json").read_text(encoding="utf-8"))
+        context = json.loads((self.out / "case" / "case_context.json").read_text(encoding="utf-8"))
         self.assertEqual([item["file"] for item in context["prescan"]], ["file1.py", "pkg/file0.py"])
 
     def test_each_chunk_carries_only_its_own_items(self):
@@ -245,7 +306,7 @@ class BuildStageTest(HookFixture):
         for chunk in manifest["chunks"]:
             with self.subTest(chunk=chunk["envelope"]):
                 body = json.loads((self.out / "case" / "envelopes" / chunk["envelope"]).read_text())
-                files = {item["file"] for item in body["TRUSTED_CONTEXT"]["prescan"]}
+                files = {item["file"] for item in body["REVIEW_TARGET"]["prescan"]}
                 self.assertTrue(files <= set(chunk["files"]))
 
     def test_undeclared_persona_option_fails_the_build(self):

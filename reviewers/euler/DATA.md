@@ -3,7 +3,7 @@
 euler sends the provider three items per review chunk:
 
 - the fenced pull request content: the diff, title, body, and file names
-- the prescan candidates for the files of that chunk, in `TRUSTED_CONTEXT`
+- the prescan candidates for the files of that chunk, in `REVIEW_TARGET`
 - `QUALITY.md`, the persona prompt for the quality mode
 
 A prescan candidate holds a changed file path, a line number, a QUALITY.md

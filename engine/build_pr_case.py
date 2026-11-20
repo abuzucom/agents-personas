@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build fenced review envelopes for one pull request mode.
 
-Ported from `abuzucom/euler` `ci/build_pr_case.py`. A persona trusted_context
+Ported from `abuzucom/euler` `ci/build_pr_case.py`. A persona case_context
 hook, such as the euler prescan, reads the head tree as plain files.
 The builder reads the base-to-head diff from git objects and never checks
 out the head. It splits large diffs by file into chunks under the mode's
@@ -32,11 +32,17 @@ except ImportError:
     from engine import envelope, persona_hooks, reviewers
 
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
-LS_TREE_FIELDS = 3
+# git ls-tree -l prints mode, type, object, and size before the path.
+LS_TREE_LONG_FIELDS = 4
+# Head extraction caps. A larger blob stays unwritten. A larger tree skips the
+# persona hook. A read batch bounds the bytes one git call returns.
+MAX_HEAD_BLOB_BYTES = 1024 * 1024
+MAX_HEAD_TREE_BYTES = 64 * 1024 * 1024
+HEAD_READ_BATCH_BYTES = 8 * 1024 * 1024
 CAT_FILE_HEADER_FIELDS = 3
 # Symlinks (120000) and submodules (160000) stay unwritten.
 REGULAR_FILE_MODES = frozenset({b"100644", b"100755"})
-TRUSTED_CONTEXT_NAME = "trusted_context.json"
+CASE_CONTEXT_NAME = "case_context.json"
 # json.dumps wraps a string in two quote bytes.
 JSON_QUOTE_BYTES = 2
 BINARY_NUMSTAT = b"-"
@@ -67,6 +73,8 @@ class BuildOptions:
     max_envelope_bytes: int
     hooks: Any = None
     persona_options: dict = field(default_factory=dict)
+    max_blob_bytes: int = MAX_HEAD_BLOB_BYTES
+    max_tree_bytes: int = MAX_HEAD_TREE_BYTES
 
 
 def run_git(repo: Path, *args: str, stdin: bytes | None = None) -> bytes:
@@ -200,22 +208,27 @@ def chunk_metadata_bound(base: str, head: str, pr_number: int, max_chunks: int, 
             "chunk": f"{max_chunks}/{max_chunks}", "changed_files": paths, "unreviewed": paths}
 
 
-def list_head_blobs(repo: Path, head: str) -> list[tuple[str, str]]:
-    """Return object ID and path pairs for the regular files in the head tree."""
-    raw = run_git(repo, "ls-tree", "-r", "-z", "--full-tree", head)
+class HeadTreeTooLarge(RuntimeError):
+    """The head tree holds more bytes than the extraction budget."""
+
+
+def list_head_blobs(repo: Path, head: str) -> list[tuple[str, str, int]]:
+    """Return object ID, path, and size for the regular files in the head tree."""
+    raw = run_git(repo, "ls-tree", "-r", "-z", "-l", "--full-tree", head)
     blobs = []
     for record in raw.split(b"\0"):
         # The first tab separates metadata from the path. Tabs in names stay in the path.
         meta, _, raw_path = record.partition(b"\t")
-        fields = meta.split(b" ")
-        if len(fields) != LS_TREE_FIELDS or fields[0] not in REGULAR_FILE_MODES:
+        # git pads the size column with spaces, so split on any run of them.
+        fields = meta.split()
+        if len(fields) != LS_TREE_LONG_FIELDS or fields[0] not in REGULAR_FILE_MODES:
             continue
         try:
             path = raw_path.decode("utf-8")
         except UnicodeDecodeError:
             # read_diff already lists an undecodable changed path as unreviewed.
             continue
-        blobs.append((fields[2].decode("ascii"), path))
+        blobs.append((fields[2].decode("ascii"), path, int(fields[3])))
     return blobs
 
 
@@ -244,36 +257,69 @@ def read_blobs(repo: Path, object_ids: list[str]) -> list[bytes]:
     return bodies
 
 
-def extract_head(repo: Path, head: str, target: Path) -> None:
-    """Write the head tree's regular files into target straight from git objects.
+def _read_batches(blobs: list[tuple[str, str, int]], batch_bytes: int) -> list[list[tuple[str, str, int]]]:
+    """Group blobs so one cat-file call holds at most batch_bytes, or one blob."""
+    batches, current, size = [], [], 0
+    for blob in blobs:
+        if current and size + blob[2] > batch_bytes:
+            batches.append(current)
+            current, size = [], 0
+        current.append(blob)
+        size += blob[2]
+    if current:
+        batches.append(current)
+    return batches
+
+
+def extract_head(repo: Path, head: str, target: Path, max_blob_bytes: int = MAX_HEAD_BLOB_BYTES,
+                 max_tree_bytes: int = MAX_HEAD_TREE_BYTES, batch_bytes: int = HEAD_READ_BATCH_BYTES) -> list[str]:
+    """Write the head tree's regular files into target and return the skipped oversized paths.
 
     git archive would apply the head commit's export-ignore and export-subst
     attributes. A pull request could then hide or rewrite files before a
-    hook reads them.
+    hook reads them. The caps bound memory and disk. A pull request cannot
+    make the build read an unbounded tree.
     """
     blobs = list_head_blobs(repo, head)
+    skipped = sorted(path for _, path, size in blobs if size > max_blob_bytes)
+    kept = [blob for blob in blobs if blob[2] <= max_blob_bytes]
+    total = sum(size for _, _, size in kept)
+    if total > max_tree_bytes:
+        raise HeadTreeTooLarge(f"the head tree holds {total} bytes and exceeds the {max_tree_bytes}-byte budget")
     root = Path(target).resolve()
-    destinations = [(root / path).resolve() for _, path in blobs]
+    destinations = {path: (root / path).resolve() for _, path, _ in kept}
     # Check every destination before the first write.
-    for (_, path), destination in zip(blobs, destinations, strict=True):
+    for path, destination in destinations.items():
         if not destination.is_relative_to(root):
             raise RuntimeError(f"head tree path {path!r} escapes the extraction directory. Review it by hand.")
-    for destination, body in zip(destinations, read_blobs(repo, [object_id for object_id, _ in blobs]),
-                                 strict=True):
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(body)
+    for batch in _read_batches(kept, batch_bytes):
+        for (_, path, _), body in zip(batch, read_blobs(repo, [object_id for object_id, _, _ in batch]),
+                                      strict=True):
+            destinations[path].parent.mkdir(parents=True, exist_ok=True)
+            destinations[path].write_bytes(body)
+    return skipped
 
 
-def collect_trusted_context(options: BuildOptions, changed: list[str], patches: dict[str, str]) -> dict:
-    """Return the persona hook context, or an empty result without a hook."""
-    hook = getattr(options.hooks, "trusted_context", None)
+def collect_case_context(options: BuildOptions, changed: list[str], patches: dict[str, str]) -> dict:
+    """Return the persona hook context, or an empty result without a hook.
+
+    A tree over the budget skips the hook and marks every changed file
+    unreviewed. A changed file over the per-file cap becomes unreviewed.
+    """
+    hook = getattr(options.hooks, "case_context", None)
     if hook is None:
         return {"context": {}, "unreviewed": []}
     with tempfile.TemporaryDirectory() as directory:
         tree = Path(directory)
-        extract_head(options.repo, options.head, tree)
+        try:
+            skipped = extract_head(options.repo, options.head, tree, options.max_blob_bytes, options.max_tree_bytes)
+        except HeadTreeTooLarge:
+            return {"context": {}, "unreviewed": list(changed)}
         result = hook(tree, list(changed), dict(patches), dict(options.persona_options))
-    return persona_hooks.check_context_result(result, changed)
+    result = persona_hooks.check_context_result(result, changed)
+    skipped_paths = set(skipped)
+    oversized = [path for path in changed if path in skipped_paths and path not in result["unreviewed"]]
+    return {"context": result["context"], "unreviewed": result["unreviewed"] + oversized}
 
 
 def chunk_budget(options: BuildOptions, changed: list[str], context: dict | None = None) -> int:
@@ -321,13 +367,13 @@ def build(options: BuildOptions) -> None:
     validate_options(options)
     changed, binary, patches, undecodable = read_diff(options)
     patches, unreviewable = split_unreviewable(patches)
-    trusted = collect_trusted_context(options, changed, patches)
+    hook_context = collect_case_context(options, changed, patches)
     # The skeleton holds every context item, so each chunk subset fits too.
-    budget = chunk_budget(options, changed, trusted["context"])
+    budget = chunk_budget(options, changed, hook_context["context"])
     chunks, oversized = pack_chunks(patches, budget, escaped_size)
     chunks, overflow = limit_chunks(chunks, options.max_chunks)
     unreviewed = sorted(binary) + undecodable + unreviewable + oversized + overflow
-    unreviewed += [path for path in trusted["unreviewed"] if path not in unreviewed]
+    unreviewed += [path for path in hook_context["unreviewed"] if path not in unreviewed]
     envelopes_dir = options.out_dir / "envelopes"
     envelopes_dir.mkdir(parents=True, exist_ok=True)
     manifest_chunks = []
@@ -336,14 +382,14 @@ def build(options: BuildOptions) -> None:
         text = envelope.build_envelope(options.persona, options.mode,
                                        {path: patches[path] for path in files},
                                        options.title, options.body, metadata,
-                                       context=persona_hooks.chunk_context(trusted["context"], files))
+                                       context=persona_hooks.chunk_context(hook_context["context"], files))
         if len(text.encode("utf-8")) > options.max_envelope_bytes:
             raise RuntimeError(f"envelope {index} exceeds {options.max_envelope_bytes} bytes. "
                                "Lower max_envelope_bytes and rerun.")
         name = f"{index:03d}.json"
         write_text_lf(envelopes_dir / name, text)
         manifest_chunks.append({"envelope": name, "files": files})
-    write_json(options.out_dir / TRUSTED_CONTEXT_NAME, trusted["context"])
+    write_json(options.out_dir / CASE_CONTEXT_NAME, hook_context["context"])
     write_json(options.out_dir / "manifest.json", {
         "persona": options.persona, "mode": options.mode, "pr_number": options.pr_number,
         "base_sha": options.base, "head_sha": options.head, "changed_files": changed,

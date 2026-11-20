@@ -1,6 +1,6 @@
 """euler review hooks for the engine: the prescan, the QUALITY.md reply rules, and prescan BLOCK.
 
-engine/build_pr_case.py calls trusted_context in the build stage, which holds
+engine/build_pr_case.py calls case_context in the build stage, which holds
 no provider key. engine/run_review.py calls validate_reply on each reply and
 forced_verdict on the run.
 """
@@ -22,7 +22,7 @@ REVIEW_MODE = "PR"
 CLASSES = quality_reply.load_classes(POLICY_PATH)
 
 
-def trusted_context(head_dir: Path, changed: list[str], patches: dict[str, str], options: dict) -> dict:
+def case_context(head_dir: Path, changed: list[str], patches: dict[str, str], options: dict) -> dict:
     """Return the prescan candidates and the files that exhaust the parsers."""
     items, unparsed = prescan.build_prescan(Path(head_dir), changed, patches, options["exclude_paths"].split())
     return {"context": {"prescan": items}, "unreviewed": unparsed}
@@ -30,12 +30,12 @@ def trusted_context(head_dir: Path, changed: list[str], patches: dict[str, str],
 
 def review_context(envelope: dict) -> quality_reply.ReviewContext:
     """Return the facts a reply must agree with for one engine envelope."""
-    trusted = envelope["TRUSTED_CONTEXT"]
+    target = envelope["REVIEW_TARGET"]
     return quality_reply.ReviewContext(
         REVIEW_MODE,
-        set(envelope["REVIEW_TARGET"]["files"]),
-        {item["id"] for item in trusted.get("prescan", [])},
-        trusted.get("metadata", {}).get("unreviewed", []),
+        set(target["files"]),
+        {item["id"] for item in target.get("prescan", [])},
+        envelope["TRUSTED_CONTEXT"].get("metadata", {}).get("unreviewed", []),
     )
 
 
