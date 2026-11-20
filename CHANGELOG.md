@@ -22,8 +22,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   cases from `abuzucom/euler` at `9488a8c`. The `quality` mode reviews pull
   requests. The `file`, `piece`, and `wholesale` modes run locally.
 - Add persona review hooks in `engine/persona_hooks.py`. A persona's
-  `review_hooks.py` can add trusted context per chunk, check each reply, and
-  force a verdict. The euler prescan, the QUALITY.md reply rules, and BLOCK
+  `review_hooks.py` can add items to each chunk's `REVIEW_TARGET`, check
+  each reply, and force a verdict. Head extraction skips blobs over 1 MiB
+  and skips the hook for a tree over 64 MiB. foucault's first self-review
+  found both risks. The euler prescan, the QUALITY.md reply rules, and BLOCK
   on a blocking prescan finding run as euler hooks.
 - Add `persona_options` to `review.yml` and `options` to `reviewer.json`.
   The engine rejects an option the manifest does not declare.

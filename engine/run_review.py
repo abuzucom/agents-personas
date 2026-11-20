@@ -188,7 +188,7 @@ def apply_forced_verdict(verdict: str, reasons: list[str], options: RunOptions, 
     hook = getattr(hooks, "forced_verdict", None)
     if hook is None:
         return verdict
-    context_path = options.out_dir / "case" / build_pr_case.TRUSTED_CONTEXT_NAME
+    context_path = options.out_dir / "case" / build_pr_case.CASE_CONTEXT_NAME
     forced = hook(json.loads(context_path.read_text(encoding="utf-8")))
     if not forced:
         return verdict
