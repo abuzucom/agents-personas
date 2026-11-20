@@ -31,6 +31,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and generay action pins.
 
 ### Fixed
+- Ignore `.comment-drafts/`. The directory holds comment and pull request
+  body drafts for `scripts/trusted_gh.py` and never belongs in commits.
 - Disable automatic Git maintenance in the digest index test fixture. The
   fixture copy failed when detached maintenance removed its lock file.
 
