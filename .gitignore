@@ -221,3 +221,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Gate adoption staging area (scripts/complete_gate_adoption.py)
+.gate-staging/
