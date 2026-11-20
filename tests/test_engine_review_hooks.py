@@ -102,6 +102,13 @@ class HookFixture(unittest.TestCase):
     """A persona with review hooks and a repository with a head that adds three files."""
 
     def setUp(self):
+        # These tests cover hook plumbing. Their hook writes records outside the
+        # sandbox, so it runs unsandboxed. tests/test_engine_hook_sandbox.py covers
+        # the sandbox.
+        previous_mode = os.environ.get("PERSONAS_REQUIRE_SANDBOX")
+        os.environ["PERSONAS_REQUIRE_SANDBOX"] = "off"
+        self.addCleanup(lambda: os.environ.pop("PERSONAS_REQUIRE_SANDBOX") if previous_mode is None
+                        else os.environ.__setitem__("PERSONAS_REQUIRE_SANDBOX", previous_mode))
         self.temp = tempfile.TemporaryDirectory()
         base_dir = Path(self.temp.name)
         self.root = base_dir / "personas"

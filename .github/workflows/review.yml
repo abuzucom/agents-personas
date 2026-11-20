@@ -371,7 +371,8 @@ jobs:
   review:
     needs: resolve
     if: needs.resolve.outputs.paths_match == 'true' && needs.resolve.outputs.same_repository == 'true' && inputs.fork_review != true
-    runs-on: ubuntu-latest
+    # The pinned image keeps the bubblewrap package version stable.
+    runs-on: ubuntu-24.04
     permissions:
       checks: write
       contents: read
@@ -454,12 +455,22 @@ jobs:
           subprocess.run(["git", "fetch", "--no-tags", source, head_sha], check=True, env=environment)
           PY
 
+      - name: Install bubblewrap
+        # Persona hooks run inside bubblewrap without network or runner files.
+        # Version approved under Rule 9 on 2026-11-20 (noble-updates and noble-security).
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bubblewrap=0.9.0-1ubuntu0.3
+          bwrap --version
+
       - name: Build review case
         # Persona hooks such as the euler prescan run here. The provider key
         # reaches only the next step. Every persona hook runs in a child
         # process with an allowlisted environment and an empty temporary
-        # home. No credential variable reaches hook code. The child keeps
-        # network access and read access to the runner filesystem.
+        # home. No credential variable reaches hook code. bubblewrap removes
+        # the network and every runner path except the engine, the persona,
+        # the head tree copy, and the system files (decision 33).
         env:
           PR_TITLE: ${{ needs.resolve.outputs.pr_title }}
           PR_BODY: ${{ needs.resolve.outputs.pr_body }}
@@ -471,6 +482,7 @@ jobs:
           MAX_CHUNKS: ${{ inputs.max_chunks }}
           MAX_ENVELOPE_BYTES: ${{ inputs.max_envelope_bytes }}
           PERSONA_OPTIONS: ${{ inputs.persona_options }}
+          PERSONAS_REQUIRE_SANDBOX: "1"
         run: |
           set -euo pipefail
           arguments=(--root .agents-personas --persona "$PERSONA" --mode "$MODE" --repo .
@@ -496,6 +508,7 @@ jobs:
           MAX_ENVELOPE_BYTES: ${{ inputs.max_envelope_bytes }}
           # The review stage checks the options digest against the built case.
           PERSONA_OPTIONS: ${{ inputs.persona_options }}
+          PERSONAS_REQUIRE_SANDBOX: "1"
         run: |
           set -euo pipefail
           arguments=(--root .agents-personas --persona "$PERSONA" --mode "$MODE" --repo .
@@ -611,7 +624,7 @@ jobs:
   fork-review:
     needs: resolve
     if: needs.resolve.outputs.paths_match == 'true' && inputs.fork_review == true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: fork-review
     permissions:
       checks: write
