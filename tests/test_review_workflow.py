@@ -171,6 +171,27 @@ class NeedsHumanWarningTest(unittest.TestCase):
         self.assertIn("NEEDS-HUMAN warns", description)
 
 
+class CommentLayoutWiringTest(unittest.TestCase):
+    """The workflow posts the renderer's comment and matches its hidden marker."""
+
+    def review_steps(self) -> dict:
+        return {step["name"]: step for job, step in _steps(_workflow()) if job == "review"}
+
+    def test_render_step_passes_the_run_url(self):
+        step = self.review_steps()["Render review output"]
+        self.assertIn("--run-url", step["run"])
+        self.assertIn("RUN_URL", step["env"])
+
+    def test_comment_step_posts_the_rendered_body(self):
+        script = self.review_steps()["Post review comment"]["with"]["script"]
+        self.assertIn("body: rendered.comment_body", script)
+
+    def test_earlier_comment_lookup_matches_the_hidden_marker(self):
+        resolve = {step["name"]: step for job, step in _steps(_workflow()) if job == "resolve"}
+        script = resolve["Find earlier review comments"]["with"]["script"]
+        self.assertIn("<!-- persona-review: ", script)
+
+
 class ScriptInjectionTest(unittest.TestCase):
     """Scripts read values from env. No expression expands inside a script body."""
 

@@ -103,7 +103,8 @@ class RenderTest(unittest.TestCase):
         rendered = output.render(_result(), fail_on_block=True)
         self.assertEqual(rendered["check_name"], "euler / quality")
         first_line = rendered["comment_body"].split("\n", 1)[0]
-        self.assertEqual(first_line, f"euler / quality | head {HEAD_SHA} | VERDICT: BLOCK")
+        self.assertEqual(first_line, f"<!-- persona-review: euler / quality | head {HEAD_SHA} -->")
+        self.assertIn("## Euler quality review: BLOCK", rendered["comment_body"])
 
     def test_annotation_for_changed_file(self):
         annotation = output.render(_result(), fail_on_block=True)["annotations"][0]

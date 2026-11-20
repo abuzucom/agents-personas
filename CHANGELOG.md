@@ -38,6 +38,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   output carries a `warning` line. `review.yml` prints it as a `::warning`
   annotation. `fail_on_block` now gates BLOCK only. The active human
   approved the decision 21 change and the existing test edit.
+- Every persona comment uses the euler layout. A hidden marker line opens
+  the body. A `## <Persona> <mode> review: <VERDICT>` heading follows, then
+  the base and head SHAs, the workflow run link, and one
+  `### Chunk <n>: <VERDICT>` section per chunk with the fenced report.
+  `engine/review_output.py` builds the whole body and takes `--run-url`.
+  `engine/run_review.py` records `base_sha` and `chunk_results`. The active
+  human approved the decision 15 change and the existing header test edit.
 - Add `engine/run_review.py`. It reviews one mode end to end and writes
   `result.json`. The most severe chunk verdict wins. Unreviewed files forbid
   APPROVE. An invalid reply gets one retry with a validation note. A second

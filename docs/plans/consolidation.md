@@ -43,7 +43,7 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 12 | Persona modes (2026-11-20) | Each persona declares modes in `reviewer.json`. A mode supports review delivery, context delivery, or both. Wrappers take a `modes` input that defaults to the persona's default mode. Each adopter caller workflow chooses the pull requests for extra modes. |
 | 13 | Secrets (2026-11-20) | The secrets interface stays unchanged. Each wrapper declares the exact secret names, required flags, and environment of the source workflow it replaces. Adopter repository secrets and `secrets:` mappings stay unchanged. |
 | 14 | Fork runs (2026-11-20) | The engine applies one fork rule to every persona. A fork pull request gets a visible skipped check per requested mode and no secret. `fork_review: true` runs the review under the `fork-review` environment after a person approves. The engine never executes fork code with a secret in scope. |
-| 15 | Review output (2026-11-20) | Each run posts a new comment per head SHA and mode with a header line. Each mode also gets a check run with line annotations. |
+| 15 | Review output (2026-11-20) | Each run posts a new comment per head SHA and mode in the euler layout. A verdict heading opens the visible comment. A hidden marker line identifies the run. Each mode also gets a check run with line annotations. |
 | 16 | Verdict values (2026-11-20) | The engine accepts `APPROVE`, `BLOCK`, and `NEEDS-HUMAN`. All five source validators accept the same set. |
 | 21 | Non-gating verdicts (2026-11-20) | `NEEDS-HUMAN` always sets the mode check to `neutral` and emits a run warning. It never blocks CI. `fail_on_block` gates `BLOCK` only. With `fail_on_block: false`, `BLOCK` also concludes `neutral`. |
 | 22 | Action pins (2026-11-20) | Engine workflows pin checkout v7.0.1, setup-python v7.1.0, github-script v9.0.0, and upload-artifact v7.0.2 at the euler and generay SHAs. |
@@ -175,11 +175,20 @@ Each run publishes three outputs per requested mode:
 - Line annotations on the check run for findings tied to changed lines.
 - A new pull request comment. The engine never edits an earlier comment. A rerun on the same head SHA and mode posts no second comment. The `already_reviewed` lookup enforces that limit.
 
-Each comment opens with a header line:
+Every persona posts the euler comment layout (revised 2026-11-20):
 
 ```
-<persona> / <mode> | head <sha> | VERDICT: <value>
+<!-- persona-review: <persona> / <mode> | head <sha> -->
+## <Persona> <mode> review: <VERDICT>
+
+Base `<sha>`. Head `<sha>`.
+Workflow run: <url>
+
+### Chunk 001: <VERDICT>
+<fenced chunk report>
 ```
+
+GitHub renders no HTML comment. The hidden first line lets the `already_reviewed` lookup find an earlier comment for the same head and mode.
 
 ### Verdicts
 

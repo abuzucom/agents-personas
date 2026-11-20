@@ -166,8 +166,13 @@ def run_mode(options: RunOptions) -> dict:
                for chunk in case["chunks"]]
     verdict, reasons = review_output.combine_verdicts([item.verdict for item in results], case["unreviewed"])
     result = {
-        "persona": options.persona, "mode": options.mode, "head_sha": options.head,
+        "persona": options.persona, "mode": options.mode, "base_sha": options.base, "head_sha": options.head,
         "verdict": verdict, "reasons": reasons + [item.reason for item in results if item.reason],
+        "chunk_results": [
+            {"name": Path(chunk["envelope"]).stem, "verdict": item.verdict, "report": item.report,
+             "reason": item.reason}
+            for chunk, item in zip(case["chunks"], results, strict=True)
+        ],
         "findings": [finding for item in results for finding in item.findings],
         "changed_files": case["changed_files"], "unreviewed": case["unreviewed"],
         "chunks": len(case["chunks"]), "clamped": caps["clamped"], "usage": sum_usage(results),

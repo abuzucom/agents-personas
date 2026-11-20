@@ -121,16 +121,60 @@ def summary(result: dict) -> str:
     return "\n".join(lines)
 
 
-def comment_body(result: dict) -> str:
-    """Return the comment: the header line, then the chunk reports, capped."""
-    header = comment_header(result["persona"], result["mode"], result["head_sha"], result["verdict"])
-    body = "\n\n".join([header, *result.get("reports", [])])
+def comment_marker(persona: str, mode: str, head_sha: str) -> str:
+    """Return the hidden first comment line that identifies the run.
+
+    GitHub renders no HTML comment. The workflow matches this line to skip
+    a second comment for the same head and mode.
+    """
+    return f"<!-- persona-review: {check_name(persona, mode)} | head {head_sha} -->"
+
+
+def fence_for(text: str) -> str:
+    """Return a code fence longer than the longest backtick run in text.
+
+    The report is model output shaped by the pull request. A longer fence
+    stops markdown from rendering images, links, or mentions from it.
+    """
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    return "`" * max(3, longest + 1)
+
+
+def chunk_sections(result: dict) -> list[str]:
+    """Return one heading and fenced report per chunk."""
+    chunks = result.get("chunk_results")
+    if chunks is None:
+        chunks = [{"name": f"{index:03d}", "verdict": result["verdict"], "report": report, "reason": ""}
+                  for index, report in enumerate(result.get("reports", []), 1)]
+    sections = []
+    for chunk in chunks:
+        lines = [f"### Chunk {chunk['name']}: {chunk['verdict']}", ""]
+        report = chunk.get("report", "").strip()
+        if report:
+            fence = fence_for(report)
+            lines += [fence, report, fence]
+        else:
+            lines.append(chunk.get("reason") or "No report.")
+        sections.append("\n".join(lines))
+    return sections
+
+
+def comment_body(result: dict, run_url: str = "") -> str:
+    """Return the euler-style comment: verdict heading, revisions, chunk reports."""
+    title = f"{result['persona'].capitalize()} {result['mode']} review: {result['verdict']}"
+    lines = [comment_marker(result["persona"], result["mode"], result["head_sha"]), f"## {title}", ""]
+    base_sha = result.get("base_sha")
+    lines.append(f"Base `{base_sha}`. Head `{result['head_sha']}`." if base_sha else f"Head `{result['head_sha']}`.")
+    if run_url:
+        lines.append(f"Workflow run: {run_url}")
+    lines += [f"- {reason}" for reason in result.get("reasons", [])]
+    body = "\n".join(lines) + "\n\n" + "\n\n".join(chunk_sections(result))
     if len(body) <= MAX_COMMENT_CHARS:
         return body
     return body[:MAX_COMMENT_CHARS - len(TRUNCATION_NOTE)] + TRUNCATION_NOTE
 
 
-def render(result: dict, fail_on_block: bool) -> dict:
+def render(result: dict, fail_on_block: bool, run_url: str = "") -> dict:
     """Return everything the workflow publishes for one mode."""
     return {
         "check_name": check_name(result["persona"], result["mode"]),
@@ -138,7 +182,7 @@ def render(result: dict, fail_on_block: bool) -> dict:
         "title": f"VERDICT: {result['verdict']}",
         "summary": summary(result),
         "annotations": annotations(result.get("findings", []), result.get("changed_files", [])),
-        "comment_body": comment_body(result),
+        "comment_body": comment_body(result, run_url),
         "warning": warning(result),
     }
 
@@ -149,10 +193,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("result", type=Path)
     parser.add_argument("--fail-on-block", required=True, choices=sorted(FLAG_VALUES))
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--run-url", default="", help="workflow run link for the comment")
     options = parser.parse_args(argv)
     try:
         result = json.loads(options.result.read_text(encoding="utf-8"))
-        rendered = render(result, FLAG_VALUES[options.fail_on_block])
+        rendered = render(result, FLAG_VALUES[options.fail_on_block], options.run_url)
         options.out.write_text(json.dumps(rendered, indent=2) + "\n", encoding="utf-8", newline="\n")
     except (OSError, ValueError, KeyError) as error:
         print(f"error: cannot render review output ({error}). Rerun the review step.", file=sys.stderr)

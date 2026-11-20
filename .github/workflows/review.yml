@@ -258,9 +258,10 @@ jobs:
           HEAD_SHA: ${{ steps.pull.outputs.head_sha }}
         with:
           script: |
-            // A rerun on the same head and mode posts no second comment. Only
-            // comments from the Actions bot count, so a person cannot suppress
-            // a comment by posting the header line. The check run always runs.
+            // A rerun on the same head and mode posts no second comment. The
+            // renderer opens each comment with a hidden marker line. Only
+            // Actions bot comments count. A person who posts the marker
+            // suppresses no comment. The check run always runs.
             const BOT = "github-actions[bot]";
             const modes = JSON.parse(process.env.MODES_JSON);
             const comments = await github.paginate(github.rest.issues.listComments, {
@@ -269,7 +270,7 @@ jobs:
             });
             const reviewed = {};
             for (const mode of modes) {
-              const prefix = `${process.env.PERSONA} / ${mode} | head ${process.env.HEAD_SHA} |`;
+              const prefix = `<!-- persona-review: ${process.env.PERSONA} / ${mode} | head ${process.env.HEAD_SHA} -->`;
               reviewed[mode] = comments.some((comment) =>
                 comment.user?.login === BOT && (comment.body || "").startsWith(prefix));
             }
@@ -418,10 +419,11 @@ jobs:
         if: ${{ always() && steps.run.outcome == 'success' }}
         env:
           FAIL_ON_BLOCK: ${{ inputs.fail_on_block }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           python3 .agents-personas/engine/review_output.py "$RUNNER_TEMP/review/result.json" \
-            --fail-on-block "$FAIL_ON_BLOCK" --out "$RUNNER_TEMP/review/rendered.json"
+            --fail-on-block "$FAIL_ON_BLOCK" --run-url "$RUN_URL" --out "$RUNNER_TEMP/review/rendered.json"
           python3 - <<'PY'
           import json
           import os
@@ -478,17 +480,12 @@ jobs:
               return;
             }
             const rendered = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/review/rendered.json`, "utf8"));
-            const [header, ...rest] = rendered.comment_body.split("\n");
-            const report = rest.join("\n").trim();
-            // The report is model output shaped by the pull request. The fence
-            // outruns its longest backtick run, so markdown cannot render
-            // images, links, or mentions from it.
-            const longest = (report.match(/`+/g) || []).reduce((most, run) => Math.max(most, run.length), 0);
-            const fence = "`".repeat(Math.max(3, longest + 1));
+            // engine/review_output.py builds the whole body and fences each
+            // chunk report. The step posts it unchanged.
             await github.rest.issues.createComment({
               owner: context.repo.owner, repo: context.repo.repo,
               issue_number: Number(process.env.PR_NUMBER),
-              body: `${header}\n\n${fence}\n${report}\n${fence}`,
+              body: rendered.comment_body,
             });
 
       - name: Upload review result
