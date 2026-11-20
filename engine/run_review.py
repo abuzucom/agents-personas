@@ -33,8 +33,11 @@ ENGINE_DIR = Path(__file__).resolve().parent
 # call_model.py exits with this code when no configured model can hold the input.
 CAPACITY_EXIT_CODE = 3
 STAGES = ("all", "build", "review")
-# A review-stage hook runs in a child process without these variables.
-KEY_VARIABLES = frozenset({"MODEL_API_KEY"})
+# Every persona hook runs in a child process with only these variables, plus
+# LC_* locale variables. A credential never reaches persona code.
+HOOK_ENVIRONMENT_NAMES = frozenset({"PATH", "HOME", "USERPROFILE", "LANG", "TMPDIR", "TEMP", "TMP",
+                                    "SYSTEMROOT", "PATHEXT", "COMSPEC"})
+HOOK_LOCALE_PREFIX = "LC_"
 HOOK_TIMEOUT_SECONDS = 300
 # The provider adapter applies its own request timeout and retry. This bound
 # stops a hung adapter process.
@@ -113,15 +116,21 @@ def read_usage(usage_path: Path) -> dict:
     return usage if isinstance(usage, dict) else {}
 
 
-def call_review_hook(persona_dir: Path | None, name: str, arguments: list) -> tuple[bool, object]:
-    """Run one review-stage hook in a child process without the provider key.
+def hook_environment() -> dict[str, str]:
+    """Return the allowlisted environment for a persona hook child process."""
+    return {key: value for key, value in os.environ.items()
+            if key.upper() in HOOK_ENVIRONMENT_NAMES or key.upper().startswith(HOOK_LOCALE_PREFIX)}
+
+
+def call_hook(persona_dir: Path | None, name: str, arguments: list) -> tuple[bool, object]:
+    """Run one persona hook in a child process with the allowlisted environment.
 
     Return whether the persona defines the hook and its JSON result. The
     parent process never imports the persona hook file.
     """
     if persona_dir is None or not (Path(persona_dir) / persona_hooks.REVIEW_HOOKS_NAME).exists():
         return False, None
-    environment = {key: value for key, value in os.environ.items() if key not in KEY_VARIABLES}
+    environment = hook_environment()
     command = [sys.executable, str(ENGINE_DIR / "run_hook.py"), "--persona-dir", str(persona_dir), "--hook", name]
     try:
         completed = subprocess.run(command, input=json.dumps(arguments), env=environment, capture_output=True,
@@ -142,7 +151,7 @@ def validate_reply(response: str, case_path: Path, json_mode: str | None, findin
     """Return the verdict and payload of a reply that passes the engine and persona checks."""
     verdict, payload = check_review_response.validate_response(response, json_mode, finding_rules)
     sent = json.loads(case_path.read_text(encoding="utf-8"))
-    present, problems = call_review_hook(persona_dir, "validate_reply", [payload, response, sent])
+    present, problems = call_hook(persona_dir, "validate_reply", [payload, response, sent])
     if present and not isinstance(problems, list):
         raise ReviewError("persona hook validate_reply returned no list")
     if present and problems:
@@ -186,6 +195,18 @@ def sum_usage(results: list[ChunkResult]) -> dict:
     return totals
 
 
+class ChildHooks:
+    """Expose case_context to the case builder through a child process."""
+
+    def __init__(self, persona_dir: Path):
+        self.persona_dir = Path(persona_dir)
+
+    def case_context(self, head_dir: Path, changed: list[str], patches: dict, options: dict) -> dict:
+        """Return the persona context, or an empty result when the persona defines none."""
+        present, result = call_hook(self.persona_dir, "case_context", [str(head_dir), changed, patches, options])
+        return result if present else {"context": {}, "unreviewed": []}
+
+
 def build_case(options: RunOptions, caps: dict, hooks=None, persona_options: dict | None = None) -> dict:
     """Build the envelopes and return the case manifest."""
     case_dir = options.out_dir / "case"
@@ -221,7 +242,7 @@ def apply_forced_verdict(verdict: str, reasons: list[str], options: RunOptions,
                          persona_dir: Path | None = None) -> str:
     """Return the run verdict after a persona forced_verdict hook."""
     context_path = options.out_dir / "case" / build_pr_case.CASE_CONTEXT_NAME
-    present, forced = call_review_hook(persona_dir, "forced_verdict",
+    present, forced = call_hook(persona_dir, "forced_verdict",
                                        [json.loads(context_path.read_text(encoding="utf-8"))])
     if not present or not forced:
         return verdict
@@ -247,8 +268,8 @@ def run_mode(options: RunOptions) -> dict:
     if options.stage == "review":
         case = read_built_case(options, caps, persona_options)
     else:
-        # The build stage runs without the provider key in the workflow.
-        case = build_case(options, caps, persona_hooks.load_review_hooks(persona_dir), persona_options)
+        # The parent never imports the hook file. case_context runs in a child.
+        case = build_case(options, caps, ChildHooks(persona_dir), persona_options)
     if options.stage == "build":
         return {"stage": "build", "chunks": len(case["chunks"]), "unreviewed": case["unreviewed"]}
     prompt_text = reviewers.prompt_path(persona_dir, entry["prompt"]).read_text(encoding="utf-8")

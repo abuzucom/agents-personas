@@ -13,7 +13,8 @@ a regular expression. The same text already appears in the diff.
 
 The provider receives no GitHub token, no provider configuration file, and no
 other repository secret. The prescan runs in the build step. That step holds
-no secret. The reply checks run in a child process without `MODEL_API_KEY`. Only the review step holds `MODEL_API_KEY`.
+no secret. Every euler hook runs in a child process with an allowlisted
+environment that holds no credential. Only the review step holds `MODEL_API_KEY`.
 
 Each limit names its test:
 
