@@ -266,7 +266,7 @@ One draft PR per step.
 3. Build the engine. Move the agents `ci/` copies plus euler chunking into `engine/`. Add `review.yml`. Add the mode schema, `check_reviewers.py`, `render_context.py`, and one check per mode. Add the fork rule, the shared resolve job, the review outputs, the provider table, the caps, the injection corpus, and `reviewers/_template/`. Write tests first. Use the decision 22 pins. Step 3 lands as three draft PRs:
    - 3a adds the decisions record and the mode schema in `engine/reviewers.py`. It also adds `engine/check_reviewers.py`, `engine/render_context.py`, and `reviewers/_template/`. Done 2026-11-20.
    - 3b-1 adds the provider table, the model adapter with usage, the argument-array adapter runner, and the shared response validator.
-   - 3b-2 adds the fenced envelope, the caps, the chunking, and the injection corpus.
+   - 3b-2 adds the fenced envelope, the caps, the chunking, and the injection corpus. The euler prescan moves with the euler persona in step 5.
    - 3c adds `review.yml`. The workflow covers the resolve job, the fork rule, the per-mode checks, the comments, and the run metrics.
 4. foucault persona (security). This is the pilot.
 5. euler persona (code quality).

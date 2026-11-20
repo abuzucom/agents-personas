@@ -17,7 +17,14 @@ MAX_NAME_LENGTH = 32
 # the policy size budget a client loads beside it.
 MAX_CONTEXT_BYTES = 32 * 1024
 TOP_LEVEL_KEYS = frozenset({"persona", "function", "modes"})
-MODE_KEYS = frozenset({"prompt", "review", "context", "default"})
+# euler's envelope budget: a 976,000-token context minus the reply, the
+# prompt, the chat template, and the retry note. A byte-level tokenizer emits
+# at most one token per UTF-8 byte, so the byte count bounds the tokens.
+ENVELOPE_BYTE_CEILING = 976_000 - 16_384 - 32_768 - 4_096 - 65_536
+# Each chunk costs up to two model calls. The ceiling bounds one run's cost.
+CAP_CEILINGS = {"max_chunks": 50, "max_envelope_bytes": ENVELOPE_BYTE_CEILING}
+CAP_DEFAULTS = {"max_chunks": 20, "max_envelope_bytes": ENVELOPE_BYTE_CEILING}
+MODE_KEYS = frozenset({"prompt", "review", "context", "default", *CAP_CEILINGS})
 MODE_FLAGS = ("review", "context", "default")
 NAME_CHARACTERS = frozenset(string.ascii_lowercase + string.digits + "-")
 
@@ -83,6 +90,36 @@ def prompt_path(persona_dir: Path, relative: object) -> Path:
     return candidate
 
 
+def _is_cap_value(value: object, ceiling: int) -> bool:
+    """Return whether a cap is an integer from 1 to its ceiling."""
+    return isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= ceiling
+
+
+def resolve_caps(mode: dict, requested: dict | None = None) -> dict:
+    """Return the effective caps for one mode and the names of clamped requests.
+
+    A mode cap replaces the engine default. A caller request can lower a cap.
+    A request above the cap keeps the cap and lands in the clamped list.
+    """
+    requested = requested or {}
+    unknown = sorted(set(requested) - set(CAP_CEILINGS))
+    if unknown:
+        raise ReviewerError(f"unknown cap request {unknown}")
+    caps = {"clamped": []}
+    for name, ceiling in CAP_CEILINGS.items():
+        limit = mode.get(name, CAP_DEFAULTS[name])
+        request = requested.get(name)
+        if request is None:
+            caps[name] = limit
+            continue
+        if not _is_cap_value(request, ceiling):
+            raise ReviewerError(f"cap request '{name}' must be an integer from 1 to {ceiling}")
+        caps[name] = min(limit, request)
+        if request > limit:
+            caps["clamped"].append(name)
+    return caps
+
+
 def _unknown_keys(document: dict, allowed: frozenset, label: str) -> list[str]:
     """Return one finding per key outside the allowed set."""
     return [f"{label}: unknown key '{key}'" for key in sorted(set(document) - allowed)]
@@ -99,6 +136,9 @@ def _mode_findings(persona_dir: Path, name: str, mode: object) -> list[str]:
     for flag in MODE_FLAGS:
         if flag in mode and not isinstance(mode[flag], bool):
             findings.append(f"{label}: '{flag}' must be true or false")
+    for cap, ceiling in CAP_CEILINGS.items():
+        if cap in mode and not _is_cap_value(mode[cap], ceiling):
+            findings.append(f"{label}: '{cap}' must be an integer from 1 to {ceiling}")
     if not mode.get("review") and not mode.get("context"):
         findings.append(f"{label}: no delivery (set review or context to true)")
     try:

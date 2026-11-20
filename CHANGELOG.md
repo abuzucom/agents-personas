@@ -14,9 +14,22 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] (2026-11-20)
+## [0.4.0] (2026-11-20)
 
 ### Added
+- Add `engine/envelope.py`. The JSON review envelope places the title,
+  body, file names, and patches inside `REVIEW_TARGET` only. The engine
+  caps the title and body and records each truncation. `with_fence_rule`
+  appends the untrusted input rule to the persona prompt.
+- Add `engine/build_pr_case.py`, ported from `abuzucom/euler` without the
+  euler prescan. It reads the diff from git objects and splits it into
+  chunks under the mode byte budget. Unreviewable files land in the
+  manifest.
+- Add optional `max_chunks` and `max_envelope_bytes` caps to each
+  `reviewer.json` mode. `resolve_caps` lets a caller lower a cap and clamps
+  a higher request.
+- Add the shared injection corpus in `engine/eval/injection/`. It covers
+  the title, body, path, and patch vectors.
 - Add `engine/model_providers.json`, the single provider table.
 - Add `engine/call_model.py`, ported from `abuzucom/foucault`. It reports
   token usage per request and writes it to `USAGE_FILE`. `MODEL_PROVIDER`
