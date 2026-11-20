@@ -46,7 +46,9 @@ def case_context(head_dir, changed, patches, options):
     seen = sorted(path.relative_to(head_dir).as_posix() for path in Path(head_dir).rglob("*") if path.is_file())
     Path(options["record"]).write_text(json.dumps({"seen": seen, "changed": changed,
                                                    "patched": sorted(patches), "options": options,
-                                                   "environment": sorted(os.environ)}))
+                                                   "environment": sorted(os.environ), "cwd": os.getcwd(),
+                                                   "home": os.environ.get("HOME", os.environ.get("USERPROFILE")),
+                                                   "workdir_entries": sorted(os.listdir("."))}))
     python_files = [path for path in sorted(changed) if path.endswith(".py")]
     items = [{"id": f"P{index}", "file": path, "line": 1, "blocking": path == options["blocking"]}
              for index, path in enumerate(python_files, 1)]
@@ -397,6 +399,18 @@ class ReviewStageTest(HookFixture):
         self.assertFalse({"MODEL_API_KEY", "SYNTHETIC_RUNTIME_TOKEN"} & names)
         allowed = run_review.HOOK_ENVIRONMENT_NAMES
         self.assertTrue(all(name.upper() in allowed or name.upper().startswith("LC_") for name in names), names)
+
+    def test_hooks_run_in_an_empty_temporary_home(self):
+        self.script(_reply("APPROVE", ("P1", "P2")))
+        run_review.run_mode(self.options(stage="all"))
+        record = json.loads(self.record.read_text(encoding="utf-8"))
+        workdir = Path(record["cwd"]).resolve()
+        self.assertEqual(Path(record["home"]).resolve(), workdir)
+        self.assertEqual(record["workdir_entries"], [])
+        for outside in (self.repo, self.persona_dir, Path.cwd()):
+            with self.subTest(outside=str(outside)):
+                self.assertNotEqual(workdir, outside.resolve())
+        self.assertFalse(workdir.exists())
 
     def test_review_hooks_never_see_another_secret(self):
         run_review.run_mode(self.options(stage="build"))

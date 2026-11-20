@@ -33,7 +33,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `tests/test_engine_build_pr_case.py`.
 - Run every persona hook through `engine/run_hook.py` in a child process
   with an allowlisted environment. The engine process never imports the
-  hook file in any stage.
+  hook file in any stage. Each child starts in an empty temporary
+  directory. The same directory is its home.
+- Record decision 32. Hooks keep network access and read access to the
+  runner filesystem. A full sandbox stays a follow-up.
 - The review stage rejects a built case when the base, pull request number,
   caps, or persona options differ. The manifest records each one. The euler prescan, the QUALITY.md reply rules, and BLOCK
   on a blocking prescan finding run as euler hooks.

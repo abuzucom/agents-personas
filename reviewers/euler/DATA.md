@@ -14,7 +14,9 @@ a regular expression. The same text already appears in the diff.
 The provider receives no GitHub token, no provider configuration file, and no
 other repository secret. The prescan runs in the build step. That step holds
 no secret. Every euler hook runs in a child process with an allowlisted
-environment that holds no credential. Only the review step holds `MODEL_API_KEY`.
+environment that holds no credential. The child starts in an empty
+temporary home. It keeps network access and read access to the runner
+filesystem. The plan records that limit as decision 32. Only the review step holds `MODEL_API_KEY`.
 
 Each limit names its test:
 
