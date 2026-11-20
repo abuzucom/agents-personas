@@ -66,6 +66,9 @@ The template revision is `909b93702273befaec9227ee892fe1a2261a4a41`.
 - `docs/project-orientation.md` stays below 404 bytes. Assembly appends it to
   the policy. The template policy leaves 403 bytes below the 64 KiB limit.
 - `Makefile` names this repository's prose files in `PROSE_FILES`.
+- `scripts/check_agent_prose_gate.py` names the same prose files in
+  `TARGET_FILES`. `tests/test_check_agent_prose_gate.py` requires that list
+  to match `sync-check.yml`.
 - `sync-check.yml` names this repository's prose files in the prose and
   ASCII steps. The workflow omits the template-file ASCII step. This
   repository holds none of those template files.
