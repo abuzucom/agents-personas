@@ -194,6 +194,18 @@ class HeadTreeLimitTest(HookFixture):
         with self.assertRaisesRegex(builder.HeadTreeTooLarge, "exceeds"):
             builder.extract_head(self.repo, head, self.tree_dir(), max_tree_bytes=2048)
 
+    def test_listing_over_the_entry_cap_raises(self):
+        with self.assertRaisesRegex(builder.HeadTreeTooLarge, "entries"):
+            builder.list_head_blobs(self.repo, self.head, max_entries=2)
+
+    def test_listing_over_the_byte_cap_raises(self):
+        with self.assertRaisesRegex(builder.HeadTreeTooLarge, "listing"):
+            builder.list_head_blobs(self.repo, self.head, max_listing_bytes=64)
+
+    def test_listing_within_the_caps_returns_every_regular_file(self):
+        blobs = builder.list_head_blobs(self.repo, self.head, max_entries=4)
+        self.assertEqual(sorted(path for _, path, _ in blobs), ["file1.py", "keep.txt", "notes.md", "pkg/file0.py"])
+
     def test_small_read_batches_write_every_file(self):
         target = self.tree_dir()
         builder.extract_head(self.repo, self.head, target, batch_bytes=1)
@@ -300,7 +312,7 @@ class BuildStageTest(HookFixture):
 
     def test_each_chunk_carries_only_its_own_items(self):
         self.script()
-        run_review.run_mode(self.options(stage="build", requested_caps={"max_envelope_bytes": 1500}))
+        run_review.run_mode(self.options(stage="build", requested_caps={"max_envelope_bytes": 1600}))
         manifest = json.loads((self.out / "case" / "manifest.json").read_text(encoding="utf-8"))
         self.assertGreater(len(manifest["chunks"]), 1)
         for chunk in manifest["chunks"]:

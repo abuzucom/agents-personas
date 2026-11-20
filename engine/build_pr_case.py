@@ -39,6 +39,10 @@ LS_TREE_LONG_FIELDS = 4
 MAX_HEAD_BLOB_BYTES = 1024 * 1024
 MAX_HEAD_TREE_BYTES = 64 * 1024 * 1024
 HEAD_READ_BATCH_BYTES = 8 * 1024 * 1024
+# The tree listing caps bound memory before any blob size is known.
+MAX_HEAD_TREE_ENTRIES = 100_000
+MAX_HEAD_LISTING_BYTES = 16 * 1024 * 1024
+LISTING_READ_BYTES = 64 * 1024
 CAT_FILE_HEADER_FIELDS = 3
 # Symlinks (120000) and submodules (160000) stay unwritten.
 REGULAR_FILE_MODES = frozenset({b"100644", b"100755"})
@@ -197,39 +201,69 @@ def pack_chunks(patches: dict[str, str], budget: int,
 
 
 def chunk_metadata(options: BuildOptions, chunk: str, changed: list[str], unreviewed: list[str]) -> dict:
-    """Return the trusted metadata for one envelope."""
+    """Return the trusted metadata for one envelope. The path lists ride in REVIEW_TARGET."""
     return {"pr_number": options.pr_number, "base_sha": options.base, "head_sha": options.head,
-            "chunk": chunk, "changed_files": changed, "unreviewed": unreviewed}
+            "chunk": chunk, "changed_file_count": len(changed), "unreviewed_count": len(unreviewed)}
 
 
 def chunk_metadata_bound(base: str, head: str, pr_number: int, max_chunks: int, paths: list[str]) -> dict:
     """Return metadata at its largest size: the widest chunk label and every path unreviewed."""
     return {"pr_number": pr_number, "base_sha": base, "head_sha": head,
-            "chunk": f"{max_chunks}/{max_chunks}", "changed_files": paths, "unreviewed": paths}
+            "chunk": f"{max_chunks}/{max_chunks}", "changed_file_count": len(paths), "unreviewed_count": len(paths)}
 
 
 class HeadTreeTooLarge(RuntimeError):
     """The head tree holds more bytes than the extraction budget."""
 
 
-def list_head_blobs(repo: Path, head: str) -> list[tuple[str, str, int]]:
-    """Return object ID, path, and size for the regular files in the head tree."""
-    raw = run_git(repo, "ls-tree", "-r", "-z", "-l", "--full-tree", head)
-    blobs = []
-    for record in raw.split(b"\0"):
-        # The first tab separates metadata from the path. Tabs in names stay in the path.
-        meta, _, raw_path = record.partition(b"\t")
-        # git pads the size column with spaces, so split on any run of them.
-        fields = meta.split()
-        if len(fields) != LS_TREE_LONG_FIELDS or fields[0] not in REGULAR_FILE_MODES:
-            continue
+def _parse_tree_record(record: bytes) -> tuple[str, str, int] | None:
+    """Return object ID, path, and size for one regular-file ls-tree record."""
+    # The first tab separates metadata from the path. Tabs in names stay in the path.
+    meta, _, raw_path = record.partition(b"\t")
+    # git pads the size column with spaces, so split on any run of them.
+    fields = meta.split()
+    if len(fields) != LS_TREE_LONG_FIELDS or fields[0] not in REGULAR_FILE_MODES:
+        return None
+    try:
+        path = raw_path.decode("utf-8")
+    except UnicodeDecodeError:
+        # read_diff already lists an undecodable changed path as unreviewed.
+        return None
+    return fields[2].decode("ascii"), path, int(fields[3])
+
+
+def list_head_blobs(repo: Path, head: str, max_entries: int = MAX_HEAD_TREE_ENTRIES,
+                    max_listing_bytes: int = MAX_HEAD_LISTING_BYTES) -> list[tuple[str, str, int]]:
+    """Return object ID, path, and size for the regular files in the head tree.
+
+    The listing streams through a pipe. A tree past either cap stops the read
+    before the whole listing reaches memory.
+    """
+    executable = shutil.which("git")
+    if executable is None:
+        raise RuntimeError("git not found on PATH. Install git before the build.")
+    command = [executable, "-C", str(repo), "ls-tree", "-r", "-z", "-l", "--full-tree", head]
+    environment = {**os.environ, "GIT_LITERAL_PATHSPECS": "1"}
+    blobs, pending, entries, read = [], b"", 0, 0
+    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=environment) as process:
         try:
-            path = raw_path.decode("utf-8")
-        except UnicodeDecodeError:
-            # read_diff already lists an undecodable changed path as unreviewed.
-            continue
-        blobs.append((fields[2].decode("ascii"), path, int(fields[3])))
-    return blobs
+            for chunk in iter(lambda: process.stdout.read(LISTING_READ_BYTES), b""):
+                read += len(chunk)
+                if read > max_listing_bytes:
+                    raise HeadTreeTooLarge(f"the head tree listing exceeds {max_listing_bytes} bytes")
+                *records, pending = (pending + chunk).split(b"\0")
+                entries += len(records)
+                if entries > max_entries:
+                    raise HeadTreeTooLarge(f"the head tree holds more than {max_entries} entries")
+                blobs += [blob for blob in map(_parse_tree_record, records) if blob is not None]
+        except HeadTreeTooLarge:
+            process.kill()
+            raise
+    if process.returncode != 0:
+        raise RuntimeError("git ls-tree failed. Fetch the head revision before the build.")
+    # -z ends every record with NUL. A final record without one still counts.
+    tail = _parse_tree_record(pending) if pending else None
+    return blobs + ([tail] if tail else [])
 
 
 def read_blobs(repo: Path, object_ids: list[str]) -> list[bytes]:
@@ -331,7 +365,8 @@ def chunk_budget(options: BuildOptions, changed: list[str], context: dict | None
     metadata = chunk_metadata_bound(options.base, options.head, options.pr_number,
                                     options.max_chunks, changed)
     skeleton = envelope.build_envelope(options.persona, options.mode, dict.fromkeys(changed, ""),
-                                       options.title, options.body, metadata, context=context)
+                                       options.title, options.body, metadata, context=context,
+                                       changed_files=changed, unreviewed=changed)
     budget = options.max_envelope_bytes - len(skeleton.encode("utf-8"))
     if budget < 1:
         raise ValueError(f"the pull request text and file list fill the {options.max_envelope_bytes}-byte "
@@ -382,7 +417,8 @@ def build(options: BuildOptions) -> None:
         text = envelope.build_envelope(options.persona, options.mode,
                                        {path: patches[path] for path in files},
                                        options.title, options.body, metadata,
-                                       context=persona_hooks.chunk_context(hook_context["context"], files))
+                                       context=persona_hooks.chunk_context(hook_context["context"], files),
+                                       changed_files=changed, unreviewed=unreviewed)
         if len(text.encode("utf-8")) > options.max_envelope_bytes:
             raise RuntimeError(f"envelope {index} exceeds {options.max_envelope_bytes} bytes. "
                                "Lower max_envelope_bytes and rerun.")

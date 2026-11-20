@@ -24,8 +24,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add persona review hooks in `engine/persona_hooks.py`. A persona's
   `review_hooks.py` can add items to each chunk's `REVIEW_TARGET`, check
   each reply, and force a verdict. Head extraction skips blobs over 1 MiB
-  and skips the hook for a tree over 64 MiB. foucault's first self-review
-  found both risks. The euler prescan, the QUALITY.md reply rules, and BLOCK
+  and skips the hook for a tree over 64 MiB. The tree listing streams and
+  stops past 100,000 entries or 16 MiB. foucault's self-reviews found these
+  risks.
+- Move the changed and unreviewed path lists from `TRUSTED_CONTEXT` into
+  `REVIEW_TARGET`. An author chooses every path. Trusted metadata keeps the
+  counts. The active human approved two skeleton edits in the existing
+  `tests/test_engine_build_pr_case.py`. The euler prescan, the QUALITY.md reply rules, and BLOCK
   on a blocking prescan finding run as euler hooks.
 - Add `persona_options` to `review.yml` and `options` to `reviewer.json`.
   The engine rejects an option the manifest does not declare.

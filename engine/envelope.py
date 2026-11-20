@@ -16,8 +16,9 @@ MAX_TITLE_CHARS = 256
 MAX_BODY_CHARS = 20_000
 TRUNCATION_MARKER = " [truncated by the review engine]"
 # Metadata comes from the engine. Pull request text never enters it.
-FORBIDDEN_METADATA_KEYS = frozenset({"title", "body", "files", "patches"})
-RESERVED_TARGET_KEYS = frozenset({"note", "title", "body", "files", "sha256"})
+# An author picks every file name, so path lists stay out of trusted metadata.
+FORBIDDEN_METADATA_KEYS = frozenset({"title", "body", "files", "patches", "changed_files", "unreviewed"})
+RESERVED_TARGET_KEYS = frozenset({"note", "title", "body", "files", "changed_files", "unreviewed", "sha256"})
 TRUSTED_NOTE = (
     "Engine-built context. It names the persona, the mode, and run metadata. "
     "It carries no pull request text."
@@ -56,8 +57,12 @@ def with_fence_rule(system_prompt: str) -> str:
 
 
 def build_envelope(persona: str, mode: str, files: dict[str, str], title: str,
-                   body: str, metadata: dict, context: dict | None = None) -> str:
+                   body: str, metadata: dict, context: dict | None = None,
+                   changed_files: list[str] | None = None, unreviewed: list[str] | None = None) -> str:
     """Return the serialized envelope for one review unit.
+
+    changed_files and unreviewed list author-chosen paths. Both join
+    REVIEW_TARGET. Trusted metadata carries their counts only.
 
     context holds persona hook items, for example euler prescan candidates.
     A hook item can quote pull request text. Each key therefore joins the
@@ -76,9 +81,11 @@ def build_envelope(persona: str, mode: str, files: dict[str, str], title: str,
     truncated = [name for name, cut in (("title", title_cut), ("body", body_cut)) if cut]
     trusted = {"note": TRUSTED_NOTE, "persona": persona, "mode": mode,
                "metadata": metadata, "truncated": truncated}
-    target = {"note": TARGET_NOTE, "title": capped_title, "body": capped_body, "files": files, **context}
+    target = {"note": TARGET_NOTE, "title": capped_title, "body": capped_body, "files": files,
+              "changed_files": list(changed_files or []), "unreviewed": list(unreviewed or []), **context}
     trusted["sha256"] = digest({key: trusted[key] for key in ("persona", "mode", "metadata", "truncated")})
-    target["sha256"] = digest({key: target[key] for key in ("title", "body", "files", *context)})
+    target["sha256"] = digest({key: target[key] for key in
+                               ("title", "body", "files", "changed_files", "unreviewed", *context)})
     document = {
         "schema_version": ENVELOPE_SCHEMA_VERSION,
         "TRUSTED_CONTEXT": trusted,
