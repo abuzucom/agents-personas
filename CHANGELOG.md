@@ -28,6 +28,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `tests/test_engine_review_hooks.py`.
 - Install bubblewrap 0.9.0-1ubuntu0.3 in the review jobs. The jobs now run on
   `ubuntu-24.04`. The active human approved the pin under Rule 9.
+- Load `engine/apparmor/bwrap` before the sandbox runs. Ubuntu 24.04
+  restricts unprivileged user namespaces. The profile grants `userns` to
+  `/usr/bin/bwrap` only.
 - Add `.github/workflows/sandbox-check.yml`. It runs the sandbox tests on
   every pull request on the pinned image.
 - Start each hook with the resolved Python interpreter. uv and the runner

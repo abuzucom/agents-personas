@@ -462,6 +462,9 @@ jobs:
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends bubblewrap=0.9.0-1ubuntu0.3
+          # Ubuntu 24.04 restricts user namespaces. This profile allows bwrap only.
+          sudo install -m 0644 .agents-personas/engine/apparmor/bwrap /etc/apparmor.d/bwrap
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap
           bwrap --version
 
       - name: Build review case
