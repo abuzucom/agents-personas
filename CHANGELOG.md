@@ -14,9 +14,17 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] (2026-11-20)
+## [0.5.0] (2026-11-20)
 
 ### Added
+- List the review engine scripts in `hooks/workflow-scripts.txt`. The
+  command gate allows `check_reviewers.py`, `render_context.py`, and
+  `check_review_response.py`. `build_pr_case.py` routes to consent.
+  `call_model.py` and `run_model_command.py` stay unlisted. The active
+  human approved the change under Rule 22.
+- Remove a controlled-vocabulary phrase from an `engine/reviewers.py`
+  comment and a `tests/test_engine_reviewers.py` docstring. The active
+  human approved the test docstring change.
 - Add `engine/envelope.py`. The JSON review envelope places the title,
   body, file names, and patches inside `REVIEW_TARGET` only. The engine
   caps the title and body and records each truncation. `with_fence_rule`

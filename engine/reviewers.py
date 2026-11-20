@@ -9,8 +9,8 @@ from pathlib import Path
 
 MANIFEST_NAME = "reviewer.json"
 REVIEWERS_DIRECTORY = "reviewers"
-# The scaffold for a new persona. The checker validates it. The engine never
-# runs it, so it stays out of the persona list.
+# The scaffold for a new persona. The checker validates it. The persona list
+# excludes it, so the engine skips it.
 TEMPLATE_DIRECTORY = "_template"
 MAX_NAME_LENGTH = 32
 # Context output lands in an agent prompt. The cap keeps one mode well under

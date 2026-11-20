@@ -247,7 +247,7 @@ class RenderContextCliTest(unittest.TestCase):
 
 
 class TemplateTest(unittest.TestCase):
-    """reviewers/_template/ stays a valid scaffold the engine never runs."""
+    """reviewers/_template/ stays a valid scaffold outside the persona list."""
 
     def test_template_validates(self):
         self.assertEqual(reviewers.validate_persona(REPO_ROOT / "reviewers" / "_template"), [])
