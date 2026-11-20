@@ -42,16 +42,20 @@ def parse_command(command: str, workspace: Path) -> list[str]:
     """Return the argument list for one Python script inside the workspace."""
     if not command or any(token in command for token in FORBIDDEN_SHELL_TOKENS):
         raise ValueError("model_call_command contains shell syntax")
+    # POSIX splitting drops backslashes, so a Windows path loses its
+    # separators before any later check sees it. Inspect the raw text.
+    if "\\" in command:
+        raise ValueError("model_call_command must use a workspace-relative path")
     try:
         arguments = shlex.split(command, posix=True)
     except ValueError as error:
         raise ValueError("model_call_command has invalid quoting") from error
     if len(arguments) != 2 or arguments[0] not in {"python", "python3"}:
         raise ValueError("model_call_command must name one Python script")
-    if "\\" in arguments[1]:
-        raise ValueError("model_call_command must use a workspace-relative path")
     script_argument = Path(arguments[1])
-    if script_argument.is_absolute():
+    # A drive prefix such as "C:" anchors the path outside the workspace on
+    # Windows even without a leading separator.
+    if script_argument.is_absolute() or script_argument.anchor or ":" in arguments[1]:
         raise ValueError("model_call_command script must be relative")
     root = workspace.resolve()
     script = (root / script_argument).resolve()

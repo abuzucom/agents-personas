@@ -36,7 +36,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   selects a table entry by name. A transient status gets one retry.
 - Add `engine/run_model_command.py`, ported from `abuzucom/foucault`. It
   runs the caller's adapter script without a shell. The script must stay
-  inside the caller workspace.
+  inside the caller workspace. The runner refuses backslashes and drive
+  prefixes in the command.
 - Add `engine/check_review_response.py`, ported from `abuzucom/foucault`.
   It enforces the shared verdict contract, the expected mode, and a file
   and line for each finding.
