@@ -14,6 +14,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ENGINE_DIR = REPO_ROOT / "engine"
 SHA_LENGTH = 40
+# Every changed path of the fixture head, as the skeleton lists it.
+PATHS = [f"file{i}.py" for i in range(4)] + ["image.bin"]
 
 
 def _load(name: str):
@@ -99,8 +101,8 @@ class BuildPrCaseTest(RepositoryFixture):
     def test_small_budget_splits_into_chunks(self):
         skeleton = len(envelope.build_envelope(
             "euler", "quality", {}, "Title", "Body",
-            builder.chunk_metadata_bound(self.base, self.head, 9, 20, [f"file{i}.py" for i in range(4)]
-                                         + ["image.bin"])).encode("utf-8"))
+            builder.chunk_metadata_bound(self.base, self.head, 9, 20, PATHS),
+            changed_files=PATHS, unreviewed=PATHS).encode("utf-8"))
         manifest = self.build(max_envelope_bytes=skeleton + 600)
         self.assertGreater(len(manifest["chunks"]), 1)
         for document in self.envelopes(manifest):
@@ -109,8 +111,8 @@ class BuildPrCaseTest(RepositoryFixture):
     def test_chunks_past_the_limit_become_unreviewed(self):
         skeleton = len(envelope.build_envelope(
             "euler", "quality", {}, "Title", "Body",
-            builder.chunk_metadata_bound(self.base, self.head, 9, 1, [f"file{i}.py" for i in range(4)]
-                                         + ["image.bin"])).encode("utf-8"))
+            builder.chunk_metadata_bound(self.base, self.head, 9, 1, PATHS),
+            changed_files=PATHS, unreviewed=PATHS).encode("utf-8"))
         manifest = self.build(max_chunks=1, max_envelope_bytes=skeleton + 600)
         self.assertEqual(len(manifest["chunks"]), 1)
         self.assertTrue(any(path.startswith("file") for path in manifest["unreviewed"]))

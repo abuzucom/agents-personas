@@ -107,9 +107,10 @@ class ReplyHookTest(unittest.TestCase):
     """validate_reply applies QUALITY.md to an engine envelope."""
 
     def sent(self, prescan=(), unreviewed=()) -> dict:
-        metadata = {"chunk": "1/1", "changed_files": ["app.py"], "unreviewed": list(unreviewed)}
+        metadata = {"chunk": "1/1", "changed_file_count": 1, "unreviewed_count": len(unreviewed)}
         return json.loads(envelope.build_envelope("euler", "quality", {"app.py": "+x\n"}, "T", "B", metadata,
-                                                  context={"prescan": list(prescan)}))
+                                                  context={"prescan": list(prescan)}, changed_files=["app.py"],
+                                                  unreviewed=list(unreviewed)))
 
     def test_resolved_prescan_passes(self):
         sent = self.sent([{"id": "P1", "file": "app.py", "line": 1}])

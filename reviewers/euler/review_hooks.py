@@ -35,7 +35,7 @@ def review_context(envelope: dict) -> quality_reply.ReviewContext:
         REVIEW_MODE,
         set(target["files"]),
         {item["id"] for item in target.get("prescan", [])},
-        envelope["TRUSTED_CONTEXT"].get("metadata", {}).get("unreviewed", []),
+        target.get("unreviewed", []),
     )
 
 
