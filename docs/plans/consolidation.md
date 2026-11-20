@@ -43,6 +43,12 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 12 | Persona modes (2026-11-20) | Each persona declares modes in `reviewer.json`. A mode supports review delivery, context delivery, or both. Wrappers take a `modes` input that defaults to the persona's default mode. Each adopter caller workflow chooses the pull requests for extra modes. |
 | 13 | Secrets (2026-11-20) | The secrets interface stays unchanged. Each wrapper declares the exact secret names, required flags, and environment of the source workflow it replaces. Adopter repository secrets and `secrets:` mappings stay unchanged. |
 | 14 | Fork runs (2026-11-20) | The engine applies one fork rule to every persona. A fork pull request gets a visible skipped check per requested mode and no secret. `fork_review: true` runs the review under the `fork-review` environment after a person approves. The engine never executes fork code with a secret in scope. |
+| 15 | Review output (2026-11-20) | Each run posts a new comment per head SHA and mode with a header line. Each mode also gets a check run with line annotations. |
+| 16 | Verdict values (2026-11-20) | Step 3 records source verdict values. The active human picks one set before the engine code. |
+| 17 | Engine hardening (2026-11-20) | Fenced untrusted content, a shared injection corpus, one resolve job, one provider table, per-mode caps, timeouts with one retry, and usage in each check. |
+| 18 | Evals and data (2026-11-20) | Live evals need prompt changes plus a human `eval-live` label. Each persona carries `DATA.md`. |
+| 19 | Adopters and releases (2026-11-20) | `docs/migration.md` and `examples/` guide adopters. The active human moves each repo. One repo SemVer with per-persona notes. |
+| 20 | Persona template and metrics (2026-11-20) | `reviewers/_template/` scaffolds new personas. Each run writes a metrics step summary. |
 
 ## Two repos
 
@@ -159,6 +165,76 @@ The caller condition can use a label, a `paths:` filter, or a base branch. A per
 
 Automatic context injection of a context mode stays out of this plan. It needs hook changes under Rule 22 in `abuzucom/agents`.
 
+### Review output
+
+Each run publishes three outputs per requested mode:
+
+- A check run named `<persona> / <mode>` with the verdict and a summary. Branch protection can require each check.
+- Line annotations on the check run for findings tied to changed lines.
+- A new pull request comment. The engine never edits an earlier comment. A rerun on the same head SHA and mode posts no second comment. The `already_reviewed` lookup enforces that limit.
+
+Each comment opens with a header line:
+
+```
+<persona> / <mode> | head <sha> | VERDICT: <value>
+```
+
+### Verdicts
+
+- Step 3 records the verdict values and the `fail_on_block` meaning of each source repo before the engine code.
+- The active human chooses one value set from that record.
+- One response validator then enforces that set for every persona and mode.
+- A run without a valid verdict never reports a pass.
+
+### Untrusted pull request content
+
+- The envelope fences the diff, title, body, and file names as data. The prompt states that fenced content carries no instructions.
+- The engine caps the size of each fenced field.
+- A shared corpus under `engine/eval/injection/` holds adversarial cases, for example diff text that orders an approval. Every review mode must pass the corpus.
+
+### Shared resolve job
+
+One reusable job in `review.yml` resolves the pull request for every persona. It outputs the pull request number, base and head SHAs, `same_repository`, and `already_reviewed`. Callers stop copying the resolve script.
+
+### Evals in CI
+
+- Eval structure checks run on every pull request.
+- Live model evals run only when files under `reviewers/<name>/` change and a person applies the `eval-live` label. Agents never apply labels (Rule 23).
+
+### Data handling
+
+- The plan rule states that a persona sends the provider only the fenced pull request content and the persona prompt.
+- Each `reviewers/<name>/DATA.md` lists the content that persona sends.
+- havel sends no secrets and no personal data. havel's `DATA.md` states the exclusion and its test.
+
+### Model providers and cost
+
+- `engine/model_providers.json` holds the single provider table. Each `reviewer.json` names a provider and model.
+- Each mode in `reviewer.json` sets token and chunk caps. A wrapper input can lower a cap. A wrapper input never raises one.
+- Each provider request has a fixed timeout and one retry. A run without a verdict after the retry never reports a pass.
+- Each check run summary lists the tokens and chunks used.
+
+### Run metrics
+
+Each run writes a step summary with the verdict, the duration, and the token count per mode.
+
+### Persona template
+
+`reviewers/_template/` holds the scaffold for a new persona. `check_reviewers.py` validates the scaffold. A sixth persona copies the template and fills `reviewer.json`, the prompts, `DATA.md`, and eval cases.
+
+### Adopter migration
+
+- `docs/migration.md` maps each old `uses:` line and input to the new wrapper and input. Example: `audit_ref` maps to `personas_ref`.
+- `examples/<persona>-caller.yml` holds a copy-paste caller per persona.
+- Secrets stay unchanged (decision 13).
+- The active human moves each adopter repo to the new callers. The plan holds no automated cutover or rollback. Old callers keep working on old repo SHAs until that move.
+
+### Releases
+
+- agents-personas uses one SemVer version in `CHANGELOG.md`.
+- Each release entry holds one section per changed persona.
+- A person creates every tag and release. Agents never create tags or releases.
+
 ## agents changes
 
 - Make the clients selectable. The set covers claude, codex, gemini, and antigravity.
@@ -174,7 +250,7 @@ One draft PR per step.
 
 1. Done 2026-11-19. The active human created `abuzucom/agents-personas`.
 2. Adopt the agents policy into agents-personas.
-3. Build the engine. Move the agents `ci/` copies plus euler chunking into `engine/`. Add `review.yml`. Add the mode schema, `check_reviewers.py`, `render_context.py`, and one check per mode. Add the fork rule. Write tests first. Choose one full-SHA pin per action. The source repos diverge (checkout v4.4.0 vs v7.0.1, github-script v7.1.0 vs v9.0.0). Pin changes need Rule 9 approval.
+3. Build the engine. Move the agents `ci/` copies plus euler chunking into `engine/`. Add `review.yml`. Add the mode schema, `check_reviewers.py`, `render_context.py`, and one check per mode. Add the fork rule, the shared resolve job, the review outputs, the provider table, the caps, the injection corpus, and `reviewers/_template/`. Record the source verdict values for the active human. Write tests first. Choose one full-SHA pin per action. The source repos diverge (checkout v4.4.0 vs v7.0.1, github-script v7.1.0 vs v9.0.0). Pin changes need Rule 9 approval.
 4. foucault persona (security). This is the pilot.
 5. euler persona (code quality).
 6. generay persona (time/date). Migrate `time` as the default review mode. Migrate `sync` as an opt-in review mode with context delivery. Add eval cases for both modes and a caller example with a conditional sync job.
@@ -182,7 +258,7 @@ One draft PR per step.
 8. havel persona (privacy). Resolve the prompt source mismatch: `privacy-review.yml:135` loads `.havel/AUDIT.md`, while the README points to `bundles/`. Add a failing test first.
 9. In agents, repoint the review callers, remove the engine copies, and add a README pointer to agents-personas.
 10. agents: module manifest and `scripts/adopt.py`, plus a README rewrite.
-11. Freeze the five old repos with a README pointer. Do not archive the old repos.
+11. Freeze the five old repos. Add a README pointer to the new wrapper and `docs/migration.md`. Add a final CHANGELOG entry. A person publishes a final release. Do not archive the old repos.
 
 Each persona step wires the persona to run on pull requests. Some personas have no pull request wiring today. The step adds the wrapper, a caller example, and a live run on a sample pull request.
 
@@ -191,6 +267,7 @@ Import per persona:
 - prompts
 - eval cases
 - persona-specific scripts with tests
+- a `DATA.md`, a `docs/migration.md` section, and an `examples/<persona>-caller.yml`
 
 Do not import:
 
