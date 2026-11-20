@@ -22,6 +22,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   at `9ec9681`. The `security` mode reviews pull requests. The `file`,
   `piece`, and `wholesale` modes run locally.
 - Add `scripts/check_audit_policy.py` to the foucault persona with its tests.
+- Pin LF line endings for `reviewers/foucault/AUDIT.md` in `.gitattributes`.
+  The policy checker rejects the CRLF checkout that Windows uses otherwise.
 - Add `engine/run_eval.py`. It checks the eval cases of every mode and grades
   live replies through `--model-call`. A persona adds checks in
   `eval/extra_checks.py`. foucault adds its report contract, the exact
