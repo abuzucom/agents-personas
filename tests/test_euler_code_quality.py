@@ -321,6 +321,13 @@ class UnpinnedCheckTest(CheckerCase):
         self.assertIn("package.json", warning)
         self.assertIn("dependencies", warning)
 
+    def test_top_level_array_package_json_warns(self) -> None:
+        # A parser with enough stack returns the deep fixture below as a list.
+        # The checker must still report the skip.
+        warning = self.unpinned_stderr({"package.json": "[[1]]"})
+        self.assertIn("skipped", warning)
+        self.assertIn("expected a JSON object", warning)
+
     def test_deeply_nested_package_json_warns(self) -> None:
         depth = 100_000
         warning = self.unpinned_stderr({"package.json": "[" * depth + "]" * depth})
