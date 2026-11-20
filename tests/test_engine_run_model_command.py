@@ -78,6 +78,17 @@ class RunModelCommandTest(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("relative", result.stderr)
 
+    def test_backslash_path_is_rejected_before_splitting(self):
+        # POSIX shlex splitting drops backslashes. The check must see the raw text.
+        result = self.run_runner("python adapter\\call.py")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("workspace-relative", result.stderr)
+
+    def test_drive_qualified_path_is_rejected(self):
+        result = self.run_runner("python C:adapter/call.py")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("relative", result.stderr)
+
     def test_failure_diagnostics_are_redacted_and_bounded(self):
         result = self.run_runner("python adapter/fail.py")
         self.assertEqual(result.returncode, 4)
