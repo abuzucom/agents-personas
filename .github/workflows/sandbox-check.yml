@@ -1,0 +1,49 @@
+name: Hook Sandbox Check
+
+# Proves on every pull request that bubblewrap starts persona hooks on the
+# pinned review image. The review jobs run the default branch workflow, so a
+# sandbox break would otherwise surface only after merge. The job holds no
+# secret and runs as the non-root runner user.
+
+on:
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: '3.14'
+
+      - name: Install checker requirements
+        run: 'python -m pip install --requirement requirements-checkers.txt --require-hashes --only-binary :all:'
+
+      - name: Install bubblewrap
+        # Version approved under Rule 9 on 2026-11-20 (noble-updates and noble-security).
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bubblewrap=0.9.0-1ubuntu0.3
+          bwrap --version
+
+      - name: Run sandbox tests
+        env:
+          PERSONAS_REQUIRE_SANDBOX: "1"
+        run: >-
+          python -m unittest
+          tests.test_engine_hook_sandbox tests.test_engine_key_exposure tests.test_euler_review_hooks -v

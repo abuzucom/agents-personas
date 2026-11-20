@@ -27,9 +27,11 @@ try:
     import envelope
     import persona_hooks
     import review_output
+    import sandbox
     import reviewers
 except ImportError:
-    from engine import build_pr_case, check_review_response, envelope, persona_hooks, review_output, reviewers
+    from engine import (build_pr_case, check_review_response, envelope, persona_hooks, review_output, reviewers,
+                        sandbox)
 
 ENGINE_DIR = Path(__file__).resolve().parent
 # call_model.py exits with this code when no configured model can hold the input.
@@ -128,7 +130,8 @@ def hook_environment() -> dict[str, str]:
             if key.upper() in HOOK_ENVIRONMENT_NAMES or key.upper().startswith(HOOK_LOCALE_PREFIX)}
 
 
-def call_hook(persona_dir: Path | None, name: str, arguments: list) -> tuple[bool, object]:
+def call_hook(persona_dir: Path | None, name: str, arguments: list,
+              writable: list[Path] | None = None) -> tuple[bool, object]:
     """Run one persona hook in a child process with the allowlisted environment.
 
     Return whether the persona defines the hook and its JSON result. The
@@ -136,13 +139,17 @@ def call_hook(persona_dir: Path | None, name: str, arguments: list) -> tuple[boo
     """
     if persona_dir is None or not (Path(persona_dir) / persona_hooks.REVIEW_HOOKS_NAME).exists():
         return False, None
-    command = [sys.executable, str((ENGINE_DIR / "run_hook.py").resolve()), "--persona-dir",
+    command = [sandbox.interpreter(), str((ENGINE_DIR / "run_hook.py").resolve()), "--persona-dir",
                str(Path(persona_dir).resolve()), "--hook", name]
     # The child starts in a fresh empty directory. That directory is also its
-    # home and temp directory. It never starts inside the checkout. It keeps read
-    # access to the runner filesystem and the network (decision 32).
+    # home and temp directory. On Linux bubblewrap removes the network and every
+    # runner path except the engine, the persona, and the writable paths.
     with tempfile.TemporaryDirectory(prefix="persona-hook-") as workdir:
         environment = {**hook_environment(), **dict.fromkeys(HOOK_HOME_VARIABLES, workdir)}
+        try:
+            command = sandbox.wrap(command, Path(workdir), [ENGINE_DIR, Path(persona_dir)], list(writable or []))
+        except sandbox.SandboxUnavailable as error:
+            raise ReviewError(str(error)) from error
         try:
             completed = subprocess.run(command, input=json.dumps(arguments), env=environment, cwd=workdir,
                                        capture_output=True, text=True, encoding="utf-8",
@@ -215,7 +222,8 @@ class ChildHooks:
 
     def case_context(self, head_dir: Path, changed: list[str], patches: dict, options: dict) -> dict:
         """Return the persona context, or an empty result when the persona defines none."""
-        present, result = call_hook(self.persona_dir, "case_context", [str(head_dir), changed, patches, options])
+        present, result = call_hook(self.persona_dir, "case_context", [str(head_dir), changed, patches, options],
+                                    writable=[Path(head_dir)])
         return result if present else {"context": {}, "unreviewed": []}
 
 

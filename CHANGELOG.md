@@ -14,9 +14,29 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.0] (2026-11-20)
+## [0.10.0] (2026-11-20)
 
 ### Added
+- Run every persona hook under bubblewrap on Linux. `engine/sandbox.py`
+  builds the sandbox. The hook gets no network, a private PID namespace,
+  read-only system paths, Python, engine, and persona, and writable access
+  to the empty home and the head tree copy only.
+- `PERSONAS_REQUIRE_SANDBOX=1` fails a run closed without bubblewrap. The
+  review steps set it. A local run without bubblewrap warns and falls back.
+  `off` skips the sandbox for plumbing tests. The active human approved
+  that value and one fixture edit in the existing
+  `tests/test_engine_review_hooks.py`.
+- Install bubblewrap 0.9.0-1ubuntu0.3 in the review jobs. The jobs now run on
+  `ubuntu-24.04`. The active human approved the pin under Rule 9.
+- Add `.github/workflows/sandbox-check.yml`. It runs the sandbox tests on
+  every pull request on the pinned image.
+- Start each hook with the resolved Python interpreter. uv and the runner
+  toolcache reach Python through symlinked directories that the sandbox
+  does not bind.
+- Add injection cases for a fake prescan array in the body, an approving
+  file name, and a regex excerpt that the euler prescan quotes. The excerpt
+  case runs the real prescan and checks the envelope placement.
+- Record decision 33 in `docs/plans/consolidation.md`.
 - Add the euler persona under `reviewers/euler/`. It holds `QUALITY.md`,
   `DATA.md`, `PROVENANCE.md`, the deterministic prescan, and all 41 eval
   cases from `abuzucom/euler` at `9488a8c`. The `quality` mode reviews pull
