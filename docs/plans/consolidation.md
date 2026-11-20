@@ -36,9 +36,10 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 5 | Lint deps | Carry ruff, mypy, yamllint. Pin ruff 0.17.4. Exact pins get Rule 9 approval at execution. |
 | 6 | Engine copies in agents | Delete after repoint. Rule 2 consent immediately before the act. |
 | 7 | Old repos | Freeze with a README pointer. No archive. |
-| 8 | Pilot | security (foucault) |
+| 8 | Pilot | foucault (security) |
 | 9 | Plan home | `docs/plans/consolidation.md` in agents-personas. A pointer from the agents README lands in step 9 or 10. |
 | 10 | Side issues | Two agents policy doc fixes run as separate tasks. havel prompt path and action pins fold into steps 8 and 3. |
+| 11 | Persona names (2026-11-20) | Each reviewer keeps the name of its source repo. Directories, `persona` values, eval flags, and wrapper workflows use the persona name. |
 
 ## Two repos
 
@@ -56,11 +57,11 @@ Reasons:
 
 ```
 reviewers/
-  security/   AUDIT.md, eval/cases/, check_audit_policy.py, docs
-  quality/    QUALITY.md, quality_checks/, eval/cases/
-  ui/         AUDIT.md, bundles.json, bundles/, eval/cases/
-  time/       TIME.md, SYNC.md, time_checks/, data/libraries*.json
-  privacy/    regimes/, bundles.json, check_regime_refs.py
+  foucault/   security: AUDIT.md, eval/cases/, check_audit_policy.py, docs
+  euler/      code quality: QUALITY.md, quality_checks/, eval/cases/
+  adorno/     UI/UX, a11y: AUDIT.md, bundles.json, bundles/, eval/cases/
+  generay/    time/date: TIME.md, SYNC.md, time_checks/, data/libraries*.json
+  havel/      privacy: regimes/, bundles.json, check_regime_refs.py
   <name>/reviewer.json   prompt files, bundles, extra inputs, permissions, secret
 engine/
   build_pr_case.py, run_model_command.py, call_model.py,
@@ -68,8 +69,8 @@ engine/
   build_bundle.py, run_eval.py, model_providers.json
 .github/workflows/
   review.yml             reusable engine, input `persona`
-  security-review.yml, quality-review.yml, ui-review.yml,
-  time-review.yml, privacy-review.yml   thin reusable wrappers
+  foucault-review.yml, euler-review.yml, adorno-review.yml,
+  generay-review.yml, havel-review.yml   thin reusable wrappers
 policy files             synced from agents via scripts/sync.py
 ```
 
@@ -78,14 +79,15 @@ policy files             synced from agents via scripts/sync.py
 - Base the engine on foucault's argument-array runner (`ci/run_model_command.py`). Fold in euler's chunking, envelope, and report code.
 - Replace adorno and havel `eval "$MODEL_CALL_COMMAND"` with the runner.
 - Build one response validator from `check_pr_review_response.py` and euler `ci/check_review_response.py`.
-- Use one `run_eval.py --persona <name>`. Eval cases live per persona.
-- Use one `build_bundle.py` (havel origin) for ui and privacy.
+- Use one `run_eval.py --persona <name>`, for example `--persona foucault`. Eval cases live per persona.
+- The `persona` input takes `foucault`, `euler`, `adorno`, `generay`, or `havel`.
+- Use one `build_bundle.py` (havel origin) for adorno and havel.
 - Common inputs on every persona workflow:
   - `personas_ref` (replaces `audit_ref`, `quality_ref`, `time_ref`)
   - `pr_number`, `base_sha`, `head_sha`
   - `model_call_command`, `pr_comment`, `fail_on_block`, `fork_review`
   - secret `MODEL_API_KEY`
-- Persona-specific inputs stay on the wrappers: `regimes` for privacy, and `exclude_paths` and `max_chunks` for quality and time.
+- Persona-specific inputs stay on the wrappers: `regimes` for havel, and `exclude_paths` and `max_chunks` for euler and generay.
 - Adopters pick reviewers with one `uses:` line per persona, all at the same `agents-personas@<sha>`.
 
 ## agents changes
@@ -104,11 +106,11 @@ One draft PR per step.
 1. Done 2026-11-19. The active human created `abuzucom/agents-personas`.
 2. Adopt the agents policy into agents-personas.
 3. Build the engine. Move the agents `ci/` copies plus euler chunking into `engine/`. Add `review.yml`. Write tests first. Choose one full-SHA pin per action. The source repos diverge (checkout v4.4.0 vs v7.0.1, github-script v7.1.0 vs v9.0.0). Pin changes need Rule 9 approval.
-4. security persona (foucault). This is the pilot.
-5. quality persona (euler).
-6. time persona (generay).
-7. ui persona (adorno).
-8. privacy persona (havel). Resolve the prompt source mismatch: `privacy-review.yml:135` loads `.havel/AUDIT.md`, while the README points to `bundles/`. Add a failing test first.
+4. foucault persona (security). This is the pilot.
+5. euler persona (code quality).
+6. generay persona (time/date).
+7. adorno persona (UI/UX, a11y).
+8. havel persona (privacy). Resolve the prompt source mismatch: `privacy-review.yml:135` loads `.havel/AUDIT.md`, while the README points to `bundles/`. Add a failing test first.
 9. In agents, repoint the review callers, remove the engine copies, and add a README pointer to agents-personas.
 10. agents: module manifest and `scripts/adopt.py`, plus a README rewrite.
 11. Freeze the five old repos with a README pointer. Do not archive the old repos.
