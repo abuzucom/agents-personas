@@ -10,6 +10,9 @@ functions:
   names a changed "file". Each chunk envelope carries the items of its own
   files under REVIEW_TARGET[key]. An item can quote pull request text, so
   it stays in the untrusted section.
+The review stage runs the next two hooks through engine/run_hook.py in a
+child process without the provider key:
+
 - validate_reply(payload, response, envelope) -> list[str]
   Returns problems with a reply that passed the engine validator. A problem
   triggers the same single retry as an engine problem.

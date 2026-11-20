@@ -456,7 +456,8 @@ jobs:
 
       - name: Build review case
         # Persona hooks such as the euler prescan run here. The provider key
-        # reaches only the next step, so hook code never runs beside it.
+        # reaches only the next step. That step runs its reply hooks in a
+        # child process without the key, so hook code never runs beside it.
         env:
           PR_TITLE: ${{ needs.resolve.outputs.pr_title }}
           PR_BODY: ${{ needs.resolve.outputs.pr_body }}
@@ -491,6 +492,8 @@ jobs:
           PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
           MAX_CHUNKS: ${{ inputs.max_chunks }}
           MAX_ENVELOPE_BYTES: ${{ inputs.max_envelope_bytes }}
+          # The review stage checks the options digest against the built case.
+          PERSONA_OPTIONS: ${{ inputs.persona_options }}
         run: |
           set -euo pipefail
           arguments=(--root .agents-personas --persona "$PERSONA" --mode "$MODE" --repo .
