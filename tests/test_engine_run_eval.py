@@ -161,7 +161,10 @@ class ExtensionTest(unittest.TestCase):
             target = Path(directory) / "elsewhere.py"
             target.write_text(EXTENSION, encoding="utf-8")
             (fixture.persona_dir / "eval").mkdir()
-            (fixture.persona_dir / "eval" / "extra_checks.py").symlink_to(target)
+            try:
+                (fixture.persona_dir / "eval" / "extra_checks.py").symlink_to(target)
+            except OSError as error:
+                self.skipTest(f"platform denied symlink creation: {error}")
             with self.assertRaisesRegex(run_eval.EvalError, "regular file"):
                 run_eval.load_extension(fixture.persona_dir)
 
