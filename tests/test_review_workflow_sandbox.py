@@ -82,5 +82,36 @@ class SandboxCheckWorkflowTest(unittest.TestCase):
         self.assertIs(checkout["with"]["persist-credentials"], False)
 
 
+PROFILE_PATH = WORKFLOW_PATH.parent.parent.parent / "engine" / "apparmor" / "bwrap"
+PROFILE_LOAD = "sudo apparmor_parser -r /etc/apparmor.d/bwrap"
+
+
+class AppArmorProfileTest(unittest.TestCase):
+    """Ubuntu 24.04 restricts unprivileged user namespaces. One profile lets bwrap alone create them."""
+
+    def test_profile_grants_userns_to_bwrap_only(self):
+        text = PROFILE_PATH.read_text(encoding="ascii")
+        self.assertIn("profile bwrap /usr/bin/bwrap flags=(unconfined) {", text)
+        self.assertIn("  userns,", text)
+        rules = [line.strip() for line in text.splitlines() if line.strip() and not line.strip().startswith("#")]
+        self.assertEqual(rules, ["abi <abi/4.0>,", "include <tunables/global>",
+                                 "profile bwrap /usr/bin/bwrap flags=(unconfined) {", "userns,",
+                                 "include if exists <local/bwrap>", "}"])
+
+    def test_review_jobs_load_the_engine_profile_before_the_build(self):
+        for job in REVIEW_JOBS:
+            install = next(step for step in _steps(job) if step["name"] == "Install bubblewrap")
+            with self.subTest(job=job):
+                self.assertIn("sudo install -m 0644 .agents-personas/engine/apparmor/bwrap /etc/apparmor.d/bwrap",
+                              install["run"])
+                self.assertIn(PROFILE_LOAD, install["run"])
+
+    def test_sandbox_check_loads_the_repository_profile(self):
+        workflow = yaml.safe_load(SANDBOX_CHECK_PATH.read_text(encoding="utf-8"))
+        install = next(step for step in workflow["jobs"]["sandbox"]["steps"] if step["name"] == "Install bubblewrap")
+        self.assertIn("sudo install -m 0644 engine/apparmor/bwrap /etc/apparmor.d/bwrap", install["run"])
+        self.assertIn(PROFILE_LOAD, install["run"])
+
+
 if __name__ == "__main__":
     unittest.main()

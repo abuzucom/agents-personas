@@ -1,0 +1,16 @@
+# AppArmor profile that lets bubblewrap create user namespaces.
+#
+# Ubuntu 24.04 restricts unprivileged user namespaces. Without this profile,
+# bwrap gets a namespace without capabilities and cannot set up the loopback
+# device of its private network. The profile grants the userns permission to
+# /usr/bin/bwrap only. The restriction stays on for every other program.
+# The review jobs load it with: sudo apparmor_parser -r /etc/apparmor.d/bwrap
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile bwrap /usr/bin/bwrap flags=(unconfined) {
+  userns,
+
+  include if exists <local/bwrap>
+}
