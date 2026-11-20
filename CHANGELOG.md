@@ -14,13 +14,15 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.1] (2026-11-20)
+## [0.1.2] (2026-11-20)
 
 ### Fixed
 - Disable automatic Git maintenance in the digest index test fixture. The
   fixture copy failed when detached maintenance removed its lock file.
 
 ### Added
+- Add `docs/plans/consolidation.md`. The plan moves the five PR checker
+  repositories into this repository.
 - Adopt the agents policy from `abuzucom/agents` at
   `909b93702273befaec9227ee892fe1a2261a4a41`.
 - Add `AGENTS.md` and its synchronized client copies.
