@@ -398,7 +398,10 @@ class ReviewStageTest(HookFixture):
         names = set(json.loads(self.record.read_text(encoding="utf-8"))["environment"])
         self.assertFalse({"MODEL_API_KEY", "SYNTHETIC_RUNTIME_TOKEN"} & names)
         allowed = run_review.HOOK_ENVIRONMENT_NAMES
-        self.assertTrue(all(name.upper() in allowed or name.upper().startswith("LC_") for name in names), names)
+        # macOS adds this variable to every new process. The engine never passes it.
+        platform_added = {"__CF_USER_TEXT_ENCODING"}
+        self.assertTrue(all(name.upper() in allowed or name.upper().startswith("LC_") or name in platform_added
+                            for name in names), names)
 
     def test_hooks_run_in_an_empty_temporary_home(self):
         self.script(_reply("APPROVE", ("P1", "P2")))

@@ -11,6 +11,7 @@ NEEDS-HUMAN for that chunk.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import os
 import subprocess
@@ -42,6 +43,8 @@ HOOK_LOCALE_PREFIX = "LC_"
 # These point at the hook child's own empty temporary directory.
 HOOK_HOME_VARIABLES = ("HOME", "USERPROFILE", "TMPDIR", "TEMP", "TMP")
 HOOK_TIMEOUT_SECONDS = 300
+# Linux prctl option that controls /proc access and ptrace by same-user processes.
+PR_SET_DUMPABLE = 4
 # The provider adapter applies its own request timeout and retry. This bound
 # stops a hung adapter process.
 ADAPTER_TIMEOUT_SECONDS = 1800
@@ -308,6 +311,20 @@ def run_mode(options: RunOptions) -> dict:
     return result
 
 
+def protect_environment() -> None:
+    """Mark this process non-dumpable on Linux.
+
+    A same-user process can read /proc/<pid>/environ of a dumpable process.
+    This process holds MODEL_API_KEY. A non-dumpable process keeps its
+    environ and memory from persona hook children and from ptrace.
+    """
+    if not sys.platform.startswith("linux"):
+        return
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(PR_SET_DUMPABLE, 0, 0, 0, 0) != 0:
+        raise ReviewError(f"prctl(PR_SET_DUMPABLE) failed with errno {ctypes.get_errno()}")
+
+
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
     """Return parsed command line options."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -328,6 +345,7 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str]) -> int:
     """Run one mode from the command line and the workflow environment."""
+    protect_environment()
     args = parse_arguments(argv)
     requested = {name: value for name, value in (("max_chunks", args.max_chunks),
                                                  ("max_envelope_bytes", args.max_envelope_bytes))

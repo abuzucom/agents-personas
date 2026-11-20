@@ -37,6 +37,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   directory. The same directory is its home.
 - Record decision 32. Hooks keep network access and read access to the
   runner filesystem. A full sandbox stays a follow-up.
+- On Linux, `engine/run_review.py` marks itself non-dumpable. The review
+  step runs it through `exec`. A hook child then cannot read
+  `MODEL_API_KEY` from `/proc`. The fix also allows the variable macOS
+  adds to every process in the environment test.
 - The review stage rejects a built case when the base, pull request number,
   caps, or persona options differ. The manifest records each one. The euler prescan, the QUALITY.md reply rules, and BLOCK
   on a blocking prescan finding run as euler hooks.
