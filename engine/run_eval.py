@@ -10,6 +10,8 @@ A persona can ship reviewers/<persona>/eval/extra_checks.py. The engine
 calls these optional functions from it:
 
 - validate_expected(mode, expected) -> list[str]: extra structure findings
+- validate_case(case) -> list[str]: extra findings on a loaded case, for
+  example a required input file name
 - build_model_input(case, system_prompt) -> str | None: the text the model
   receives, or None for the engine default
 - grade_response(case, response) -> list[tuple[str, bool, str]]: extra grades
@@ -29,16 +31,16 @@ from __future__ import annotations
 import argparse
 import hashlib
 import importlib
-import importlib.util
 import json
 import sys
 from collections.abc import Callable
 from pathlib import Path
 
 try:
+    import persona_hooks
     import reviewers
 except ImportError:
-    from engine import reviewers
+    from engine import persona_hooks, reviewers
 
 ENGINE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ENGINE_DIR.parent
@@ -90,17 +92,13 @@ def load_extension(persona_dir: Path):
     An extension imports engine modules such as check_review_response by
     name, so the engine directory joins the import path first.
     """
-    path = Path(persona_dir) / EXTENSION_PATH
-    if not path.exists():
-        return None
-    if path.is_symlink() or not path.is_file():
-        raise EvalError(f"{EXTENSION_PATH} must be a regular file")
     if str(ENGINE_DIR) not in sys.path:
         sys.path.insert(0, str(ENGINE_DIR))
-    spec = importlib.util.spec_from_file_location(f"extra_checks_{Path(persona_dir).name}", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    try:
+        return persona_hooks.load_module(Path(persona_dir) / EXTENSION_PATH,
+                                         f"extra_checks_{Path(persona_dir).name}")
+    except ValueError as error:
+        raise EvalError(f"{EXTENSION_PATH} must be a regular file") from error
 
 
 def _read_text(path: Path) -> str:
@@ -143,6 +141,7 @@ def load_case(case_dir: Path, mode_name: str, mode: dict, extension=None) -> tup
         return None, findings
     case = {
         "name": case_dir.name,
+        "dir": str(case_dir),
         "mode": mode_name,
         "prompt_mode": prompt_mode(mode_name, mode),
         "expected": expected,
@@ -151,6 +150,10 @@ def load_case(case_dir: Path, mode_name: str, mode: dict, extension=None) -> tup
         "case_text": "\n\n".join(path.read_text(encoding="utf-8") for path in inputs),
         "files": [path.name for path in inputs],
     }
+    if extension is not None and hasattr(extension, "validate_case"):
+        case_findings = [f"{label}: {item}" for item in extension.validate_case(case)]
+        if case_findings:
+            return None, case_findings
     return case, []
 
 

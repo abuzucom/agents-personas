@@ -1,0 +1,36 @@
+{
+  "persona": "euler",
+  "function": "quality",
+  "options": {
+    "exclude_paths": {"type": "string", "default": ""}
+  },
+  "modes": {
+    "quality": {
+      "prompt": "QUALITY.md",
+      "review": true,
+      "default": true,
+      "json_mode": "PR"
+    },
+    "file": {
+      "prompt": "QUALITY.md",
+      "local": true,
+      "json_mode": "File",
+      "verdict_line": "RISK",
+      "verdicts": ["HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
+    },
+    "piece": {
+      "prompt": "QUALITY.md",
+      "local": true,
+      "json_mode": "Piece",
+      "verdict_line": "RISK (partial)",
+      "verdicts": ["HIGH", "MEDIUM", "LOW", "NONE-FOUND", "NEEDS-HUMAN"]
+    },
+    "wholesale": {
+      "prompt": "QUALITY.md",
+      "local": true,
+      "json_mode": "Wholesale",
+      "verdict_line": "RISK",
+      "verdicts": ["HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
+    }
+  }
+}

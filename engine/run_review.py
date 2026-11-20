@@ -23,14 +23,16 @@ try:
     import build_pr_case
     import check_review_response
     import envelope
+    import persona_hooks
     import review_output
     import reviewers
 except ImportError:
-    from engine import build_pr_case, check_review_response, envelope, review_output, reviewers
+    from engine import build_pr_case, check_review_response, envelope, persona_hooks, review_output, reviewers
 
 ENGINE_DIR = Path(__file__).resolve().parent
 # call_model.py exits with this code when no configured model can hold the input.
 CAPACITY_EXIT_CODE = 3
+STAGES = ("all", "build", "review")
 # The provider adapter applies its own request timeout and retry. This bound
 # stops a hung adapter process.
 ADAPTER_TIMEOUT_SECONDS = 1800
@@ -61,6 +63,10 @@ class RunOptions:
     body: str
     requested_caps: dict = field(default_factory=dict)
     model_call_command: str = ""
+    # "build" writes the case and calls no model. The workflow runs it in a
+    # step without the provider key. "review" reads that case. "all" does both.
+    stage: str = "all"
+    persona_options: str = ""
 
 
 @dataclass
@@ -104,8 +110,22 @@ def read_usage(usage_path: Path) -> dict:
     return usage if isinstance(usage, dict) else {}
 
 
+def validate_reply(response: str, case_path: Path, json_mode: str | None, finding_rules: dict | None,
+                   hooks=None) -> tuple[str, dict]:
+    """Return the verdict and payload of a reply that passes the engine and persona checks."""
+    verdict, payload = check_review_response.validate_response(response, json_mode, finding_rules)
+    hook = getattr(hooks, "validate_reply", None)
+    if hook is None:
+        return verdict, payload
+    sent = json.loads(case_path.read_text(encoding="utf-8"))
+    problems = list(hook(payload, response, sent))
+    if problems:
+        raise check_review_response.ResponseError("; ".join(str(item) for item in problems))
+    return verdict, payload
+
+
 def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
-                 json_mode: str | None, finding_rules: dict | None = None) -> ChunkResult:
+                 json_mode: str | None, finding_rules: dict | None = None, hooks=None) -> ChunkResult:
     """Review one envelope with at most one retry after an invalid reply."""
     work = case_path.parent
     note = ""
@@ -121,8 +141,7 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
             diagnostics = review_output.clean_text(completed.stderr.strip(), MAX_PROBLEM_CHARS)
             raise ReviewError(f"model command failed with exit code {completed.returncode}: {diagnostics}")
         try:
-            verdict, payload = check_review_response.validate_response(
-                completed.stdout, json_mode, finding_rules)
+            verdict, payload = validate_reply(completed.stdout, case_path, json_mode, finding_rules, hooks)
         except check_review_response.ResponseError as error:
             problem = str(error)[:MAX_PROBLEM_CHARS]
             note = "\n\n" + RETRY_NOTE.format(problem=problem) + "\n"
@@ -140,16 +159,46 @@ def sum_usage(results: list[ChunkResult]) -> dict:
     return totals
 
 
-def build_case(options: RunOptions, caps: dict) -> dict:
+def build_case(options: RunOptions, caps: dict, hooks=None, persona_options: dict | None = None) -> dict:
     """Build the envelopes and return the case manifest."""
     case_dir = options.out_dir / "case"
     build_pr_case.build(build_pr_case.BuildOptions(
         repo=options.repo, base=options.base, head=options.head, out_dir=case_dir,
         persona=options.persona, mode=options.mode, title=options.title, body=options.body,
         pr_number=options.pr_number, max_chunks=caps["max_chunks"],
-        max_envelope_bytes=caps["max_envelope_bytes"],
+        max_envelope_bytes=caps["max_envelope_bytes"], hooks=hooks,
+        persona_options=persona_options or {},
     ))
     return json.loads((case_dir / "manifest.json").read_text(encoding="utf-8"))
+
+
+def read_built_case(options: RunOptions) -> dict:
+    """Return the manifest the build stage wrote for this mode."""
+    manifest_path = options.out_dir / "case" / "manifest.json"
+    if not manifest_path.is_file():
+        raise ReviewError(f"no built case at {manifest_path}. run the build stage first")
+    case = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if (case.get("persona"), case.get("mode"), case.get("head_sha")) != (options.persona, options.mode, options.head):
+        raise ReviewError("the built case belongs to another persona, mode, or head. Rerun the build stage")
+    return case
+
+
+def apply_forced_verdict(verdict: str, reasons: list[str], options: RunOptions, hooks=None) -> str:
+    """Return the run verdict after a persona forced_verdict hook."""
+    hook = getattr(hooks, "forced_verdict", None)
+    if hook is None:
+        return verdict
+    context_path = options.out_dir / "case" / build_pr_case.TRUSTED_CONTEXT_NAME
+    forced = hook(json.loads(context_path.read_text(encoding="utf-8")))
+    if not forced:
+        return verdict
+    forced_verdict, reason = forced
+    if forced_verdict not in review_output.VERDICT_RANK:
+        raise ReviewError(f"forced_verdict returned the unknown verdict {forced_verdict!r}")
+    if review_output.VERDICT_RANK[forced_verdict] > review_output.VERDICT_RANK[verdict]:
+        reasons.append(str(reason))
+        return forced_verdict
+    return verdict
 
 
 def run_mode(options: RunOptions) -> dict:
@@ -158,15 +207,25 @@ def run_mode(options: RunOptions) -> dict:
     persona_dir, manifest = reviewers.load_persona(options.root, options.persona)
     reviewers.resolve_review_modes(manifest, options.mode)
     entry = manifest["modes"][options.mode]
+    if options.stage not in STAGES:
+        raise ReviewError(f"unknown stage {options.stage!r}. Use one of {', '.join(STAGES)}")
+    hooks = persona_hooks.load_review_hooks(persona_dir)
     caps = reviewers.resolve_caps(entry, options.requested_caps)
-    case = build_case(options, caps)
+    if options.stage == "review":
+        case = read_built_case(options)
+    else:
+        persona_options = reviewers.resolve_options(manifest, options.persona_options)
+        case = build_case(options, caps, hooks, persona_options)
+    if options.stage == "build":
+        return {"stage": "build", "chunks": len(case["chunks"]), "unreviewed": case["unreviewed"]}
     prompt_text = reviewers.prompt_path(persona_dir, entry["prompt"]).read_text(encoding="utf-8")
     system_prompt = envelope.with_fence_rule(prompt_text)
     case_dir = options.out_dir / "case" / "envelopes"
     results = [review_chunk(options, system_prompt, case_dir / chunk["envelope"], entry.get("json_mode"),
-                            entry.get("finding_rules"))
+                            entry.get("finding_rules"), hooks)
                for chunk in case["chunks"]]
     verdict, reasons = review_output.combine_verdicts([item.verdict for item in results], case["unreviewed"])
+    verdict = apply_forced_verdict(verdict, reasons, options, hooks)
     result = {
         "persona": options.persona, "mode": options.mode, "base_sha": options.base, "head_sha": options.head,
         "verdict": verdict, "reasons": reasons + [item.reason for item in results if item.reason],
@@ -199,6 +258,8 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--max-chunks", type=int)
     parser.add_argument("--max-envelope-bytes", type=int)
+    parser.add_argument("--stage", choices=STAGES, default="all",
+                        help="build writes the case only. review reads a built case")
     return parser.parse_args(argv)
 
 
@@ -213,12 +274,16 @@ def main(argv: list[str]) -> int:
         head=args.head, pr_number=args.pr_number, out_dir=args.out_dir,
         title=os.environ.get("PR_TITLE", ""), body=os.environ.get("PR_BODY", ""),
         requested_caps=requested, model_call_command=os.environ.get("MODEL_CALL_COMMAND", ""),
+        stage=args.stage, persona_options=os.environ.get("PERSONA_OPTIONS", ""),
     )
     try:
         result = run_mode(options)
     except (ReviewError, ValueError, RuntimeError, OSError) as error:
         print(f"error: {error}. The mode produced no verdict. Fix the cause and rerun.", file=sys.stderr)
         return 1
+    if options.stage == "build":
+        print(f"built {result['chunks']} chunk(s), {len(result['unreviewed'])} unreviewed file(s)")
+        return 0
     print(f"VERDICT: {result['verdict']}")
     return 0
 

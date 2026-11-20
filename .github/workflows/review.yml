@@ -88,6 +88,11 @@ on:
         required: false
         type: string
         default: ""
+      persona_options:
+        description: "Optional JSON object of persona options, for example {\"exclude_paths\": \"tests/**\"}. The persona manifest declares the names."
+        required: false
+        type: string
+        default: ""
       max_chunks:
         description: "Optional lower chunk cap. A higher value keeps the mode cap."
         required: false
@@ -449,6 +454,29 @@ jobs:
           subprocess.run(["git", "fetch", "--no-tags", source, head_sha], check=True, env=environment)
           PY
 
+      - name: Build review case
+        # Persona hooks such as the euler prescan run here. The provider key
+        # reaches only the next step, so hook code never runs beside it.
+        env:
+          PR_TITLE: ${{ needs.resolve.outputs.pr_title }}
+          PR_BODY: ${{ needs.resolve.outputs.pr_body }}
+          PERSONA: ${{ inputs.persona }}
+          MODE: ${{ matrix.mode }}
+          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
+          MAX_CHUNKS: ${{ inputs.max_chunks }}
+          MAX_ENVELOPE_BYTES: ${{ inputs.max_envelope_bytes }}
+          PERSONA_OPTIONS: ${{ inputs.persona_options }}
+        run: |
+          set -euo pipefail
+          arguments=(--root .agents-personas --persona "$PERSONA" --mode "$MODE" --repo .
+                     --base "$BASE_SHA" --head "$HEAD_SHA" --pr-number "$PR_NUMBER"
+                     --out-dir "$RUNNER_TEMP/review" --stage build)
+          if [ -n "$MAX_CHUNKS" ]; then arguments+=(--max-chunks "$MAX_CHUNKS"); fi
+          if [ -n "$MAX_ENVELOPE_BYTES" ]; then arguments+=(--max-envelope-bytes "$MAX_ENVELOPE_BYTES"); fi
+          python3 .agents-personas/engine/run_review.py "${arguments[@]}"
+
       - name: Run review
         id: run
         env:
@@ -467,7 +495,7 @@ jobs:
           set -euo pipefail
           arguments=(--root .agents-personas --persona "$PERSONA" --mode "$MODE" --repo .
                      --base "$BASE_SHA" --head "$HEAD_SHA" --pr-number "$PR_NUMBER"
-                     --out-dir "$RUNNER_TEMP/review")
+                     --out-dir "$RUNNER_TEMP/review" --stage review)
           if [ -n "$MAX_CHUNKS" ]; then arguments+=(--max-chunks "$MAX_CHUNKS"); fi
           if [ -n "$MAX_ENVELOPE_BYTES" ]; then arguments+=(--max-envelope-bytes "$MAX_ENVELOPE_BYTES"); fi
           python3 .agents-personas/engine/run_review.py "${arguments[@]}"

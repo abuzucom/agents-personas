@@ -56,6 +56,10 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 25 | Finding rules (2026-11-20) | A review mode can declare `finding_rules` in `reviewer.json`. The block names the exact finding keys, the allowed severities, and a class prefix. The shared validator enforces each rule. foucault declares five keys, CRITICAL to LOW, and the `2.` prefix. |
 | 26 | Local modes (2026-11-20) | Each persona keeps its workstation modes, for example foucault File, Piece, and Wholesale. A mode with `local: true` has no CI delivery. `verdict_line` and `verdicts` name its verdict form. `json_mode` names the mode string the prompt expects. All source eval cases move into `eval/cases/<mode>/`. |
 | 27 | Eval runner (2026-11-20) | `engine/run_eval.py` checks case structure for every mode and grades live replies through `--model-call`. The engine grades the verdict line, `REVIEW STATUS`, and `VERDICT_JSON`. A persona adds its own checks in `eval/extra_checks.py` through `validate_expected`, `build_model_input`, and `grade_response`. |
+| 28 | Review hooks (2026-11-20) | A persona can ship `review_hooks.py` with `trusted_context`, `validate_reply`, and `forced_verdict`. The engine writes the head tree from git objects for `trusted_context` and executes none of it. euler's prescan, QUALITY.md reply rules, and prescan BLOCK use these hooks. |
+| 29 | Persona options (2026-11-20) | `review.yml` takes one `persona_options` JSON object. `reviewer.json` declares each option with a type and a default. The engine rejects undeclared options. euler declares `exclude_paths`. |
+| 30 | Build stage (2026-11-20) | Each review job builds the case in a step without the provider key, then reviews it in the key step. Persona hook code never runs beside the key. |
+| 31 | Lint toolchain (2026-11-20) | ruff, mypy, and yamllint from decision 5 land in a separate pull request after the euler step. |
 
 ## Two repos
 
@@ -286,7 +290,7 @@ One draft PR per step.
    - 3c-1 adds `engine/run_review.py` and `engine/review_output.py`. The runner reviews one mode, retries one invalid reply, and combines the chunk verdicts. The renderer builds the check conclusion, the annotations, the comment, and the metrics.
    - 3c-2 adds `review.yml`. The workflow covers the resolve job, the fork rule, the per-mode checks, the comments, and the run metrics. `personas_ref` is a required full SHA. Only the head fetch step receives the token. Python 3.14 runs every step.
 4. foucault persona (security). This is the pilot. It adds the `paths` input, `finding_rules`, local modes, `engine/run_eval.py`, the wrapper, the self-review caller, and both caller examples.
-5. euler persona (code quality).
+5. euler persona (code quality). It adds review hooks, `persona_options`, the build stage, the wrapper, and the self-review caller.
 6. generay persona (time/date). Migrate `time` as the default review mode. Migrate `sync` as an opt-in review mode with context delivery. Add eval cases for both modes and a caller example with a conditional sync job.
 7. adorno persona (UI/UX, a11y).
 8. havel persona (privacy). Resolve the prompt source mismatch: `privacy-review.yml:135` loads `.havel/AUDIT.md`, while the README points to `bundles/`. Add a failing test first.

@@ -17,6 +17,7 @@ MAX_BODY_CHARS = 20_000
 TRUNCATION_MARKER = " [truncated by the review engine]"
 # Metadata comes from the engine. Pull request text never enters it.
 FORBIDDEN_METADATA_KEYS = frozenset({"title", "body", "files", "patches"})
+RESERVED_TRUSTED_KEYS = frozenset({"note", "persona", "mode", "metadata", "truncated", "sha256"})
 TRUSTED_NOTE = (
     "Engine-built context. It names the persona, the mode, and run metadata. "
     "It carries no pull request text."
@@ -55,18 +56,26 @@ def with_fence_rule(system_prompt: str) -> str:
 
 
 def build_envelope(persona: str, mode: str, files: dict[str, str], title: str,
-                   body: str, metadata: dict) -> str:
-    """Return the serialized envelope for one review unit."""
+                   body: str, metadata: dict, context: dict | None = None) -> str:
+    """Return the serialized envelope for one review unit.
+
+    context holds persona hook items, for example euler prescan candidates.
+    Each key joins TRUSTED_CONTEXT and its digest.
+    """
     leaked = sorted(FORBIDDEN_METADATA_KEYS & set(metadata))
     if leaked:
         raise ValueError(f"metadata holds pull request fields {leaked}. Pass them as title, body, or files.")
+    context = context or {}
+    reserved = sorted(RESERVED_TRUSTED_KEYS & set(context))
+    if reserved:
+        raise ValueError(f"persona context uses reserved TRUSTED_CONTEXT keys {reserved}. Rename them.")
     capped_title, title_cut = cap_text(title, MAX_TITLE_CHARS)
     capped_body, body_cut = cap_text(body, MAX_BODY_CHARS)
     truncated = [name for name, cut in (("title", title_cut), ("body", body_cut)) if cut]
     trusted = {"note": TRUSTED_NOTE, "persona": persona, "mode": mode,
-               "metadata": metadata, "truncated": truncated}
+               "metadata": metadata, "truncated": truncated, **context}
     target = {"note": TARGET_NOTE, "title": capped_title, "body": capped_body, "files": files}
-    trusted["sha256"] = digest({key: trusted[key] for key in ("persona", "mode", "metadata", "truncated")})
+    trusted["sha256"] = digest({key: trusted[key] for key in ("persona", "mode", "metadata", "truncated", *context)})
     target["sha256"] = digest({key: target[key] for key in ("title", "body", "files")})
     document = {
         "schema_version": ENVELOPE_SCHEMA_VERSION,
