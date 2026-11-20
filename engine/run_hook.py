@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Run one review-stage persona hook in a child process without the provider key.
+"""Run one persona hook in a child process with an allowlisted environment.
 
-engine/run_review.py starts this script for validate_reply and forced_verdict.
-The parent removes MODEL_API_KEY from the child environment, so persona hook
-code never runs beside the key. Standard input carries a JSON list of
+engine/run_review.py starts this script for case_context, validate_reply,
+and forced_verdict in every stage. The child environment holds only the
+allowlisted variables, so persona hook code never runs beside the provider
+key or another credential. Standard input carries a JSON list of
 arguments. Standard output carries {"absent": true} when the persona defines
 no such hook, or {"result": <value>} otherwise.
 """
@@ -20,7 +21,7 @@ try:
 except ImportError:
     from engine import persona_hooks
 
-REVIEW_STAGE_HOOKS = ("validate_reply", "forced_verdict")
+HOOKS = ("case_context", "validate_reply", "forced_verdict")
 
 
 def run_hook(persona_dir: Path, name: str, arguments: list) -> dict:
@@ -29,6 +30,9 @@ def run_hook(persona_dir: Path, name: str, arguments: list) -> dict:
     hook = getattr(hooks, name, None)
     if hook is None:
         return {"absent": True}
+    if name == "case_context":
+        # JSON carries the head tree directory as a string.
+        arguments = [Path(arguments[0]), *arguments[1:]]
     return {"result": hook(*arguments)}
 
 
@@ -36,7 +40,7 @@ def main(argv: list[str]) -> int:
     """Read the arguments, call the hook, and print the wrapped result."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--persona-dir", type=Path, required=True)
-    parser.add_argument("--hook", choices=REVIEW_STAGE_HOOKS, required=True)
+    parser.add_argument("--hook", choices=HOOKS, required=True)
     options = parser.parse_args(argv)
     try:
         arguments = json.loads(sys.stdin.read())

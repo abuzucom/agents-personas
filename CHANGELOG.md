@@ -31,8 +31,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `REVIEW_TARGET`. An author chooses every path. Trusted metadata keeps the
   counts. The active human approved two skeleton edits in the existing
   `tests/test_engine_build_pr_case.py`.
-- Run review-stage hooks through `engine/run_hook.py` in a child process
-  without `MODEL_API_KEY`. The review process never imports the hook file.
+- Run every persona hook through `engine/run_hook.py` in a child process
+  with an allowlisted environment. The engine process never imports the
+  hook file in any stage.
 - The review stage rejects a built case when the base, pull request number,
   caps, or persona options differ. The manifest records each one. The euler prescan, the QUALITY.md reply rules, and BLOCK
   on a blocking prescan finding run as euler hooks.

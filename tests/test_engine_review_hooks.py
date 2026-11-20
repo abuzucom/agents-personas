@@ -45,7 +45,8 @@ with open(Path(__file__).with_name("imports.log"), "a") as log:
 def case_context(head_dir, changed, patches, options):
     seen = sorted(path.relative_to(head_dir).as_posix() for path in Path(head_dir).rglob("*") if path.is_file())
     Path(options["record"]).write_text(json.dumps({"seen": seen, "changed": changed,
-                                                   "patched": sorted(patches), "options": options}))
+                                                   "patched": sorted(patches), "options": options,
+                                                   "environment": sorted(os.environ)}))
     python_files = [path for path in sorted(changed) if path.endswith(".py")]
     items = [{"id": f"P{index}", "file": path, "line": 1, "blocking": path == options["blocking"]}
              for index, path in enumerate(python_files, 1)]
@@ -54,8 +55,8 @@ def case_context(head_dir, changed, patches, options):
 
 def validate_reply(payload, response, envelope):
     import os
-    if "MODEL_API_KEY" in os.environ:
-        return ["the provider key reached the hook"]
+    if {"MODEL_API_KEY", "SYNTHETIC_RUNTIME_TOKEN"} & set(os.environ):
+        return ["a secret reached the hook"]
     wanted = {item["id"] for item in envelope["REVIEW_TARGET"]["prescan"]}
     resolved = {item.get("id") for item in payload.get("prescan", [])}
     return [f"prescan item {item} lacks a resolution" for item in sorted(wanted - resolved)]
@@ -63,8 +64,8 @@ def validate_reply(payload, response, envelope):
 
 def forced_verdict(context):
     import os
-    if "MODEL_API_KEY" in os.environ:
-        return ("BLOCK", "the provider key reached the hook")
+    if {"MODEL_API_KEY", "SYNTHETIC_RUNTIME_TOKEN"} & set(os.environ):
+        return ("BLOCK", "a secret reached the hook")
     blocking = [item["id"] for item in context.get("prescan", []) if item["blocking"]]
     return ("BLOCK", f"blocking prescan items {blocking}") if blocking else None
 """
@@ -362,7 +363,46 @@ class ReviewStageTest(HookFixture):
             else:
                 os.environ["MODEL_API_KEY"] = previous
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
-        self.assertNotIn("the provider key reached the hook", result["reasons"])
+        self.assertNotIn("a secret reached the hook", result["reasons"])
+
+    def run_with_secrets(self, **changes):
+        """Run one stage with a provider key and another secret in the environment."""
+        saved = {name: os.environ.get(name) for name in ("MODEL_API_KEY", "SYNTHETIC_RUNTIME_TOKEN")}
+        os.environ.update({"MODEL_API_KEY": "synthetic-key", "SYNTHETIC_RUNTIME_TOKEN": "synthetic-token"})
+        try:
+            return run_review.run_mode(self.options(**changes))
+        finally:
+            for name, value in saved.items():
+                if value is None:
+                    os.environ.pop(name, None)
+                else:
+                    os.environ[name] = value
+
+    def test_every_stage_imports_the_hooks_in_a_child_only(self):
+        for stage in ("build", "all"):
+            with self.subTest(stage=stage):
+                log = self.persona_dir / "imports.log"
+                log.unlink(missing_ok=True)
+                self.script(_reply("APPROVE", ("P1", "P2")))
+                (self.adapter_dir / "count.txt").unlink(missing_ok=True)
+                self.run_with_secrets(stage=stage)
+                importers = log.read_text(encoding="utf-8").split()
+                self.assertTrue(importers)
+                self.assertNotIn(str(os.getpid()), importers)
+
+    def test_case_context_sees_only_the_allowlisted_environment(self):
+        self.script(_reply("APPROVE", ("P1", "P2")))
+        self.run_with_secrets(stage="all")
+        names = set(json.loads(self.record.read_text(encoding="utf-8"))["environment"])
+        self.assertFalse({"MODEL_API_KEY", "SYNTHETIC_RUNTIME_TOKEN"} & names)
+        allowed = run_review.HOOK_ENVIRONMENT_NAMES
+        self.assertTrue(all(name.upper() in allowed or name.upper().startswith("LC_") for name in names), names)
+
+    def test_review_hooks_never_see_another_secret(self):
+        run_review.run_mode(self.options(stage="build"))
+        self.script(_reply("APPROVE", ("P1", "P2")))
+        result = self.run_with_secrets(stage="review")
+        self.assertEqual(result["verdict"], "NEEDS-HUMAN")
 
     def test_review_stage_imports_the_hooks_in_a_child_only(self):
         run_review.run_mode(self.options(stage="build"))

@@ -456,8 +456,9 @@ jobs:
 
       - name: Build review case
         # Persona hooks such as the euler prescan run here. The provider key
-        # reaches only the next step. That step runs its reply hooks in a
-        # child process without the key, so hook code never runs beside it.
+        # reaches only the next step. Every persona hook runs in a child
+        # process with an allowlisted environment, so hook code never runs
+        # beside the key or another credential.
         env:
           PR_TITLE: ${{ needs.resolve.outputs.pr_title }}
           PR_BODY: ${{ needs.resolve.outputs.pr_body }}
