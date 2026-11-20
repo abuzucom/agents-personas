@@ -76,6 +76,11 @@ The template revision is `909b93702273befaec9227ee892fe1a2261a4a41`.
   `tests/test_pr_checks_draft_coverage.py` covers the condition. The
   comments in `agents-md-compliance.yml` and `sync-check.yml` describe the
   new behavior.
+- `tests/test_sync_digest_index.py` disables `maintenance.auto` and `gc.auto`
+  in the `BackfillHistory` template repository. Detached Git maintenance
+  otherwise removes `.git/objects/maintenance.lock` during `copy_into`. CI
+  failed twice on that race. `tests/test_digest_fixture_maintenance.py`
+  covers the settings. The active human approved the test edit under Rule 3.
 - `Makefile` names this repository's prose files in `PROSE_FILES`.
 - `scripts/check_agent_prose_gate.py` names the same prose files in
   `TARGET_FILES`. `tests/test_check_agent_prose_gate.py` requires that list
