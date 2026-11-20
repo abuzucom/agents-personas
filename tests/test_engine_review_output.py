@@ -62,20 +62,38 @@ class VerdictCombinationTest(unittest.TestCase):
 
 
 class ConclusionTest(unittest.TestCase):
-    """fail_on_block maps BLOCK and NEEDS-HUMAN to failure or neutral (decision 21)."""
+    """fail_on_block gates BLOCK only. NEEDS-HUMAN warns and never blocks (decision 21)."""
 
     def test_approve_is_success(self):
         self.assertEqual(output.conclusion("APPROVE", True), "success")
 
-    def test_blocking_verdicts_fail_when_gating(self):
-        for verdict in ("BLOCK", "NEEDS-HUMAN"):
-            with self.subTest(verdict=verdict):
-                self.assertEqual(output.conclusion(verdict, True), "failure")
+    def test_block_fails_when_gating(self):
+        self.assertEqual(output.conclusion("BLOCK", True), "failure")
 
-    def test_blocking_verdicts_are_neutral_when_not_gating(self):
-        for verdict in ("BLOCK", "NEEDS-HUMAN"):
+    def test_block_is_neutral_when_not_gating(self):
+        self.assertEqual(output.conclusion("BLOCK", False), "neutral")
+
+    def test_needs_human_is_neutral_whatever_fail_on_block_says(self):
+        for fail_on_block in (True, False):
+            with self.subTest(fail_on_block=fail_on_block):
+                self.assertEqual(output.conclusion("NEEDS-HUMAN", fail_on_block), "neutral")
+
+
+class WarningTest(unittest.TestCase):
+    """A NEEDS-HUMAN result carries one warning line for the workflow run."""
+
+    def test_needs_human_renders_a_warning(self):
+        rendered = output.render(_result(verdict="NEEDS-HUMAN", findings=[]), fail_on_block=True)
+        self.assertEqual(rendered["warning"], output.NEEDS_HUMAN_WARNING.format(check="euler / quality"))
+
+    def test_other_verdicts_render_no_warning(self):
+        for verdict in ("APPROVE", "BLOCK"):
             with self.subTest(verdict=verdict):
-                self.assertEqual(output.conclusion(verdict, False), "neutral")
+                self.assertEqual(output.render(_result(verdict=verdict), fail_on_block=True)["warning"], "")
+
+    def test_warning_holds_no_workflow_command_characters(self):
+        self.assertNotIn("::", output.NEEDS_HUMAN_WARNING)
+        self.assertNotIn("\n", output.NEEDS_HUMAN_WARNING)
 
 
 class RenderTest(unittest.TestCase):

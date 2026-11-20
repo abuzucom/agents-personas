@@ -156,6 +156,21 @@ class SecretScopeTest(unittest.TestCase):
         self.assertEqual(self.steps_referencing("github.token"), {"Fetch pull request head object"})
 
 
+class NeedsHumanWarningTest(unittest.TestCase):
+    """The review jobs emit the rendered NEEDS-HUMAN warning on the run."""
+
+    def test_gate_step_emits_the_rendered_warning(self):
+        steps = {step["name"]: step for job, step in _steps(_workflow()) if job == "review"}
+        body = steps["Fail on a gating verdict"]["run"]
+        self.assertIn("::warning", body)
+        self.assertIn('rendered["warning"]', body)
+
+    def test_fail_on_block_input_names_block_only(self):
+        description = _trigger(_workflow())["inputs"]["fail_on_block"]["description"]
+        self.assertIn("BLOCK", description)
+        self.assertIn("NEEDS-HUMAN warns", description)
+
+
 class ScriptInjectionTest(unittest.TestCase):
     """Scripts read values from env. No expression expands inside a script body."""
 

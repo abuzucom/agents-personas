@@ -45,7 +45,7 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 14 | Fork runs (2026-11-20) | The engine applies one fork rule to every persona. A fork pull request gets a visible skipped check per requested mode and no secret. `fork_review: true` runs the review under the `fork-review` environment after a person approves. The engine never executes fork code with a secret in scope. |
 | 15 | Review output (2026-11-20) | Each run posts a new comment per head SHA and mode with a header line. Each mode also gets a check run with line annotations. |
 | 16 | Verdict values (2026-11-20) | The engine accepts `APPROVE`, `BLOCK`, and `NEEDS-HUMAN`. All five source validators accept the same set. |
-| 21 | Non-gating verdicts (2026-11-20) | With `fail_on_block: false`, a `BLOCK` or `NEEDS-HUMAN` verdict sets the mode check to `neutral`. euler and generay behave that way today. |
+| 21 | Non-gating verdicts (2026-11-20) | `NEEDS-HUMAN` always sets the mode check to `neutral` and emits a run warning. It never blocks CI. `fail_on_block` gates `BLOCK` only. With `fail_on_block: false`, `BLOCK` also concludes `neutral`. |
 | 22 | Action pins (2026-11-20) | Engine workflows pin checkout v7.0.1, setup-python v7.1.0, github-script v9.0.0, and upload-artifact v7.0.2 at the euler and generay SHAs. |
 | 17 | Engine hardening (2026-11-20) | Fenced untrusted content, a shared injection corpus, one resolve job, one provider table, per-mode caps, timeouts with one retry, and usage in each check. |
 | 18 | Evals and data (2026-11-20) | Live evals need prompt changes plus a human `eval-live` label. Each persona carries `DATA.md`. |
@@ -196,7 +196,8 @@ Source record (2026-11-20):
 `REJECT` appears in the sources only as a malformed-token test fixture.
 
 - One response validator enforces `APPROVE`, `BLOCK`, and `NEEDS-HUMAN` for every persona and mode (decision 16).
-- `fail_on_block` defaults to true. A true value fails the mode check on `BLOCK` and `NEEDS-HUMAN`. A false value sets the check to `neutral` (decision 21).
+- `fail_on_block` defaults to true. A true value fails the mode check on `BLOCK`. A false value sets the check to `neutral` (decision 21).
+- `NEEDS-HUMAN` concludes `neutral` whatever `fail_on_block` says. The run shows a warning annotation. Capacity limits and unreviewed files record `NEEDS-HUMAN`, so both warn without blocking.
 - A run without a valid verdict never reports a pass.
 
 ### Untrusted pull request content

@@ -74,7 +74,7 @@ on:
         type: boolean
         default: true
       fail_on_block:
-        description: "Fail the mode check on BLOCK or NEEDS-HUMAN. False concludes neutral."
+        description: "Fail the mode check on BLOCK. False concludes neutral. NEEDS-HUMAN warns and always concludes neutral."
         required: false
         type: boolean
         default: true
@@ -513,6 +513,8 @@ jobs:
           if not path.is_file():
               sys.exit("error: the review produced no verdict")
           rendered = json.loads(path.read_text())
+          if rendered["warning"]:
+              print(f"::warning title={rendered['check_name']}::{rendered['warning']}")
           if rendered["conclusion"] == "failure":
               sys.exit(f"error: {rendered['title']} fails this mode")
           PY
