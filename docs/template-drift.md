@@ -65,7 +65,21 @@ The template revision is `909b93702273befaec9227ee892fe1a2261a4a41`.
   unmodified copy of the full output exceeds the 64 KiB policy size limit.
 - `docs/project-orientation.md` stays below 404 bytes. Assembly appends it to
   the policy. The template policy leaves 403 bytes below the 64 KiB limit.
+- `tests/test_adopter_branch_fixtures.py` holds an unchanged copy of the
+  portable `CiBranchFixtureTest` class from `test_ci_branch_fixtures.py`.
+  That class gives hook coverage of the valid-branch paths in
+  `hooks/enforce_branch_name.py`.
+- `agents-compliance.yml` runs `pr-checks` on draft pull requests. The
+  template skips drafts. Rule 5 makes every agent pull request a draft. The
+  template condition therefore keeps `check_agent_prose_gate.py` from
+  running until a person marks the pull request ready.
+  `tests/test_pr_checks_draft_coverage.py` covers the condition. The
+  comments in `agents-md-compliance.yml` and `sync-check.yml` describe the
+  new behavior.
 - `Makefile` names this repository's prose files in `PROSE_FILES`.
+- `scripts/check_agent_prose_gate.py` names the same prose files in
+  `TARGET_FILES`. `tests/test_check_agent_prose_gate.py` requires that list
+  to match `sync-check.yml`.
 - `sync-check.yml` names this repository's prose files in the prose and
   ASCII steps. The workflow omits the template-file ASCII step. This
   repository holds none of those template files.

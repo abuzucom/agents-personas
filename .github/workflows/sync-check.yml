@@ -54,9 +54,8 @@ jobs:
         run: python scripts/run_tests.py
 
   pr-authorship:
-    # agents-md-compliance.yml runs the reusable pr-checks job on pull
-    # requests. That job skips drafts. This job runs these two checkers on
-    # draft pull requests too.
+    # agents-md-compliance.yml runs the reusable pr-checks job with these
+    # checkers. This job repeats them inside the sync-check workflow.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
