@@ -221,3 +221,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Gate adoption staging. Candidates never belong in commits.
+.gate-staging/
+
+# Comment drafts for scripts/trusted_gh.py comment. Drafts never belong in commits.
+.comment-drafts/
