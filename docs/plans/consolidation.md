@@ -42,6 +42,7 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 11 | Persona names (2026-11-20) | Each reviewer keeps the name of its source repo. Directories, `persona` values, and eval flags use the persona name. Wrapper workflows use `<persona>-<function>-review.yml`, for example `foucault-security-review.yml`. |
 | 12 | Persona modes (2026-11-20) | Each persona declares modes in `reviewer.json`. A mode supports review delivery, context delivery, or both. Wrappers take a `modes` input that defaults to the persona's default mode. Each adopter caller workflow chooses the pull requests for extra modes. |
 | 13 | Secrets (2026-11-20) | The secrets interface stays unchanged. Each wrapper declares the exact secret names, required flags, and environment of the source workflow it replaces. Adopter repository secrets and `secrets:` mappings stay unchanged. |
+| 14 | Fork runs (2026-11-20) | The engine applies one fork rule to every persona. A fork pull request gets a visible skipped check per requested mode and no secret. `fork_review: true` runs the review under the `fork-review` environment after a person approves. The engine never executes fork code with a secret in scope. |
 
 ## Two repos
 
@@ -104,6 +105,22 @@ policy files             synced from agents via scripts/sync.py
 - `review.yml` receives the key from the wrapper. Adopters change only the `uses:` line.
 - Each wrapper test asserts the exact secret names and environment of the source workflow. A rename fails CI.
 
+### Fork runs
+
+Current callers in `abuzucom/agents` run on `workflow_run`. Default branch code reviews every pull request. A resolve step sets `same_repository`. Fork pull requests get no model review and no secret today:
+
+- `security-review-pr.yml` prints a skip message in a log line. It creates no check.
+- `quality-review-pr.yml` creates a `quality-review` check with conclusion `skipped`.
+
+The engine replaces both forms with one rule:
+
+- A fork pull request gets a `skipped` check for each requested mode, for example `generay / time`. The check title reads "Skipped for fork pull request".
+- `fork_review: true` runs the review job under the `fork-review` environment. The repository owner sets required reviewers on that environment. A person approves each fork run before the secret reaches the job.
+- The engine reads the fork diff as data through the GitHub API. It never checks out or executes fork code with a secret in scope. The reviewer always runs from the pinned default branch.
+- The wrapper keeps the `fork_review` input and the `fork-review` environment names (decision 13).
+- Tests assert a skipped check per mode with no secret for a fork. Tests assert the `fork-review` environment on the opt-in job. Tests assert that no step checks out the fork head with a secret in scope.
+- Each persona step records the source workflow behavior for `fork_review` before the import. The pull request for that step names any difference.
+
 ### Modes
 
 `reviewer.json` declares a `modes` map. generay shows the shape:
@@ -157,7 +174,7 @@ One draft PR per step.
 
 1. Done 2026-11-19. The active human created `abuzucom/agents-personas`.
 2. Adopt the agents policy into agents-personas.
-3. Build the engine. Move the agents `ci/` copies plus euler chunking into `engine/`. Add `review.yml`. Add the mode schema, `check_reviewers.py`, `render_context.py`, and one check per mode. Write tests first. Choose one full-SHA pin per action. The source repos diverge (checkout v4.4.0 vs v7.0.1, github-script v7.1.0 vs v9.0.0). Pin changes need Rule 9 approval.
+3. Build the engine. Move the agents `ci/` copies plus euler chunking into `engine/`. Add `review.yml`. Add the mode schema, `check_reviewers.py`, `render_context.py`, and one check per mode. Add the fork rule. Write tests first. Choose one full-SHA pin per action. The source repos diverge (checkout v4.4.0 vs v7.0.1, github-script v7.1.0 vs v9.0.0). Pin changes need Rule 9 approval.
 4. foucault persona (security). This is the pilot.
 5. euler persona (code quality).
 6. generay persona (time/date). Migrate `time` as the default review mode. Migrate `sync` as an opt-in review mode with context delivery. Add eval cases for both modes and a caller example with a conditional sync job.
