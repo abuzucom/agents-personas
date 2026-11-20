@@ -1,0 +1,536 @@
+name: persona-review
+
+# Reusable engine workflow. A persona wrapper calls it with one persona and
+# its requested modes. Each mode gets a check run named "<persona> / <mode>",
+# line annotations, a pull request comment per head SHA, and a step summary.
+#
+# Callers pin `uses:` and `personas_ref` to the same full commit SHA:
+#
+#   uses: abuzucom/agents-personas/.github/workflows/review.yml@<sha>
+#   with:
+#     personas_ref: "<the same sha>"
+#     persona: foucault
+#   secrets:
+#     MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+#
+# Pass only the provider key. The job runs a model over untrusted pull
+# request content, and inherited secrets hand it every caller secret.
+#
+# Fork rule: a fork pull request gets a skipped check per mode and no
+# secret. fork_review: true runs every review under the fork-review
+# environment, where a person approves each run before the key arrives. No
+# step checks out or executes pull request head code. The engine reads the
+# head as git objects only.
+
+on:
+  workflow_call:
+    inputs:
+      personas_ref:
+        description: "abuzucom/agents-personas commit SHA to load the engine and persona from. Match the uses: pin."
+        required: true
+        type: string
+      persona:
+        description: "Persona name under reviewers/, for example foucault."
+        required: true
+        type: string
+      modes:
+        description: "Comma-separated review modes. Empty selects the persona's default mode."
+        required: false
+        type: string
+        default: ""
+      pr_number:
+        description: "Resolved pull request number for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      base_sha:
+        description: "Resolved pull request base SHA for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      head_sha:
+        description: "Resolved pull request head SHA for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      head_repo_url:
+        description: "Resolved pull request head repository URL for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      head_repo_full_name:
+        description: "Resolved pull request head repository name for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      model_call_command:
+        description: "Optional adapter: python or python3, then a workspace-relative .py path. No shell runs it. Empty uses the engine adapter."
+        required: false
+        type: string
+        default: ""
+      pr_comment:
+        description: "Post one comment per head SHA and mode."
+        required: false
+        type: boolean
+        default: true
+      fail_on_block:
+        description: "Fail the mode check on BLOCK or NEEDS-HUMAN. False concludes neutral."
+        required: false
+        type: boolean
+        default: true
+      fork_review:
+        description: "Run every review through the protected fork-review environment."
+        required: false
+        type: boolean
+        default: false
+      max_chunks:
+        description: "Optional lower chunk cap. A higher value keeps the mode cap."
+        required: false
+        type: string
+        default: ""
+      max_envelope_bytes:
+        description: "Optional lower envelope byte cap. A higher value keeps the mode cap."
+        required: false
+        type: string
+        default: ""
+    secrets:
+      MODEL_API_KEY:
+        description: "Provider API key for the model adapter."
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      pr_number: ${{ steps.pull.outputs.pr_number }}
+      base_sha: ${{ steps.pull.outputs.base_sha }}
+      head_sha: ${{ steps.pull.outputs.head_sha }}
+      head_repo_url: ${{ steps.pull.outputs.head_repo_url }}
+      head_repo_full_name: ${{ steps.pull.outputs.head_repo_full_name }}
+      same_repository: ${{ steps.pull.outputs.same_repository }}
+      pr_title: ${{ steps.pull.outputs.pr_title }}
+      pr_body: ${{ steps.pull.outputs.pr_body }}
+      modes: ${{ steps.modes.outputs.modes }}
+      already_reviewed: ${{ steps.reviewed.outputs.already_reviewed }}
+    steps:
+      - name: Resolve pull request
+        id: pull
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          INPUT_PERSONAS_REF: ${{ inputs.personas_ref }}
+          INPUT_PERSONA: ${{ inputs.persona }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_BASE_SHA: ${{ inputs.base_sha }}
+          INPUT_HEAD_SHA: ${{ inputs.head_sha }}
+          INPUT_HEAD_REPO_URL: ${{ inputs.head_repo_url }}
+          INPUT_HEAD_REPO_FULL_NAME: ${{ inputs.head_repo_full_name }}
+          INPUT_MAX_CHUNKS: ${{ inputs.max_chunks }}
+          INPUT_MAX_ENVELOPE_BYTES: ${{ inputs.max_envelope_bytes }}
+        with:
+          script: |
+            const sha = /^[0-9a-f]{40}$/;
+            const repository = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+            const name = /^[a-z][a-z0-9-]{0,31}$/;
+            const positive = /^[1-9][0-9]{0,8}$/;
+            // The envelope caps the body at 20,000 characters. A slightly
+            // larger cut here keeps the job output small and lets the engine
+            // record the truncation.
+            const MAX_BODY_CHARS = 20001;
+            const env = process.env;
+            if (!sha.test(env.INPUT_PERSONAS_REF || "")) {
+              throw new Error("personas_ref must be a full 40-character commit SHA");
+            }
+            if (!name.test(env.INPUT_PERSONA || "")) {
+              throw new Error("persona must be a lowercase persona name");
+            }
+            for (const cap of [env.INPUT_MAX_CHUNKS, env.INPUT_MAX_ENVELOPE_BYTES]) {
+              if (cap && !positive.test(cap)) {
+                throw new Error("cap inputs must be positive integers");
+              }
+            }
+            const resolved = [env.INPUT_PR_NUMBER, env.INPUT_BASE_SHA, env.INPUT_HEAD_SHA,
+                              env.INPUT_HEAD_REPO_URL, env.INPUT_HEAD_REPO_FULL_NAME];
+            let number;
+            if (resolved.some((value) => value)) {
+              if (resolved.some((value) => !value)) {
+                throw new Error("resolved pull request metadata is incomplete");
+              }
+              number = Number(env.INPUT_PR_NUMBER);
+            } else if (context.payload.pull_request) {
+              number = context.payload.pull_request.number;
+            } else {
+              const headSha = context.payload.workflow_run?.head_sha || "";
+              if (!sha.test(headSha)) {
+                throw new Error("workflow run head SHA is invalid");
+              }
+              const pulls = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+                owner: context.repo.owner, repo: context.repo.repo, commit_sha: headSha, per_page: 100,
+              });
+              const base = `${context.repo.owner}/${context.repo.repo}`.toLowerCase();
+              const matches = pulls.filter((pull) =>
+                pull.base?.repo?.full_name?.toLowerCase() === base && pull.head?.sha === headSha);
+              if (matches.length !== 1) {
+                throw new Error(`expected one pull request for the run head, found ${matches.length}`);
+              }
+              number = matches[0].number;
+            }
+            if (!Number.isInteger(number) || number < 1) {
+              throw new Error("pull request number is invalid");
+            }
+            const { data: pull } = await github.rest.pulls.get({
+              owner: context.repo.owner, repo: context.repo.repo, pull_number: number,
+            });
+            const baseSha = resolved[1] || pull.base.sha;
+            const headSha = resolved[2] || pull.head.sha;
+            const headUrl = resolved[3] || pull.head.repo?.clone_url || "";
+            const headName = resolved[4] || pull.head.repo?.full_name || "";
+            if (!sha.test(baseSha) || !sha.test(headSha)) {
+              throw new Error("pull request revisions are invalid");
+            }
+            if (!repository.test(headName) || !headUrl.startsWith("https://github.com/")) {
+              throw new Error("pull request head repository is invalid");
+            }
+            const base = `${context.repo.owner}/${context.repo.repo}`;
+            core.setOutput("pr_number", String(number));
+            core.setOutput("base_sha", baseSha);
+            core.setOutput("head_sha", headSha);
+            core.setOutput("head_repo_url", headUrl);
+            core.setOutput("head_repo_full_name", headName);
+            core.setOutput("same_repository", String(headName.toLowerCase() === base.toLowerCase()));
+            core.setOutput("pr_title", pull.title || "");
+            core.setOutput("pr_body", (pull.body || "").slice(0, MAX_BODY_CHARS));
+
+      - name: Check out the engine
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          repository: abuzucom/agents-personas
+          ref: ${{ inputs.personas_ref }}
+          path: .agents-personas
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: '3.14'
+
+      - name: Resolve review modes
+        id: modes
+        env:
+          PERSONA: ${{ inputs.persona }}
+          MODES: ${{ inputs.modes }}
+          EXPECTED_REF: ${{ inputs.personas_ref }}
+        run: |
+          set -euo pipefail
+          checked_out="$(git -C .agents-personas rev-parse HEAD)"
+          if [ "$checked_out" != "$EXPECTED_REF" ]; then
+            echo "error: engine checkout $checked_out does not match personas_ref" >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, ".agents-personas/engine")
+          import reviewers
+
+          root = Path(".agents-personas")
+          _persona_dir, manifest = reviewers.load_persona(root, os.environ["PERSONA"])
+          modes = reviewers.resolve_review_modes(manifest, os.environ["MODES"])
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"modes={json.dumps(modes)}\n")
+          PY
+
+      - name: Find earlier review comments
+        id: reviewed
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          PERSONA: ${{ inputs.persona }}
+          MODES_JSON: ${{ steps.modes.outputs.modes }}
+          PR_NUMBER: ${{ steps.pull.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.pull.outputs.head_sha }}
+        with:
+          script: |
+            // A rerun on the same head and mode posts no second comment. Only
+            // comments from the Actions bot count, so a person cannot suppress
+            // a comment by posting the header line. The check run always runs.
+            const BOT = "github-actions[bot]";
+            const modes = JSON.parse(process.env.MODES_JSON);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: Number(process.env.PR_NUMBER), per_page: 100,
+            });
+            const reviewed = {};
+            for (const mode of modes) {
+              const prefix = `${process.env.PERSONA} / ${mode} | head ${process.env.HEAD_SHA} |`;
+              reviewed[mode] = comments.some((comment) =>
+                comment.user?.login === BOT && (comment.body || "").startsWith(prefix));
+            }
+            core.setOutput("already_reviewed", JSON.stringify(reviewed));
+
+  skip-fork:
+    needs: resolve
+    if: needs.resolve.outputs.same_repository != 'true' && inputs.fork_review != true
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    strategy:
+      matrix:
+        mode: ${{ fromJSON(needs.resolve.outputs.modes) }}
+    steps:
+      - name: Report skipped fork review
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          PERSONA: ${{ inputs.persona }}
+          MODE: ${{ matrix.mode }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+        with:
+          script: |
+            await github.rest.checks.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              name: `${process.env.PERSONA} / ${process.env.MODE}`,
+              head_sha: process.env.HEAD_SHA,
+              status: "completed",
+              conclusion: "skipped",
+              output: {
+                title: "Skipped for fork pull request",
+                summary: "Fork pull requests get no model review and no secret. Set fork_review: true to review through the fork-review environment.",
+              },
+            });
+
+  review:
+    needs: resolve
+    if: needs.resolve.outputs.same_repository == 'true' && inputs.fork_review != true
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: ${{ fromJSON(needs.resolve.outputs.modes) }}
+    concurrency:
+      group: persona-review-${{ inputs.persona }}-${{ needs.resolve.outputs.pr_number }}-${{ matrix.mode }}
+      cancel-in-progress: true
+    steps: &review_steps
+      - name: Check out the caller base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out the engine
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          repository: abuzucom/agents-personas
+          ref: ${{ inputs.personas_ref }}
+          path: .agents-personas
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: '3.14'
+
+      - name: Fetch pull request head object
+        env:
+          HEAD_REPO_URL: ${{ needs.resolve.outputs.head_repo_url }}
+          HEAD_REPO_FULL_NAME: ${{ needs.resolve.outputs.head_repo_full_name }}
+          BASE_REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          EXPECTED_REF: ${{ inputs.personas_ref }}
+          # The checkouts persist no credential. A private caller needs one to
+          # fetch its own head. Only this step receives the token.
+          FETCH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          checked_out="$(git -C .agents-personas rev-parse HEAD)"
+          if [ "$checked_out" != "$EXPECTED_REF" ]; then
+            echo "error: engine checkout $checked_out does not match personas_ref" >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          import base64
+          import os
+          import re
+          import subprocess
+          from urllib.parse import urlsplit
+
+          url = os.environ["HEAD_REPO_URL"]
+          head_repository = os.environ["HEAD_REPO_FULL_NAME"]
+          base_repository = os.environ["BASE_REPOSITORY"]
+          head_sha = os.environ["HEAD_SHA"]
+          parsed = urlsplit(url)
+          if parsed.scheme != "https" or parsed.hostname != "github.com" or parsed.query or parsed.fragment:
+              raise SystemExit("pull request head repository URL is not an approved GitHub URL")
+          if not re.fullmatch(r"[0-9a-f]{40}", head_sha):
+              raise SystemExit("pull request head SHA is invalid")
+          same = head_repository.casefold() == base_repository.casefold()
+          source = "origin" if same else url
+          environment = dict(os.environ)
+          token = environment.pop("FETCH_TOKEN", "")
+          if token and same:
+              # The header reaches this one fetch through the environment. Git
+              # config and the argument vector never hold the token. A fork URL
+              # fetch receives no credential.
+              credential = base64.b64encode(f"x-access-token:{token}".encode("utf-8")).decode("ascii")
+              environment.update({
+                  "GIT_CONFIG_COUNT": "1",
+                  "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
+                  "GIT_CONFIG_VALUE_0": f"AUTHORIZATION: basic {credential}",
+              })
+          subprocess.run(["git", "fetch", "--no-tags", source, head_sha], check=True, env=environment)
+          PY
+
+      - name: Run review
+        id: run
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          MODEL_CALL_COMMAND: ${{ inputs.model_call_command }}
+          PR_TITLE: ${{ needs.resolve.outputs.pr_title }}
+          PR_BODY: ${{ needs.resolve.outputs.pr_body }}
+          PERSONA: ${{ inputs.persona }}
+          MODE: ${{ matrix.mode }}
+          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
+          MAX_CHUNKS: ${{ inputs.max_chunks }}
+          MAX_ENVELOPE_BYTES: ${{ inputs.max_envelope_bytes }}
+        run: |
+          set -euo pipefail
+          arguments=(--root .agents-personas --persona "$PERSONA" --mode "$MODE" --repo .
+                     --base "$BASE_SHA" --head "$HEAD_SHA" --pr-number "$PR_NUMBER"
+                     --out-dir "$RUNNER_TEMP/review")
+          if [ -n "$MAX_CHUNKS" ]; then arguments+=(--max-chunks "$MAX_CHUNKS"); fi
+          if [ -n "$MAX_ENVELOPE_BYTES" ]; then arguments+=(--max-envelope-bytes "$MAX_ENVELOPE_BYTES"); fi
+          python3 .agents-personas/engine/run_review.py "${arguments[@]}"
+
+      - name: Render review output
+        if: ${{ always() && steps.run.outcome == 'success' }}
+        env:
+          FAIL_ON_BLOCK: ${{ inputs.fail_on_block }}
+        run: |
+          set -euo pipefail
+          python3 .agents-personas/engine/review_output.py "$RUNNER_TEMP/review/result.json" \
+            --fail-on-block "$FAIL_ON_BLOCK" --out "$RUNNER_TEMP/review/rendered.json"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          rendered = json.loads((Path(os.environ["RUNNER_TEMP"]) / "review" / "rendered.json").read_text())
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write(f"## {rendered['check_name']}\n\n{rendered['summary']}\n")
+          PY
+
+      - name: Publish check run
+        if: ${{ always() }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          PERSONA: ${{ inputs.persona }}
+          MODE: ${{ matrix.mode }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require("fs");
+            const path = `${process.env.RUNNER_TEMP}/review/rendered.json`;
+            let request;
+            if (fs.existsSync(path)) {
+              const rendered = JSON.parse(fs.readFileSync(path, "utf8"));
+              request = {
+                name: rendered.check_name, conclusion: rendered.conclusion,
+                output: { title: rendered.title, summary: rendered.summary, annotations: rendered.annotations },
+              };
+            } else {
+              // A run without a valid verdict never reports a pass.
+              request = {
+                name: `${process.env.PERSONA} / ${process.env.MODE}`, conclusion: "failure",
+                output: { title: "Review failed before a verdict", summary: "The workflow run log names the failed step." },
+              };
+            }
+            await github.rest.checks.create({
+              owner: context.repo.owner, repo: context.repo.repo, head_sha: process.env.HEAD_SHA,
+              status: "completed", details_url: process.env.RUN_URL, ...request,
+            });
+
+      - name: Post review comment
+        if: ${{ always() && inputs.pr_comment && steps.run.outcome == 'success' }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          MODE: ${{ matrix.mode }}
+          PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
+          REVIEWED_JSON: ${{ needs.resolve.outputs.already_reviewed }}
+        with:
+          script: |
+            const fs = require("fs");
+            if (JSON.parse(process.env.REVIEWED_JSON)[process.env.MODE]) {
+              core.info("This head and mode already carry a review comment.");
+              return;
+            }
+            const rendered = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/review/rendered.json`, "utf8"));
+            const [header, ...rest] = rendered.comment_body.split("\n");
+            const report = rest.join("\n").trim();
+            // The report is model output shaped by the pull request. The fence
+            // outruns its longest backtick run, so markdown cannot render
+            // images, links, or mentions from it.
+            const longest = (report.match(/`+/g) || []).reduce((most, run) => Math.max(most, run.length), 0);
+            const fence = "`".repeat(Math.max(3, longest + 1));
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: Number(process.env.PR_NUMBER),
+              body: `${header}\n\n${fence}\n${report}\n${fence}`,
+            });
+
+      - name: Upload review result
+        if: ${{ always() && steps.run.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: review-${{ inputs.persona }}-${{ matrix.mode }}-${{ needs.resolve.outputs.head_sha }}
+          path: ${{ runner.temp }}/review/result.json
+          if-no-files-found: error
+
+      - name: Fail on a gating verdict
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          path = Path(os.environ["RUNNER_TEMP"]) / "review" / "rendered.json"
+          if not path.is_file():
+              sys.exit("error: the review produced no verdict")
+          rendered = json.loads(path.read_text())
+          if rendered["conclusion"] == "failure":
+              sys.exit(f"error: {rendered['title']} fails this mode")
+          PY
+
+  fork-review:
+    needs: resolve
+    if: inputs.fork_review == true
+    runs-on: ubuntu-latest
+    environment: fork-review
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: ${{ fromJSON(needs.resolve.outputs.modes) }}
+    concurrency:
+      group: persona-review-${{ inputs.persona }}-${{ needs.resolve.outputs.pr_number }}-${{ matrix.mode }}
+      cancel-in-progress: true
+    steps: *review_steps

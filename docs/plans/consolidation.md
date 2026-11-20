@@ -268,7 +268,7 @@ One draft PR per step.
    - 3b-1 adds the provider table, the model adapter with usage, the argument-array adapter runner, and the shared response validator.
    - 3b-2 adds the fenced envelope, the caps, the chunking, and the injection corpus. The euler prescan moves with the euler persona in step 5.
    - 3c-1 adds `engine/run_review.py` and `engine/review_output.py`. The runner reviews one mode, retries one invalid reply, and combines the chunk verdicts. The renderer builds the check conclusion, the annotations, the comment, and the metrics.
-   - 3c-2 adds `review.yml`. The workflow covers the resolve job, the fork rule, the per-mode checks, the comments, and the run metrics.
+   - 3c-2 adds `review.yml`. The workflow covers the resolve job, the fork rule, the per-mode checks, the comments, and the run metrics. `personas_ref` is a required full SHA. Only the head fetch step receives the token. Python 3.14 runs every step.
 4. foucault persona (security). This is the pilot.
 5. euler persona (code quality).
 6. generay persona (time/date). Migrate `time` as the default review mode. Migrate `sync` as an opt-in review mode with context delivery. Add eval cases for both modes and a caller example with a conditional sync job.
