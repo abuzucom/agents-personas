@@ -44,7 +44,9 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 13 | Secrets (2026-11-20) | The secrets interface stays unchanged. Each wrapper declares the exact secret names, required flags, and environment of the source workflow it replaces. Adopter repository secrets and `secrets:` mappings stay unchanged. |
 | 14 | Fork runs (2026-11-20) | The engine applies one fork rule to every persona. A fork pull request gets a visible skipped check per requested mode and no secret. `fork_review: true` runs the review under the `fork-review` environment after a person approves. The engine never executes fork code with a secret in scope. |
 | 15 | Review output (2026-11-20) | Each run posts a new comment per head SHA and mode with a header line. Each mode also gets a check run with line annotations. |
-| 16 | Verdict values (2026-11-20) | Step 3 records source verdict values. The active human picks one set before the engine code. |
+| 16 | Verdict values (2026-11-20) | The engine accepts `APPROVE`, `BLOCK`, and `NEEDS-HUMAN`. All five source validators accept the same set. |
+| 21 | Non-gating verdicts (2026-11-20) | With `fail_on_block: false`, a `BLOCK` or `NEEDS-HUMAN` verdict sets the mode check to `neutral`. euler and generay behave that way today. |
+| 22 | Action pins (2026-11-20) | Engine workflows pin checkout v7.0.1, setup-python v7.1.0, github-script v9.0.0, and upload-artifact v7.0.2 at the euler and generay SHAs. |
 | 17 | Engine hardening (2026-11-20) | Fenced untrusted content, a shared injection corpus, one resolve job, one provider table, per-mode caps, timeouts with one retry, and usage in each check. |
 | 18 | Evals and data (2026-11-20) | Live evals need prompt changes plus a human `eval-live` label. Each persona carries `DATA.md`. |
 | 19 | Adopters and releases (2026-11-20) | `docs/migration.md` and `examples/` guide adopters. The active human moves each repo. One repo SemVer with per-persona notes. |
@@ -181,9 +183,20 @@ Each comment opens with a header line:
 
 ### Verdicts
 
-- Step 3 records the verdict values and the `fail_on_block` meaning of each source repo before the engine code.
-- The active human chooses one value set from that record.
-- One response validator then enforces that set for every persona and mode.
+Source record (2026-11-20):
+
+| Repo | Accepted values | `fail_on_block` default | Non-gating `BLOCK` |
+|---|---|---|---|
+| foucault | `APPROVE`, `BLOCK`, `NEEDS-HUMAN` | true | job passes |
+| euler | `APPROVE`, `BLOCK`, `NEEDS-HUMAN` | true | check `neutral` |
+| adorno | `APPROVE`, `BLOCK`, `NEEDS-HUMAN` | true | job passes |
+| generay | `APPROVE`, `BLOCK`, `NEEDS-HUMAN` | true | check `neutral` |
+| havel | `APPROVE`, `BLOCK`, `NEEDS-HUMAN` | true | job passes |
+
+`REJECT` appears in the sources only as a malformed-token test fixture.
+
+- One response validator enforces `APPROVE`, `BLOCK`, and `NEEDS-HUMAN` for every persona and mode (decision 16).
+- `fail_on_block` defaults to true. A true value fails the mode check on `BLOCK` and `NEEDS-HUMAN`. A false value sets the check to `neutral` (decision 21).
 - A run without a valid verdict never reports a pass.
 
 ### Untrusted pull request content
@@ -250,7 +263,10 @@ One draft PR per step.
 
 1. Done 2026-11-19. The active human created `abuzucom/agents-personas`.
 2. Adopt the agents policy into agents-personas.
-3. Build the engine. Move the agents `ci/` copies plus euler chunking into `engine/`. Add `review.yml`. Add the mode schema, `check_reviewers.py`, `render_context.py`, and one check per mode. Add the fork rule, the shared resolve job, the review outputs, the provider table, the caps, the injection corpus, and `reviewers/_template/`. Record the source verdict values for the active human. Write tests first. Choose one full-SHA pin per action. The source repos diverge (checkout v4.4.0 vs v7.0.1, github-script v7.1.0 vs v9.0.0). Pin changes need Rule 9 approval.
+3. Build the engine. Move the agents `ci/` copies plus euler chunking into `engine/`. Add `review.yml`. Add the mode schema, `check_reviewers.py`, `render_context.py`, and one check per mode. Add the fork rule, the shared resolve job, the review outputs, the provider table, the caps, the injection corpus, and `reviewers/_template/`. Write tests first. Use the decision 22 pins. Step 3 lands as three draft PRs:
+   - 3a adds the decisions record and the mode schema in `engine/reviewers.py`. It also adds `engine/check_reviewers.py`, `engine/render_context.py`, and `reviewers/_template/`.
+   - 3b adds the engine core. The core covers the provider table, the caps, the fenced envelope, the runner, the response validator, and the injection corpus.
+   - 3c adds `review.yml`. The workflow covers the resolve job, the fork rule, the per-mode checks, the comments, and the run metrics.
 4. foucault persona (security). This is the pilot.
 5. euler persona (code quality).
 6. generay persona (time/date). Migrate `time` as the default review mode. Migrate `sync` as an opt-in review mode with context delivery. Add eval cases for both modes and a caller example with a conditional sync job.

@@ -14,7 +14,21 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.2] (2026-11-20)
+## [0.2.0] (2026-11-20)
+
+### Added
+- Add the persona manifest schema in `engine/reviewers.py`. A manifest
+  declares modes with review delivery, context delivery, or both. Exactly
+  one mode is the default.
+- Add `engine/check_reviewers.py`. It validates every
+  `reviewers/<name>/reviewer.json` and the template.
+- Add `engine/render_context.py`. It prints one context-delivery mode for
+  an agent prompt.
+- Add the `reviewers/_template/` scaffold for a new persona.
+- Record decisions 16, 21, and 22 in `docs/plans/consolidation.md`. The
+  engine accepts `APPROVE`, `BLOCK`, and `NEEDS-HUMAN`. A non-gating
+  verdict sets the mode check to `neutral`. Engine workflows use the euler
+  and generay action pins.
 
 ### Fixed
 - Disable automatic Git maintenance in the digest index test fixture. The

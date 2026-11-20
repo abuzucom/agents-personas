@@ -1,0 +1,12 @@
+{
+  "persona": "_template",
+  "function": "review",
+  "modes": {
+    "review": {
+      "prompt": "PROMPT.md",
+      "review": true,
+      "context": false,
+      "default": true
+    }
+  }
+}
