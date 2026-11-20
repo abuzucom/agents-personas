@@ -39,7 +39,7 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 8 | Pilot | foucault (security) |
 | 9 | Plan home | `docs/plans/consolidation.md` in agents-personas. A pointer from the agents README lands in step 9 or 10. |
 | 10 | Side issues | Two agents policy doc fixes run as separate tasks. havel prompt path and action pins fold into steps 8 and 3. |
-| 11 | Persona names (2026-11-20) | Each reviewer keeps the name of its source repo. Directories, `persona` values, eval flags, and wrapper workflows use the persona name. |
+| 11 | Persona names (2026-11-20) | Each reviewer keeps the name of its source repo. Directories, `persona` values, and eval flags use the persona name. Wrapper workflows use `<persona>-<function>-review.yml`, for example `foucault-security-review.yml`. |
 
 ## Two repos
 
@@ -69,8 +69,9 @@ engine/
   build_bundle.py, run_eval.py, model_providers.json
 .github/workflows/
   review.yml             reusable engine, input `persona`
-  foucault-review.yml, euler-review.yml, adorno-review.yml,
-  generay-review.yml, havel-review.yml   thin reusable wrappers
+  foucault-security-review.yml, euler-quality-review.yml,
+  adorno-ui-review.yml, generay-time-review.yml,
+  havel-privacy-review.yml   thin reusable wrappers
 policy files             synced from agents via scripts/sync.py
 ```
 
