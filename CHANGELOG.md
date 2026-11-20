@@ -23,7 +23,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add `engine/check_reviewers.py`. It validates every
   `reviewers/<name>/reviewer.json` and the template.
 - Add `engine/render_context.py`. It prints one context-delivery mode for
-  an agent prompt.
+  an agent prompt. The output equals the prompt bytes on every platform.
 - Add the `reviewers/_template/` scaffold for a new persona.
 - Record decisions 16, 21, and 22 in `docs/plans/consolidation.md`. The
   engine accepts `APPROVE`, `BLOCK`, and `NEEDS-HUMAN`. A non-gating

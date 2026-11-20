@@ -10,8 +10,8 @@ except ImportError:
     from engine import reviewers
 
 
-def render_context(root: Path, persona: str, mode: str) -> str:
-    """Return the ASCII prompt text of one context-delivery mode."""
+def render_context(root: Path, persona: str, mode: str) -> bytes:
+    """Return the ASCII prompt bytes of one context-delivery mode."""
     persona_dir, manifest = reviewers.load_persona(root, persona)
     entry = manifest["modes"].get(mode)
     if entry is None:
@@ -23,10 +23,9 @@ def render_context(root: Path, persona: str, mode: str) -> str:
     if len(content) > reviewers.MAX_CONTEXT_BYTES:
         raise reviewers.ReviewerError(
             f"prompt '{entry['prompt']}' exceeds {reviewers.MAX_CONTEXT_BYTES} bytes")
-    try:
-        return content.decode("ascii")
-    except UnicodeDecodeError as error:
-        raise reviewers.ReviewerError(f"prompt '{entry['prompt']}' is not ASCII") from error
+    if not content.isascii():
+        raise reviewers.ReviewerError(f"prompt '{entry['prompt']}' is not ASCII")
+    return content
 
 
 def main(argv: list[str]) -> int:
@@ -37,12 +36,15 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--mode", required=True)
     options = parser.parse_args(argv)
     try:
-        text = render_context(Path(options.root), options.persona, options.mode)
+        context_bytes = render_context(Path(options.root), options.persona, options.mode)
     except (OSError, reviewers.ReviewerError) as error:
         print(f"error: {error}. Choose a persona and a mode with context delivery.",
               file=sys.stderr)
         return 1
-    sys.stdout.write(text)
+    # Text-mode standard output rewrites newlines on Windows. The binary
+    # buffer keeps the rendered context identical on every platform.
+    sys.stdout.buffer.write(context_bytes)
+    sys.stdout.buffer.flush()
     return 0
 
 
