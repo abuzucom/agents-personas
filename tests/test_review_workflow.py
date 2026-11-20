@@ -26,7 +26,7 @@ REQUIRED_INPUTS = {"personas_ref", "persona"}
 OPTIONAL_INPUTS = {
     "modes", "pr_number", "base_sha", "head_sha", "head_repo_url", "head_repo_full_name",
     "model_call_command", "pr_comment", "fail_on_block", "fork_review", "max_chunks",
-    "max_envelope_bytes",
+    "max_envelope_bytes", "paths",
 }
 REVIEW_JOBS = ("review", "fork-review")
 EXPRESSION = re.compile(r"\$\{\{")

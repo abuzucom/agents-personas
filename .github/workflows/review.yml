@@ -83,6 +83,11 @@ on:
         required: false
         type: boolean
         default: false
+      paths:
+        description: "Optional newline-separated globs. The review runs only when a changed file matches. Empty reviews every pull request."
+        required: false
+        type: string
+        default: ""
       max_chunks:
         description: "Optional lower chunk cap. A higher value keeps the mode cap."
         required: false
@@ -118,6 +123,7 @@ jobs:
       pr_body: ${{ steps.pull.outputs.pr_body }}
       modes: ${{ steps.modes.outputs.modes }}
       already_reviewed: ${{ steps.reviewed.outputs.already_reviewed }}
+      paths_match: ${{ steps.paths.outputs.paths_match }}
     steps:
       - name: Resolve pull request
         id: pull
@@ -276,9 +282,60 @@ jobs:
             }
             core.setOutput("already_reviewed", JSON.stringify(reviewed));
 
+      - name: List changed files
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          PR_NUMBER: ${{ steps.pull.outputs.pr_number }}
+        with:
+          script: |
+            const fs = require("fs");
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              pull_number: Number(process.env.PR_NUMBER), per_page: 100,
+            });
+            // A rename touches both paths, so a filter on either name runs the review.
+            const names = files.flatMap((file) => [file.filename, file.previous_filename].filter(Boolean));
+            fs.writeFileSync(`${process.env.RUNNER_TEMP}/changed-files.json`, JSON.stringify(names));
+
+      - name: Match caller paths
+        id: paths
+        env:
+          PATH_PATTERNS: ${{ inputs.paths }}
+        run: python3 .agents-personas/engine/path_filter.py "$RUNNER_TEMP/changed-files.json"
+
+  skip-paths:
+    needs: resolve
+    if: needs.resolve.outputs.paths_match != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    strategy:
+      matrix:
+        mode: ${{ fromJSON(needs.resolve.outputs.modes) }}
+    steps:
+      - name: Report no matching files
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          PERSONA: ${{ inputs.persona }}
+          MODE: ${{ matrix.mode }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+        with:
+          script: |
+            await github.rest.checks.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              name: `${process.env.PERSONA} / ${process.env.MODE}`,
+              head_sha: process.env.HEAD_SHA,
+              status: "completed",
+              conclusion: "skipped",
+              output: {
+                title: "No matching files",
+                summary: "No changed file matches the caller's paths input. The review did not run.",
+              },
+            });
+
   skip-fork:
     needs: resolve
-    if: needs.resolve.outputs.same_repository != 'true' && inputs.fork_review != true
+    if: needs.resolve.outputs.paths_match == 'true' && needs.resolve.outputs.same_repository != 'true' && inputs.fork_review != true
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -308,7 +365,7 @@ jobs:
 
   review:
     needs: resolve
-    if: needs.resolve.outputs.same_repository == 'true' && inputs.fork_review != true
+    if: needs.resolve.outputs.paths_match == 'true' && needs.resolve.outputs.same_repository == 'true' && inputs.fork_review != true
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -518,7 +575,7 @@ jobs:
 
   fork-review:
     needs: resolve
-    if: inputs.fork_review == true
+    if: needs.resolve.outputs.paths_match == 'true' && inputs.fork_review == true
     runs-on: ubuntu-latest
     environment: fork-review
     permissions:

@@ -1,0 +1,31 @@
+name: foucault-security-review-pr
+
+# Self-review: foucault reviews this repository's pull requests after the
+# Convention Sync Check finishes. A workflow_run job runs the workflow files
+# and engine of the default branch, so a pull request cannot change the
+# prompt or the adapter that receives the provider key.
+
+on:
+  workflow_run:
+    workflows: [Convention Sync Check]
+    types: [completed]
+
+concurrency:
+  group: foucault-security-review-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  foucault:
+    if: github.event.workflow_run.event == 'pull_request'
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/foucault-security-review.yml
+    with:
+      personas_ref: ${{ github.sha }}
+    secrets:
+      MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}

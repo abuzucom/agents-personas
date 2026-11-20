@@ -1,0 +1,38 @@
+{
+  "persona": "foucault",
+  "function": "security",
+  "modes": {
+    "security": {
+      "prompt": "AUDIT.md",
+      "review": true,
+      "default": true,
+      "json_mode": "PR",
+      "finding_rules": {
+        "keys": ["severity", "class", "file", "line", "title"],
+        "severities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "class_prefix": "2."
+      }
+    },
+    "file": {
+      "prompt": "AUDIT.md",
+      "local": true,
+      "json_mode": "File",
+      "verdict_line": "RISK",
+      "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
+    },
+    "piece": {
+      "prompt": "AUDIT.md",
+      "local": true,
+      "json_mode": "Piece",
+      "verdict_line": "RISK (partial)",
+      "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND", "NEEDS-HUMAN"]
+    },
+    "wholesale": {
+      "prompt": "AUDIT.md",
+      "local": true,
+      "json_mode": "Wholesale",
+      "verdict_line": "RISK",
+      "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
+    }
+  }
+}

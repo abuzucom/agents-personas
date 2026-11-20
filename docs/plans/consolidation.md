@@ -51,6 +51,11 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 18 | Evals and data (2026-11-20) | Live evals need prompt changes plus a human `eval-live` label. Each persona carries `DATA.md`. |
 | 19 | Adopters and releases (2026-11-20) | `docs/migration.md` and `examples/` guide adopters. The active human moves each repo. One repo SemVer with per-persona notes. |
 | 20 | Persona template and metrics (2026-11-20) | `reviewers/_template/` scaffolds new personas. Each run writes a metrics step summary. |
+| 23 | Caller patterns (2026-11-20) | foucault and euler run on every pull request through a `workflow_run` caller after CI. Branch protection requires both checks. adorno, generay, and havel run through a `pull_request_target` caller on `labeled` and `synchronize`. Each job checks its own `review:<persona>` label. The generay sync job checks `review:generay-sync`. Those checks stay optional. `examples/always-on-caller.yml` and `examples/label-caller.yml` show both. |
+| 24 | Path filter (2026-11-20) | `review.yml` and every wrapper take an optional `paths` input of newline-separated globs. A pull request without a matching changed file gets a skipped check named "No matching files". No `enabled` input exists. |
+| 25 | Finding rules (2026-11-20) | A review mode can declare `finding_rules` in `reviewer.json`. The block names the exact finding keys, the allowed severities, and a class prefix. The shared validator enforces each rule. foucault declares five keys, CRITICAL to LOW, and the `2.` prefix. |
+| 26 | Local modes (2026-11-20) | Each persona keeps its workstation modes, for example foucault File, Piece, and Wholesale. A mode with `local: true` has no CI delivery. `verdict_line` and `verdicts` name its verdict form. `json_mode` names the mode string the prompt expects. All source eval cases move into `eval/cases/<mode>/`. |
+| 27 | Eval runner (2026-11-20) | `engine/run_eval.py` checks case structure for every mode and grades live replies through `--model-call`. The engine grades the verdict line, `REVIEW STATUS`, and `VERDICT_JSON`. A persona adds its own checks in `eval/extra_checks.py` through `validate_expected`, `build_model_input`, and `grade_response`. |
 
 ## Two repos
 
@@ -144,6 +149,7 @@ The engine replaces both forms with one rule:
 
 - `review: true` lets the engine run the mode on a pull request with a verdict.
 - `context: true` lets `engine/render_context.py --persona <name> --mode <mode>` print the mode for an agent context. That command replaces the manual SYNC paste.
+- `local: true` keeps a mode for workstation runs through `engine/run_eval.py` only (decision 26).
 - Each persona has exactly one default mode. A single-mode persona declares one entry.
 - Each mode runs as a separate check with a separate verdict, for example `generay / time` and `generay / sync`. Branch protection can require each check alone.
 - `engine/check_reviewers.py` validates every `reviewer.json`. It rejects a missing default, a missing prompt file, and a mode without delivery. The engine rejects an unknown mode and a mode without review delivery.
@@ -248,7 +254,7 @@ Each run writes a step summary with the verdict, the duration, and the token cou
 ### Adopter migration
 
 - `docs/migration.md` maps each old `uses:` line and input to the new wrapper and input. Example: `audit_ref` maps to `personas_ref`.
-- `examples/<persona>-caller.yml` holds a copy-paste caller per persona.
+- `examples/always-on-caller.yml` and `examples/label-caller.yml` hold the copy-paste callers (decision 23). Each persona step adds a job to one of the two files.
 - Secrets stay unchanged (decision 13).
 - The active human moves each adopter repo to the new callers. The plan holds no automated cutover or rollback. Old callers keep working on old repo SHAs until that move.
 
@@ -279,7 +285,7 @@ One draft PR per step.
    - 3b-2 adds the fenced envelope, the caps, the chunking, and the injection corpus. The euler prescan moves with the euler persona in step 5.
    - 3c-1 adds `engine/run_review.py` and `engine/review_output.py`. The runner reviews one mode, retries one invalid reply, and combines the chunk verdicts. The renderer builds the check conclusion, the annotations, the comment, and the metrics.
    - 3c-2 adds `review.yml`. The workflow covers the resolve job, the fork rule, the per-mode checks, the comments, and the run metrics. `personas_ref` is a required full SHA. Only the head fetch step receives the token. Python 3.14 runs every step.
-4. foucault persona (security). This is the pilot.
+4. foucault persona (security). This is the pilot. It adds the `paths` input, `finding_rules`, local modes, `engine/run_eval.py`, the wrapper, the self-review caller, and both caller examples.
 5. euler persona (code quality).
 6. generay persona (time/date). Migrate `time` as the default review mode. Migrate `sync` as an opt-in review mode with context delivery. Add eval cases for both modes and a caller example with a conditional sync job.
 7. adorno persona (UI/UX, a11y).
@@ -295,7 +301,7 @@ Import per persona:
 - prompts
 - eval cases
 - persona-specific scripts with tests
-- a `DATA.md`, a `docs/migration.md` section, and an `examples/<persona>-caller.yml`
+- a `DATA.md`, a `docs/migration.md` section, and a job in an `examples/` caller
 
 Do not import:
 

@@ -120,7 +120,25 @@ def _validate_finding(finding: Any) -> None:
         raise ResponseError("finding has an invalid line")
 
 
-def _validate_payload(payload: dict[str, Any], verdict: str, expected_mode: str | None) -> None:
+def _validate_finding_rules(finding: dict[str, Any], rules: dict[str, Any]) -> None:
+    """Enforce one persona's declared finding fields."""
+    keys = rules.get("keys")
+    if keys is not None and set(finding) != set(keys):
+        raise ResponseError(f"finding keys {sorted(finding)} differ from the declared keys {sorted(keys)}")
+    severities = rules.get("severities")
+    if severities is not None and finding.get("severity") not in severities:
+        raise ResponseError("finding has an invalid severity")
+    prefix = rules.get("class_prefix")
+    if prefix is None:
+        return
+    value = finding.get("class")
+    suffix = value[len(prefix):] if isinstance(value, str) and value.startswith(prefix) else ""
+    if not (suffix.isascii() and suffix.isdigit()):
+        raise ResponseError(f"finding class must be '{prefix}' followed by digits")
+
+
+def _validate_payload(payload: dict[str, Any], verdict: str, expected_mode: str | None,
+                      finding_rules: dict[str, Any] | None = None) -> None:
     """Check the payload keys, verdict, mode, and findings."""
     missing = sorted(REQUIRED_JSON_KEYS - set(payload))
     if missing:
@@ -135,9 +153,12 @@ def _validate_payload(payload: dict[str, Any], verdict: str, expected_mode: str 
         raise ResponseError("VERDICT_JSON findings is not a list")
     for finding in findings:
         _validate_finding(finding)
+        if finding_rules:
+            _validate_finding_rules(finding, finding_rules)
 
 
-def validate_response(response: str, expected_mode: str | None = None) -> tuple[str, dict[str, Any]]:
+def validate_response(response: str, expected_mode: str | None = None,
+                      finding_rules: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
     """Validate one bounded review response and return its verdict and JSON."""
     if len(response.encode("utf-8")) > RESPONSE_LIMIT:
         raise ResponseError("response exceeds the configured limit")
@@ -148,7 +169,7 @@ def validate_response(response: str, expected_mode: str | None = None) -> tuple[
         numbers = ", ".join(str(number) for number in narration[:5])
         raise ResponseError(f"process narration appears on report line(s): {numbers}")
     payload = _parse_json_line(lines)
-    _validate_payload(payload, verdict, expected_mode)
+    _validate_payload(payload, verdict, expected_mode, finding_rules)
     return verdict, payload
 
 

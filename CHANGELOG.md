@@ -14,9 +14,30 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] (2026-11-20)
+## [0.8.0] (2026-11-20)
 
 ### Added
+- Add the foucault persona under `reviewers/foucault/`. It holds `AUDIT.md`,
+  `DATA.md`, `PROVENANCE.md`, and all 68 eval cases from `abuzucom/foucault`
+  at `9ec9681`. The `security` mode reviews pull requests. The `file`,
+  `piece`, and `wholesale` modes run locally.
+- Add `scripts/check_audit_policy.py` to the foucault persona with its tests.
+- Add `engine/run_eval.py`. It checks the eval cases of every mode and grades
+  live replies through `--model-call`. A persona adds checks in
+  `eval/extra_checks.py`. foucault adds its report contract, the exact
+  `VERDICT_JSON` keys, and the `omit_provenance` input.
+- Add local modes to `reviewer.json`. `local: true` marks a mode without CI
+  delivery. `verdict_line` and `verdicts` name its verdict form.
+- Add `finding_rules` to `reviewer.json` modes. The shared validator checks
+  the finding keys, severities, and class prefix.
+- Add the `paths` input to `review.yml`. A pull request without a matching
+  changed file gets a skipped check named "No matching files".
+- Add `.github/workflows/foucault-security-review.yml`, the foucault wrapper.
+  Add `.github/workflows/foucault-security-review-pr.yml`, the self-review
+  caller after the Convention Sync Check.
+- Add `examples/always-on-caller.yml`, `examples/label-caller.yml`, and
+  `docs/migration.md`.
+- Record decisions 23 to 27 in `docs/plans/consolidation.md`.
 - Add `.github/workflows/review.yml`, the reusable engine workflow.
   - One resolve job validates `personas_ref`, the persona, and the cap
     inputs. It resolves the pull request, `same_repository`, the review
@@ -33,6 +54,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   checkout credentials, fork rule, secret scope, and script expressions.
 
 ### Changed
+- `tests/test_review_workflow.py` lists `paths` among the optional inputs.
+  The active human approved that existing test edit.
 - NEEDS-HUMAN warns and never blocks CI. `engine/review_output.py` concludes
   `neutral` for NEEDS-HUMAN whatever `fail_on_block` says. The rendered
   output carries a `warning` line. `review.yml` prints it as a `::warning`
