@@ -15,6 +15,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -38,6 +39,8 @@ STAGES = ("all", "build", "review")
 HOOK_ENVIRONMENT_NAMES = frozenset({"PATH", "HOME", "USERPROFILE", "LANG", "TMPDIR", "TEMP", "TMP",
                                     "SYSTEMROOT", "PATHEXT", "COMSPEC"})
 HOOK_LOCALE_PREFIX = "LC_"
+# These point at the hook child's own empty temporary directory.
+HOOK_HOME_VARIABLES = ("HOME", "USERPROFILE", "TMPDIR", "TEMP", "TMP")
 HOOK_TIMEOUT_SECONDS = 300
 # The provider adapter applies its own request timeout and retry. This bound
 # stops a hung adapter process.
@@ -130,13 +133,19 @@ def call_hook(persona_dir: Path | None, name: str, arguments: list) -> tuple[boo
     """
     if persona_dir is None or not (Path(persona_dir) / persona_hooks.REVIEW_HOOKS_NAME).exists():
         return False, None
-    environment = hook_environment()
-    command = [sys.executable, str(ENGINE_DIR / "run_hook.py"), "--persona-dir", str(persona_dir), "--hook", name]
-    try:
-        completed = subprocess.run(command, input=json.dumps(arguments), env=environment, capture_output=True,
-                                   text=True, encoding="utf-8", timeout=HOOK_TIMEOUT_SECONDS, check=False)
-    except subprocess.TimeoutExpired as error:
-        raise ReviewError(f"persona hook {name} timed out after {HOOK_TIMEOUT_SECONDS} s") from error
+    command = [sys.executable, str((ENGINE_DIR / "run_hook.py").resolve()), "--persona-dir",
+               str(Path(persona_dir).resolve()), "--hook", name]
+    # The child starts in a fresh empty directory. That directory is also its
+    # home and temp directory. It never starts inside the checkout. It keeps read
+    # access to the runner filesystem and the network (decision 32).
+    with tempfile.TemporaryDirectory(prefix="persona-hook-") as workdir:
+        environment = {**hook_environment(), **dict.fromkeys(HOOK_HOME_VARIABLES, workdir)}
+        try:
+            completed = subprocess.run(command, input=json.dumps(arguments), env=environment, cwd=workdir,
+                                       capture_output=True, text=True, encoding="utf-8",
+                                       timeout=HOOK_TIMEOUT_SECONDS, check=False)
+        except subprocess.TimeoutExpired as error:
+            raise ReviewError(f"persona hook {name} timed out after {HOOK_TIMEOUT_SECONDS} s") from error
     if completed.returncode:
         diagnostics = review_output.clean_text(completed.stderr.strip(), MAX_PROBLEM_CHARS)
         raise ReviewError(f"persona hook {name} failed: {diagnostics}")

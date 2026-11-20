@@ -60,6 +60,7 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 29 | Persona options (2026-11-20) | `review.yml` takes one `persona_options` JSON object. `reviewer.json` declares each option with a type and a default. The engine rejects undeclared options. euler declares `exclude_paths`. |
 | 30 | Build stage (2026-11-20) | Each review job builds the case in a step without the provider key, then reviews it in the key step. Every persona hook runs in a child process with an allowlisted environment in every stage. Persona hook code never runs beside the key. The review step rejects a built case for other inputs. |
 | 31 | Lint toolchain (2026-11-20) | ruff, mypy, and yamllint from decision 5 land in a separate pull request after the euler step. |
+| 32 | Hook isolation limit (2026-11-20) | A persona hook child gets an allowlisted environment and an empty temporary directory as its working directory and home. It keeps network access and read access to the runner filesystem. A network-denied, read-only sandbox needs a new system tool and stays a follow-up. Checkouts persist no credential, and the token reaches only the fetch step. |
 
 ## Two repos
 
