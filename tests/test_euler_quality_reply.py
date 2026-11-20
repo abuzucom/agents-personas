@@ -147,5 +147,45 @@ class CommandLineTest(unittest.TestCase):
         self.assertIn("unreviewed files forbid APPROVE", result.stderr)
 
 
+class EngineLayoutTest(unittest.TestCase):
+    """The CLI also reads an engine envelope: prescan and unreviewed sit in REVIEW_TARGET."""
+
+    def engine_envelope(self, unreviewed: list[str], prescan: list[dict]) -> dict:
+        import importlib.util
+
+        engine_path = REPO_ROOT.parent.parent / "engine" / "envelope.py"
+        spec = importlib.util.spec_from_file_location("engine_envelope_for_cli", engine_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return json.loads(module.build_envelope(
+            "euler", "quality", {"app.py": "+x\n"}, "T", "B", {"chunk": "1/1"},
+            context={"prescan": prescan}, changed_files=["app.py", *unreviewed], unreviewed=unreviewed))
+
+    def test_context_reads_the_engine_layout(self) -> None:
+        envelope = self.engine_envelope(["big.bin"], [{"id": "P1", "file": "app.py"}])
+        context = checker.context_from_envelope(envelope, checker.unreviewed_from_envelope(envelope))
+        self.assertEqual(context, checker.ReviewContext("PR", {"app.py"}, {"P1"}, ["big.bin"]))
+
+    def test_context_still_reads_the_euler_layout(self) -> None:
+        metadata = {"chunk": "1/1", "unreviewed": ["big.bin"]}
+        envelope = json.loads(review_envelope.build_envelope("PR", {"app.py": "+x\n"}, "", [{"id": "P1"}], metadata))
+        context = checker.context_from_envelope(envelope, checker.unreviewed_from_envelope(envelope))
+        self.assertEqual(context, checker.ReviewContext("PR", {"app.py"}, {"P1"}, ["big.bin"]))
+
+    def test_cli_reads_unreviewed_files_from_an_engine_envelope(self) -> None:
+        envelope = self.engine_envelope(["big.bin"], [])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            report_path = Path(temp_dir) / "report.md"
+            envelope_path = Path(temp_dir) / "envelope.json"
+            report_path.write_text(build_report("APPROVE", []), encoding="utf-8")
+            envelope_path.write_text(json.dumps(envelope), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(REPO_ROOT / "scripts" / "quality_reply.py"), str(report_path),
+                 str(envelope_path)],
+                capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("unreviewed files forbid APPROVE", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
