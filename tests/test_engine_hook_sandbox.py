@@ -44,29 +44,46 @@ def _git(repo: Path, *args: str) -> str:
 
 
 class ModeTest(unittest.TestCase):
-    """PERSONAS_REQUIRE_SANDBOX=1 fails closed without bubblewrap. Otherwise a missing tool falls back."""
+    """The sandbox is required unless PERSONAS_REQUIRE_SANDBOX opts out with 0 or off."""
 
     def setUp(self):
-        self.saved = {name: os.environ.get(name) for name in ("PERSONAS_REQUIRE_SANDBOX", "PATH")}
+        self.saved_mode = os.environ.get("PERSONAS_REQUIRE_SANDBOX")
+        self.saved_path = sandbox.BWRAP_PATH
         self.addCleanup(self.restore)
+        self.missing = tempfile.TemporaryDirectory()
+        self.addCleanup(self.missing.cleanup)
 
     def restore(self):
-        for name, value in self.saved.items():
-            if value is None:
-                os.environ.pop(name, None)
-            else:
-                os.environ[name] = value
+        sandbox.BWRAP_PATH = self.saved_path
+        if self.saved_mode is None:
+            os.environ.pop("PERSONAS_REQUIRE_SANDBOX", None)
+        else:
+            os.environ["PERSONAS_REQUIRE_SANDBOX"] = self.saved_mode
 
-    def test_unknown_require_value_is_refused(self):
+    def without_bwrap(self, mode: str | None) -> None:
+        sandbox.BWRAP_PATH = str(Path(self.missing.name) / "bwrap")
+        if mode is None:
+            os.environ.pop("PERSONAS_REQUIRE_SANDBOX", None)
+        else:
+            os.environ["PERSONAS_REQUIRE_SANDBOX"] = mode
+
+    def test_unknown_value_is_refused(self):
         os.environ["PERSONAS_REQUIRE_SANDBOX"] = "yes please"
         with self.assertRaisesRegex(sandbox.SandboxUnavailable, "PERSONAS_REQUIRE_SANDBOX"):
             sandbox.wrap(["true"], workdir=Path("/tmp"), read_only=[], writable=[])
 
-    def test_require_without_the_tool_fails_closed(self):
-        with tempfile.TemporaryDirectory() as empty:
-            os.environ.update({"PERSONAS_REQUIRE_SANDBOX": "1", "PATH": empty})
-            with self.assertRaisesRegex(sandbox.SandboxUnavailable, "bubblewrap"):
-                sandbox.wrap(["true"], workdir=Path(empty), read_only=[], writable=[])
+    def test_default_without_the_tool_fails_closed(self):
+        for mode in (None, "", "1"):
+            with self.subTest(mode=mode):
+                self.without_bwrap(mode)
+                with self.assertRaisesRegex(sandbox.SandboxUnavailable, "bubblewrap"):
+                    sandbox.wrap(["true"], workdir=Path("/tmp"), read_only=[], writable=[])
+
+    def test_zero_without_the_tool_falls_back_with_a_warning(self):
+        self.without_bwrap("0")
+        with self.assertWarnsRegex(RuntimeWarning, "without a sandbox"):
+            command = sandbox.wrap(["true"], workdir=Path("/tmp"), read_only=[], writable=[])
+        self.assertEqual(command, ["true"])
 
     def test_off_runs_the_plain_command_without_a_warning(self):
         os.environ["PERSONAS_REQUIRE_SANDBOX"] = "off"
@@ -75,13 +92,35 @@ class ModeTest(unittest.TestCase):
             command = sandbox.wrap(["true"], workdir=Path("/tmp"), read_only=[], writable=[])
         self.assertEqual(command, ["true"])
 
-    def test_missing_tool_falls_back_with_a_warning(self):
-        with tempfile.TemporaryDirectory() as empty:
-            os.environ.pop("PERSONAS_REQUIRE_SANDBOX", None)
-            os.environ["PATH"] = empty
-            with self.assertWarnsRegex(RuntimeWarning, "without a sandbox"):
-                command = sandbox.wrap(["true"], workdir=Path(empty), read_only=[], writable=[])
-        self.assertEqual(command, ["true"])
+
+@unittest.skipUnless(sys.platform.startswith("linux"), "the trust check reads POSIX ownership")
+class TrustedPathTest(unittest.TestCase):
+    """Only a root-owned regular file that no group or other user can write counts as bubblewrap."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.candidate = Path(self.temp.name) / "bwrap"
+        self.candidate.write_text("#!/bin/sh\n", encoding="ascii")
+        self.candidate.chmod(0o755)
+
+    def test_path_search_is_never_used(self):
+        self.assertTrue(sandbox.BWRAP_PATH.startswith("/"))
+        self.assertIsNone(sandbox.trusted_bwrap(str(Path(self.temp.name) / "absent")))
+
+    def test_writable_file_is_rejected(self):
+        self.candidate.chmod(0o777)
+        self.assertIsNone(sandbox.trusted_bwrap(str(self.candidate)))
+
+    def test_symlink_is_rejected(self):
+        link = Path(self.temp.name) / "link"
+        link.symlink_to(self.candidate)
+        self.assertIsNone(sandbox.trusted_bwrap(str(link)))
+
+    def test_owner_must_be_root(self):
+        if os.geteuid() == 0:
+            os.chown(self.candidate, 65534, -1)
+        self.assertIsNone(sandbox.trusted_bwrap(str(self.candidate)))
 
 
 @unittest.skipUnless(HAS_BWRAP, "bubblewrap runs on Linux only")
@@ -102,6 +141,14 @@ class CommandTest(unittest.TestCase):
         self.assertIn(("--bind", str(tree.resolve())), pairs)
         self.assertIn(("--chdir", str(Path(workdir).resolve())), pairs)
         self.assertNotIn(str(Path.home()), [value for flag, value in pairs if "bind" in flag])
+
+    def test_etc_binds_only_the_runtime_files(self):
+        with tempfile.TemporaryDirectory() as workdir:
+            command = sandbox.sandbox_command(["true"], workdir=Path(workdir), read_only=[], writable=[])
+        pairs = list(zip(command, command[1:]))
+        self.assertNotIn(("--ro-bind", "/etc"), pairs)
+        etc_sources = {value for flag, value in pairs if flag == "--ro-bind-try" and value.startswith("/etc")}
+        self.assertEqual(etc_sources, set(sandbox.ETC_RUNTIME_FILES))
 
     def test_the_engine_interpreter_runs_in_the_sandbox(self):
         with tempfile.TemporaryDirectory() as workdir:
@@ -187,7 +234,7 @@ class BoundaryTest(unittest.TestCase):
         outside = base / "outside-secret.txt"
         outside.write_text("runner file\n", encoding="utf-8")
         probes = {"port": self.listener.getsockname()[1], "persona": str(self.persona_dir),
-                  "hidden": [str(secret), str(outside)]}
+                  "hidden": [str(secret), str(outside), "/etc/hostname"]}
         (self.persona_dir / "review_hooks.py").write_text(PROBE_SOURCE.format(probes=json.dumps(probes)),
                                                           encoding="utf-8")
         (self.persona_dir / "Q.md").write_text("Review.\n", encoding="ascii")

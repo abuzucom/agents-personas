@@ -149,6 +149,10 @@ class EngineRunTest(unittest.TestCase):
     """engine/run_review.py runs the committed euler persona end to end."""
 
     def setUp(self):
+        # Hosts without bubblewrap fall back to the plain child. CI sets 1 and keeps the sandbox required.
+        if "PERSONAS_REQUIRE_SANDBOX" not in os.environ:
+            os.environ["PERSONAS_REQUIRE_SANDBOX"] = "0"
+            self.addCleanup(os.environ.pop, "PERSONAS_REQUIRE_SANDBOX", None)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         base_dir = Path(self.temp.name)
