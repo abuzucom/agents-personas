@@ -14,9 +14,23 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.13.1] (2026-11-21)
+## [0.14.0] (2026-11-21)
 
 ### Added
+- Add the generay persona under `reviewers/generay`. It comes from
+  `abuzucom/generay` at `309d425`. `PROVENANCE.md` maps every file.
+  The `time` mode reviews pull requests. The `sync` mode delivers context
+  only. The `file`, `piece`, `wholesale`, and `contract` modes run
+  locally. The time prescan places advisory candidates in the review
+  target. The reply hook applies the generay reply rules.
+- Add `.github/workflows/generay-time-review.yml`. The wrapper requires
+  `MODEL_API_KEY` and adds `fork_review`. `docs/migration.md` maps the
+  old `time-review.yml` inputs.
+- Add `.github/workflows/generay-time-review-pr.yml`. This repository
+  reviews with generay only under the `generay-scan-requested` label.
+- Accept a list of up to four prompt files per mode. The engine joins the
+  files in order.
+- Add `json_mode` and `require_coverage` to the template review mode.
 - Add the `stop-requested` label. It pauses every persona review on a pull
   request, scan requests included. A paused review publishes a skipped
   check titled "Scans stopped".
@@ -63,6 +77,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   minimax-m3.1-flash carries one.
 
 ### Changed
+- Drop the generay sync job from `examples/label-caller.yml`. The `sync`
+  mode delivers context only. The active human approved the matching edit
+  in the existing `tests/test_foucault_workflows.py`.
 - Rename the labels in `examples/label-caller.yml` to
   `<persona>-scan-requested`. The file also serves a repository that wants
   manual scans only. The active human approved the new label names in the
