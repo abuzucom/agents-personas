@@ -14,3 +14,5 @@ CONVENTIONS.md text eol=lf
 docs/agent-policy/*.md text eol=lf
 reviewers/foucault/AUDIT.md text eol=lf
 reviewers/euler/QUALITY.md text eol=lf
+reviewers/generay/TIME.md text eol=lf
+reviewers/generay/SYNC.md text eol=lf
