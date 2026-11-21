@@ -41,6 +41,12 @@ TYPES: dict[str, type | tuple[type, ...]] = {
     "number": (int, float),
 }
 REF_PREFIX = "#/$defs/"
+# The registry nests a few levels. The cap keeps a hostile input below the
+# interpreter recursion limit.
+MAX_NESTING_DEPTH = 64
+# Status 1 reports registry errors. This status reports a schema the
+# validator cannot read.
+EXIT_UNSUPPORTED_SCHEMA = 2
 
 
 def resolve(schema: dict[str, Any], root: dict[str, Any]) -> dict[str, Any]:
@@ -71,7 +77,8 @@ def check_scalar(value: Any, schema: dict[str, Any], where: str) -> list[str]:
     return errors
 
 
-def check_object(value: dict[str, Any], schema: dict[str, Any], root: dict[str, Any], where: str) -> list[str]:
+def check_object(value: dict[str, Any], schema: dict[str, Any], root: dict[str, Any], where: str,
+                 depth: int = 0) -> list[str]:
     """Return errors for required, unknown, and nested properties."""
     properties = schema.get("properties", {})
     errors = [f"{where}: missing {name}" for name in schema.get("required", []) if name not in value]
@@ -79,12 +86,15 @@ def check_object(value: dict[str, Any], schema: dict[str, Any], root: dict[str, 
         errors += [f"{where}: unexpected property {name}" for name in sorted(set(value) - set(properties))]
     for name, child in properties.items():
         if name in value:
-            errors += validate(value[name], child, root, f"{where}.{name}")
+            errors += validate(value[name], child, root, f"{where}.{name}", depth + 1)
     return errors
 
 
-def validate(value: Any, schema: dict[str, Any], root: dict[str, Any], where: str = "$") -> list[str]:
+def validate(value: Any, schema: dict[str, Any], root: dict[str, Any], where: str = "$",
+             depth: int = 0) -> list[str]:
     """Return every error for value against schema."""
+    if depth > MAX_NESTING_DEPTH:
+        return [f"{where}: nesting exceeds {MAX_NESTING_DEPTH} levels"]
     schema = resolve(schema, root)
     unsupported = set(schema) - SUPPORTED
     if unsupported:
@@ -93,10 +103,10 @@ def validate(value: Any, schema: dict[str, Any], root: dict[str, Any], where: st
     if errors:
         return errors
     if isinstance(value, dict):
-        errors += check_object(value, schema, root, where)
+        errors += check_object(value, schema, root, where, depth)
     if isinstance(value, list) and "items" in schema:
         for index, item in enumerate(value):
-            errors += validate(item, schema["items"], root, f"{where}[{index}]")
+            errors += validate(item, schema["items"], root, f"{where}[{index}]", depth + 1)
     return errors
 
 
@@ -112,7 +122,7 @@ def main() -> int:
         errors = validate(registry, schema, schema)
     except ValueError as failure:
         print(f"error: {failure}. Extend scripts/validate_registry.py or simplify the schema.", file=sys.stderr)
-        return 2
+        return EXIT_UNSUPPORTED_SCHEMA
     for message in errors:
         print(f"error: {args.registry}: {message}", file=sys.stderr)
     if errors:
