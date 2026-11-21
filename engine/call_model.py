@@ -63,6 +63,10 @@ CONTEXT_OVERFLOW_MARKERS = (
 # review input" and records a NEEDS-HUMAN verdict instead of failing.
 CAPACITY_EXIT_CODE = 3
 ALLOWED_PROTOCOLS = {"ollama", "openai-compatible", "anthropic", "google"}
+# Temperature 0 still lets a provider sample differently between runs. Ollama,
+# OpenAI-compatible, and Google requests carry this fixed seed. The Anthropic
+# Messages API takes no seed parameter.
+REVIEW_SEED = 20261121
 ALLOWED_ENDPOINTS = {
     "https://ollama.com/api",
     "https://api.openai.com/v1",
@@ -88,6 +92,13 @@ REPORT_FORMAT_SUFFIX = (
     "- Omit process narration from every part of the report. First-person "
     "openers, walkthrough steps, and self-directed questions are process "
     "narration.\n"
+    "- State coverage on two lines directly after the **Mode:** line. The "
+    "first line starts `Scope:` and lists the reviewed material as nouns. "
+    "The second line starts `Unseen:` and lists the material outside the "
+    "review as nouns. Write no coverage sentence anywhere else.\n"
+    "- Never open a line with Reviewed, Examined, Inspected, Traced, "
+    "Checked, Analyzed, Verified, Looked, Went, Started, Review covered, or "
+    "The review. The validator rejects such a line outside a code fence.\n"
     "- State only declared context, findings with file and line, evidence, "
     "and conclusions.\n"
     "- End the report with exactly two consecutive lines at column zero. "
@@ -258,7 +269,7 @@ def _build_request(profile: dict[str, Any], system_prompt: str,
             "messages": messages,
             "stream": False,
             "think": False,
-            "options": {"temperature": 0, "num_predict": max_tokens},
+            "options": {"temperature": 0, "seed": REVIEW_SEED, "num_predict": max_tokens},
         }
     elif protocol == "openai-compatible":
         url = f"{profile['endpoint']}/chat/completions"
@@ -267,6 +278,7 @@ def _build_request(profile: dict[str, Any], system_prompt: str,
             "messages": messages,
             "stream": False,
             "temperature": 0,
+            "seed": REVIEW_SEED,
             "max_tokens": max_tokens,
         }
     elif protocol == "anthropic":
@@ -286,6 +298,7 @@ def _build_request(profile: dict[str, Any], system_prompt: str,
             "contents": [{"role": "user", "parts": [{"text": case_text}]}],
             "generationConfig": {
                 "temperature": 0,
+                "seed": REVIEW_SEED,
                 "maxOutputTokens": max_tokens,
                 "thinkingConfig": {"thinkingBudget": 0},
             },
