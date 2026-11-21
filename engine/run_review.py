@@ -6,6 +6,12 @@ validates each reply. An invalid reply gets one retry with a validation note
 in the system prompt. A second invalid reply fails the run, so the check
 never reports a pass without a verdict. An adapter capacity exit records
 NEEDS-HUMAN for that chunk.
+
+A chunk BLOCK gets one confirmation run with the same prompt and envelope.
+The BLOCK stands only when that run blocks again with a finding class from
+the first run. Otherwise the chunk records NEEDS-HUMAN. A model can block
+one run and approve the next on the same input, so a lone BLOCK never fails
+a check without a person.
 """
 
 from __future__ import annotations
@@ -180,14 +186,15 @@ def validate_reply(response: str, case_path: Path, json_mode: str | None, findin
 
 def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
                  json_mode: str | None, finding_rules: dict | None = None,
-                 persona_dir: Path | None = None) -> ChunkResult:
+                 persona_dir: Path | None = None, run_name: str = "") -> ChunkResult:
     """Review one envelope with at most one retry after an invalid reply."""
     work = case_path.parent
+    stem = f"{case_path.stem}.{run_name}" if run_name else case_path.stem
     note = ""
     problem = ""
     for attempt in range(2):
-        prompt_path = work / f"{case_path.stem}.prompt.{attempt}.txt"
-        usage_path = work / f"{case_path.stem}.usage.{attempt}.json"
+        prompt_path = work / f"{stem}.prompt.{attempt}.txt"
+        usage_path = work / f"{stem}.usage.{attempt}.json"
         prompt_path.write_text(system_prompt + note, encoding="utf-8", newline="\n")
         completed = call_adapter(options, prompt_path, case_path, usage_path)
         if completed.returncode == CAPACITY_EXIT_CODE:
@@ -203,6 +210,32 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
             continue
         return ChunkResult(verdict, payload["findings"], completed.stdout, read_usage(usage_path))
     raise ReviewError(f"invalid response after one retry: {problem}")
+
+
+def finding_classes(findings: list) -> set:
+    """Return the class of each finding, or its file when the persona declares no class."""
+    return {str(item.get("class") or item.get("file")) for item in findings if isinstance(item, dict)}
+
+
+def confirm_block(first: ChunkResult, confirmation: ChunkResult) -> ChunkResult:
+    """Return the first BLOCK when the confirmation repeats a class, else NEEDS-HUMAN."""
+    usage = sum_usage([first, confirmation])
+    repeated = finding_classes(first.findings) & finding_classes(confirmation.findings)
+    if confirmation.verdict == "BLOCK" and repeated:
+        return ChunkResult("BLOCK", first.findings, first.report, usage, first.reason)
+    reason = (f"BLOCK not confirmed: the confirmation run returned {confirmation.verdict} "
+              "without a repeated finding class")
+    return ChunkResult("NEEDS-HUMAN", first.findings, first.report, usage, reason)
+
+
+def review_confirmed_chunk(options: RunOptions, system_prompt: str, case_path: Path, entry: dict,
+                           persona_dir: Path | None) -> ChunkResult:
+    """Review one envelope and confirm a BLOCK with one more run."""
+    arguments = (options, system_prompt, case_path, entry.get("json_mode"), entry.get("finding_rules"), persona_dir)
+    first = review_chunk(*arguments)
+    if first.verdict != "BLOCK":
+        return first
+    return confirm_block(first, review_chunk(*arguments, run_name="confirm"))
 
 
 def sum_usage(results: list[ChunkResult]) -> dict:
@@ -295,8 +328,7 @@ def run_mode(options: RunOptions) -> dict:
     prompt_text = reviewers.prompt_path(persona_dir, entry["prompt"]).read_text(encoding="utf-8")
     system_prompt = envelope.with_fence_rule(prompt_text)
     case_dir = options.out_dir / "case" / "envelopes"
-    results = [review_chunk(options, system_prompt, case_dir / chunk["envelope"], entry.get("json_mode"),
-                            entry.get("finding_rules"), persona_dir)
+    results = [review_confirmed_chunk(options, system_prompt, case_dir / chunk["envelope"], entry, persona_dir)
                for chunk in case["chunks"]]
     verdict, reasons = review_output.combine_verdicts([item.verdict for item in results], case["unreviewed"])
     verdict = apply_forced_verdict(verdict, reasons, options, persona_dir)

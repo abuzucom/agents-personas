@@ -119,7 +119,8 @@ class RunReviewTest(unittest.TestCase):
 
     def test_block_reply_collects_findings(self):
         finding = {"file": "app.py", "line": 1, "severity": "HIGH", "title": "t"}
-        self.script(_reply("BLOCK", [finding]))
+        # A BLOCK gets one confirmation run. The active human approved this second reply.
+        self.script(_reply("BLOCK", [finding]), _reply("BLOCK", [finding]))
         result = run_review.run_mode(self.options())
         self.assertEqual((result["verdict"], result["findings"]), ("BLOCK", [finding]))
 
