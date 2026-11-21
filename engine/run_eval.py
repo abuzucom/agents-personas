@@ -315,7 +315,7 @@ def run_live(persona_dir: Path, manifest: dict, cases: list[dict], model_call: M
     for case in cases:
         mode = manifest["modes"][case["mode"]]
         name = f"{case['mode']}/{case['name']}"
-        system_prompt = reviewers.prompt_path(persona_dir, mode["prompt"]).read_text(encoding="utf-8")
+        system_prompt = reviewers.load_prompt(persona_dir, mode["prompt"])
         model_input = custom_input(case, system_prompt) if custom_input else None
         if model_input is None:
             model_input = default_model_input(case, system_prompt)
