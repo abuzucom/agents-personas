@@ -17,6 +17,8 @@ from pathlib import Path
 
 MAX_BYTES = 32 * 1024
 MAX_PROSE_WIDTH = 120
+# A malformed-entry diagnostic quotes this many characters of the line.
+DIAGNOSTIC_EXCERPT_CHARS = 80
 METHODS = ("heuristic", "llm", "both")
 TIME_CLASS_RANGE = range(1, 27)
 SYNC_CLASS = "C27"
@@ -77,7 +79,7 @@ def find_check_violations(text: str) -> list[str]:
             continue
         match = TABLE_CHECK.match(line) or HEADING_CHECK.match(line)
         if not match or match.group("method") not in METHODS:
-            violations.append(f"check entry without a valid method: {line[:80]}")
+            violations.append(f"check entry without a valid method: {line[:DIAGNOSTIC_EXCERPT_CHARS]}")
             continue
         if TABLE_CHECK.match(line) and match.group("rest").count("|") != TABLE_CELLS_AFTER_NAME - 1:
             violations.append(f"check row needs flag and not-a-finding cells: {match.group('id')}")
