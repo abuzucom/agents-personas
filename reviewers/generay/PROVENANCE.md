@@ -18,12 +18,12 @@ repository.
 | `eval/cases/contract/<case>/` | `eval/cases/<case>/` with mode `Contract` | none |
 | `scripts/time_checks/` | `scripts/time_checks/` | none |
 | `scripts/check_time_handling.py` | `scripts/check_time_handling.py` | none |
-| `scripts/check_doc_policy.py` | `scripts/check_doc_policy.py` | none |
+| `scripts/check_doc_policy.py` | `scripts/check_doc_policy.py` | named diagnostic excerpt width |
 | `scripts/check_ledger_coverage.py` | `scripts/check_ledger_coverage.py` | none |
-| `scripts/validate_registry.py` | `scripts/validate_registry.py` | none |
+| `scripts/validate_registry.py` | `scripts/validate_registry.py` | nesting cap and named exit status |
 | `scripts/time_report.py` | `scripts/review_report.py` | new name |
 | `scripts/time_envelope.py` | `scripts/review_envelope.py` | new name |
-| `scripts/time_reply.py` | `ci/check_review_response.py` | new name, docstring note, `time_report` import, and the engine envelope layout |
+| `scripts/time_reply.py` | `ci/check_review_response.py` | new name, docstring note, `time_report` import, the engine envelope layout, and finding location checks |
 | `scripts/time_prescan.py` | the prescan half of `ci/build_pr_case.py` | takes an extracted tree, and the euler added-line parser |
 | `review_hooks.py` | `ci/run_review.py` and `ci/build_pr_case.py` | engine hook functions |
 | `eval/extra_checks.py` | `eval/run_eval.py` | generay checks beyond the engine core |
