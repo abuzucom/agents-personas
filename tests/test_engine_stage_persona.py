@@ -46,7 +46,7 @@ class StageTest(unittest.TestCase):
 
     def test_data_files_copy_and_python_stays_out(self):
         stage_persona.stage(self.source, "euler", self.target)
-        files = sorted(str(path.relative_to(self.staged())) for path in self.staged().rglob("*") if path.is_file())
+        files = sorted(path.relative_to(self.staged()).as_posix() for path in self.staged().rglob("*") if path.is_file())
         self.assertEqual(files, ["QUALITY.md", "eval/cases/quality/one/diff.patch", "reviewer.json"])
 
     def test_python_case_inputs_stay_as_data(self):
