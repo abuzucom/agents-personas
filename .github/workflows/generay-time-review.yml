@@ -1,0 +1,125 @@
+name: generay-time-review
+
+# generay wrapper over the engine workflow. It fixes the persona. The modes
+# input defaults to the time mode, which loads TIME.md and SYNC.md. Callers
+# pin `uses:` and `personas_ref` to the same full commit SHA:
+#
+#   uses: abuzucom/agents-personas/.github/workflows/generay-time-review.yml@<sha>
+#   with:
+#     personas_ref: "<the same sha>"
+#     exclude_paths: "eval/cases/**"
+#   secrets:
+#     MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+#
+# The check run is named "generay / time". Pass only the provider key. The
+# wrapper requires the key, as the generay source workflow did.
+
+on:
+  workflow_call:
+    inputs:
+      personas_ref:
+        description: "abuzucom/agents-personas commit SHA to load the engine and persona from. Match the uses: pin."
+        required: true
+        type: string
+      modes:
+        description: "Comma-separated generay review modes. Empty selects the default mode, time."
+        required: false
+        type: string
+        default: ""
+      pr_number:
+        description: "Resolved pull request number for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      base_sha:
+        description: "Resolved pull request base SHA for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      head_sha:
+        description: "Resolved pull request head SHA for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      head_repo_url:
+        description: "Resolved pull request head repository URL for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      head_repo_full_name:
+        description: "Resolved pull request head repository name for workflow_run callers."
+        required: false
+        type: string
+        default: ""
+      model_call_command:
+        description: "Optional adapter: python or python3, then a workspace .py path. Empty uses the engine one."
+        required: false
+        type: string
+        default: ""
+      pr_comment:
+        description: "Post one comment per head SHA."
+        required: false
+        type: boolean
+        default: true
+      fail_on_block:
+        description: "Fail the check on BLOCK. False concludes neutral. NEEDS-HUMAN warns and always concludes neutral."
+        required: false
+        type: boolean
+        default: true
+      fork_review:
+        description: "Run the review through the protected fork-review environment."
+        required: false
+        type: boolean
+        default: false
+      paths:
+        description: "Optional newline-separated globs. The review runs only when a changed file matches. A leading ! excludes matching files."
+        required: false
+        type: string
+        default: ""
+      exclude_paths:
+        description: "Whitespace-separated globs skipped by the deterministic prescan."
+        required: false
+        type: string
+        default: ""
+      max_chunks:
+        description: "Maximum review envelopes. Files past the limit become unreviewed and force NEEDS-HUMAN."
+        required: false
+        type: number
+        default: 20
+    secrets:
+      MODEL_API_KEY:
+        description: "Provider API key for the model adapter."
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/review.yml
+    with:
+      persona: generay
+      modes: ${{ inputs.modes }}
+      personas_ref: ${{ inputs.personas_ref }}
+      pr_number: ${{ inputs.pr_number }}
+      base_sha: ${{ inputs.base_sha }}
+      head_sha: ${{ inputs.head_sha }}
+      head_repo_url: ${{ inputs.head_repo_url }}
+      head_repo_full_name: ${{ inputs.head_repo_full_name }}
+      model_call_command: ${{ inputs.model_call_command }}
+      pr_comment: ${{ inputs.pr_comment }}
+      fail_on_block: ${{ inputs.fail_on_block }}
+      fork_review: ${{ inputs.fork_review }}
+      paths: ${{ inputs.paths }}
+      # toJSON escapes the globs. The engine checks the object against the
+      # options that reviewers/generay/reviewer.json declares.
+      persona_options: >-
+        ${{ format('{{"exclude_paths": {0}}}', toJSON(inputs.exclude_paths)) }}
+      # The engine cap input is a string. The generay input stays a number.
+      max_chunks: ${{ format('{0}', inputs.max_chunks) }}
+    secrets:
+      MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
