@@ -54,6 +54,10 @@ class ResponseError(ValueError):
     """Report a response-contract failure."""
 
 
+class NarrationError(ResponseError):
+    """Report process narration in an otherwise checked response."""
+
+
 def _verdict_indexes(lines: list[str]) -> list[int]:
     """Return the indexes of every line that starts with VERDICT: at column zero."""
     return [index for index, line in enumerate(lines) if line.startswith(VERDICT_PREFIX)]
@@ -166,18 +170,23 @@ def _validate_payload(payload: dict[str, Any], verdict: str, expected_mode: str 
 
 
 def validate_response(response: str, expected_mode: str | None = None,
-                      finding_rules: dict[str, Any] | None = None) -> tuple[str, dict[str, Any]]:
-    """Validate one bounded review response and return its verdict and JSON."""
+                      finding_rules: dict[str, Any] | None = None,
+                      allow_narration: bool = False) -> tuple[str, dict[str, Any]]:
+    """Validate one bounded review response and return its verdict and JSON.
+
+    allow_narration skips only the narration check. The engine uses it to
+    keep the findings of a reply that still narrates after its retry.
+    """
     if len(response.encode("utf-8")) > RESPONSE_LIMIT:
         raise ResponseError("response exceeds the configured limit")
     lines = response.split("\n")
     verdict = _last_verdict(lines)
-    narration = process_narration_lines(response)
-    if narration:
-        numbers = ", ".join(str(number) for number in narration[:5])
-        raise ResponseError(f"process narration appears on report line(s): {numbers}")
     payload = _parse_json_line(lines)
     _validate_payload(payload, verdict, expected_mode, finding_rules)
+    narration = [] if allow_narration else process_narration_lines(response)
+    if narration:
+        numbers = ", ".join(str(number) for number in narration[:5])
+        raise NarrationError(f"process narration appears on report line(s): {numbers}")
     return verdict, payload
 
 

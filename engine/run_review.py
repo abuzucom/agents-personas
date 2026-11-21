@@ -172,9 +172,10 @@ def call_hook(persona_dir: Path | None, name: str, arguments: list,
 
 
 def validate_reply(response: str, case_path: Path, json_mode: str | None, finding_rules: dict | None,
-                   persona_dir: Path | None = None) -> tuple[str, dict]:
+                   persona_dir: Path | None = None, allow_narration: bool = False) -> tuple[str, dict]:
     """Return the verdict and payload of a reply that passes the engine and persona checks."""
-    verdict, payload = check_review_response.validate_response(response, json_mode, finding_rules)
+    verdict, payload = check_review_response.validate_response(response, json_mode, finding_rules,
+                                                               allow_narration)
     sent = json.loads(case_path.read_text(encoding="utf-8"))
     present, problems = call_hook(persona_dir, "validate_reply", [payload, response, sent])
     if present and not isinstance(problems, list):
@@ -192,6 +193,7 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
     stem = f"{case_path.stem}.{run_name}" if run_name else case_path.stem
     note = ""
     problem = ""
+    narrated = None
     for attempt in range(2):
         prompt_path = work / f"{stem}.prompt.{attempt}.txt"
         usage_path = work / f"{stem}.usage.{attempt}.json"
@@ -207,9 +209,30 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
         except check_review_response.ResponseError as error:
             problem = str(error)[:MAX_PROBLEM_CHARS]
             note = "\n\n" + RETRY_NOTE.format(problem=problem) + "\n"
+            narrates = isinstance(error, check_review_response.NarrationError)
+            narrated = (completed.stdout, usage_path) if narrates else None
             continue
         return ChunkResult(verdict, payload["findings"], completed.stdout, read_usage(usage_path))
+    if narrated is not None:
+        return narration_fallback(narrated, case_path, json_mode, finding_rules, persona_dir, problem)
     raise ReviewError(f"invalid response after one retry: {problem}")
+
+
+def narration_fallback(narrated: tuple[str, Path], case_path: Path, json_mode: str | None,
+                       finding_rules: dict | None, persona_dir: Path | None, problem: str) -> ChunkResult:
+    """Return NEEDS-HUMAN with the findings of a retry that failed only on narration.
+
+    The reply passed every other engine and persona check. A person decides
+    on its findings. The narrating report stays in the record.
+    """
+    response, usage_path = narrated
+    try:
+        _verdict, payload = validate_reply(response, case_path, json_mode, finding_rules, persona_dir,
+                                           allow_narration=True)
+    except check_review_response.ResponseError as error:
+        raise ReviewError(f"invalid response after one retry: {problem}; {error}") from error
+    return ChunkResult("NEEDS-HUMAN", payload["findings"], response, read_usage(usage_path),
+                       f"process narration after one retry: {problem}")
 
 
 def finding_classes(findings: list) -> set:
