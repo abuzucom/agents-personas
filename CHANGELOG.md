@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.14.0] (2026-11-21)
+## [0.14.1] (2026-11-21)
 
 ### Added
 - Add the generay persona under `reviewers/generay`. It comes from
@@ -109,6 +109,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `tests/test_euler_review_hooks.py`.
 
 ### Fixed
+- Require every generay finding to cite a file and line inside the review
+  target. A pull request line falls inside a hunk of the file patch. A
+  local line falls inside the file. The line must be a positive integer.
+  The active human approved the fixture patch in the existing
+  `tests/test_generay_review_hooks.py`.
+- Cap the generay registry validator at 64 nesting levels. Deeper input
+  returns a validation error instead of a recursion failure.
+- Name the generay registry validator's unsupported-schema exit status and
+  the doc policy diagnostic excerpt width.
 - Diff each review case from the merge base of base and head. A pull
   request behind its base branch no longer shows the newer base commits in
   reverse. euler reviewed a one-file probe as a 12-file change before the
