@@ -10,7 +10,10 @@ Pull request reviewer personas on one shared review engine.
 - `docs/migration.md` maps old callers to the wrappers.
 - `examples/` holds the always-on caller and the label caller.
 - `python engine/run_eval.py --persona <name>` checks the eval cases of a
-  persona.
+  persona. With `--model-call` and `--repeat N`, it sends each case N times
+  and reports how often the runs agree on a verdict.
+- The review workflow reuses one check run per head and input set. A push,
+  a title or body edit, or a changed option starts a new review.
 - Persona hooks require bubblewrap at `/usr/bin/bwrap` by default. A run
   fails closed without it. On a host without bubblewrap, set
   `PERSONAS_REQUIRE_SANDBOX=0` for a local run. The hook then runs as a
