@@ -1,0 +1,48 @@
+{
+  "persona": "generay",
+  "function": "time",
+  "options": {
+    "exclude_paths": {"type": "string", "default": ""}
+  },
+  "modes": {
+    "time": {
+      "prompt": ["TIME.md", "SYNC.md"],
+      "review": true,
+      "default": true,
+      "json_mode": "PR",
+      "require_coverage": true
+    },
+    "sync": {
+      "prompt": "SYNC.md",
+      "context": true
+    },
+    "file": {
+      "prompt": ["TIME.md", "SYNC.md"],
+      "local": true,
+      "json_mode": "File",
+      "verdict_line": "RISK",
+      "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
+    },
+    "piece": {
+      "prompt": ["TIME.md", "SYNC.md"],
+      "local": true,
+      "json_mode": "Piece",
+      "verdict_line": "RISK (partial)",
+      "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
+    },
+    "wholesale": {
+      "prompt": ["TIME.md", "SYNC.md"],
+      "local": true,
+      "json_mode": "Wholesale",
+      "verdict_line": "RISK",
+      "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
+    },
+    "contract": {
+      "prompt": ["TIME.md", "SYNC.md"],
+      "local": true,
+      "json_mode": "Contract",
+      "verdict_line": "CONTRACT",
+      "verdicts": ["COMPLETE", "GAPS", "NEEDS-HUMAN"]
+    }
+  }
+}
