@@ -18,8 +18,8 @@ def render_context(root: Path, persona: str, mode: str) -> bytes:
         raise reviewers.ReviewerError(f"unknown mode '{mode}' for persona '{persona}'")
     if not entry.get("context"):
         raise reviewers.ReviewerError(f"mode '{mode}' has no context delivery")
-    path = reviewers.prompt_path(persona_dir, entry["prompt"])
-    content = path.read_bytes()
+    separator = reviewers.PROMPT_SEPARATOR.encode("ascii")
+    content = separator.join(path.read_bytes() for path in reviewers.prompt_paths(persona_dir, entry["prompt"]))
     if len(content) > reviewers.MAX_CONTEXT_BYTES:
         raise reviewers.ReviewerError(
             f"prompt '{entry['prompt']}' exceeds {reviewers.MAX_CONTEXT_BYTES} bytes")
