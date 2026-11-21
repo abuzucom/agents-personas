@@ -95,10 +95,13 @@ REPORT_FORMAT_SUFFIX = (
     "- State coverage on two lines directly after the **Mode:** line. The "
     "first line starts `Scope:` and lists the reviewed material as nouns. "
     "The second line starts `Unseen:` and lists the material outside the "
-    "review as nouns. Write no coverage sentence anywhere else.\n"
-    "- Never open a line with Reviewed, Examined, Inspected, Traced, "
-    "Checked, Analyzed, Verified, Looked, Went, Started, Review covered, or "
-    "The review. The validator rejects such a line outside a code fence.\n"
+    "review as nouns. Write no coverage sentence anywhere else. Open the "
+    "report with these three lines:\n"
+    "  **Mode:** <mode>\n"
+    "  Scope: <noun list>\n"
+    "  Unseen: <noun list>\n"
+    "- Write every later line as a finding, its evidence, or a conclusion "
+    "about the code.\n"
     "- State only declared context, findings with file and line, evidence, "
     "and conclusions.\n"
     "- End the report with exactly two consecutive lines at column zero. "
@@ -107,6 +110,18 @@ REPORT_FORMAT_SUFFIX = (
     "no code fence, and no other character between the two lines, and no "
     "line after the JSON object.\n"
 )
+
+
+# Models weight the last instruction they read. This trusted note follows the
+# review envelope in the user message, outside REVIEW_TARGET.
+REPORT_REMINDER = (
+    "\n\nEngine reminder, outside REVIEW_TARGET: open the report with the "
+    "**Mode:**, Scope:, and Unseen: lines. End it with the VERDICT line and "
+    "the VERDICT_JSON line.\n"
+)
+# A provider profile can carry a format_note for one model. The note joins
+# the trusted system prompt of that profile only.
+MAX_FORMAT_NOTE_CHARS = 1000
 
 
 class ProviderError(RuntimeError):
@@ -180,6 +195,18 @@ def _load_profile(provider_name: str | None = None) -> dict[str, Any]:
     profile["endpoint"] = normalized_endpoint
     profile["name"] = provider_name
     return profile
+
+
+def format_note(profile: dict[str, Any]) -> str:
+    """Return the profile's validated format note, or an empty string when unset."""
+    note = profile.get("format_note")
+    if note is None:
+        return ""
+    if not isinstance(note, str) or not note or len(note) > MAX_FORMAT_NOTE_CHARS:
+        raise ProviderError(f"provider format_note must hold 1 to {MAX_FORMAT_NOTE_CHARS} characters")
+    if any(not (character == "\n" or " " <= character <= "~") for character in note):
+        raise ProviderError("provider format_note must be printable ASCII")
+    return note
 
 
 def _input_budget(profile: dict[str, Any]) -> int | None:
@@ -261,6 +288,10 @@ def _build_request(profile: dict[str, Any], system_prompt: str,
     protocol = profile["protocol"]
     model = profile["model"]
     max_tokens = profile.get("max_output_tokens", 8192)
+    note = format_note(profile)
+    if note:
+        system_prompt = f"{system_prompt}\n{note}"
+    case_text = case_text + REPORT_REMINDER
     messages = _message_payload(system_prompt, case_text)
     if protocol == "ollama":
         url = f"{profile['endpoint']}/chat"

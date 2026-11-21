@@ -6,6 +6,7 @@ the review and fails validation. The engine then retries the chunk once.
 """
 import importlib.util
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -76,10 +77,17 @@ class FormatSuffixTest(unittest.TestCase):
         self.assertLess(suffix.index("**Mode:**"), suffix.index("`Scope:`"))
         self.assertLess(suffix.index("`Scope:`"), suffix.index("`Unseen:`"))
 
-    def test_suffix_names_every_forbidden_opener(self):
+    def test_suffix_shows_the_three_opening_lines(self):
+        suffix = call_model.REPORT_FORMAT_SUFFIX
+        self.assertIn("  **Mode:** <mode>\n  Scope: <", suffix)
+        self.assertIn("\n  Unseen: <", suffix)
+
+    def test_suffix_names_no_forbidden_opener(self):
+        # A list of banned words in the prompt can prime the model to use
+        # them. The validator alone keeps the list.
         for opener in NARRATION_OPENERS:
             with self.subTest(opener=opener):
-                self.assertIn(opener, call_model.REPORT_FORMAT_SUFFIX)
+                self.assertIsNone(re.search(rf"\b{opener}\b", call_model.REPORT_FORMAT_SUFFIX))
 
 
 if __name__ == "__main__":
