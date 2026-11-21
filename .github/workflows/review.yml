@@ -405,7 +405,53 @@ jobs:
         with:
           python-version: '3.14'
 
+      - name: Compute review key
+        id: key
+        # The key covers every input that changes the review. The digest holds
+        # no pull request text.
+        env:
+          PERSONA: ${{ inputs.persona }}
+          MODE: ${{ matrix.mode }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+          PERSONAS_REF: ${{ inputs.personas_ref }}
+          PR_TITLE: ${{ needs.resolve.outputs.pr_title }}
+          PR_BODY: ${{ needs.resolve.outputs.pr_body }}
+          PERSONA_OPTIONS: ${{ inputs.persona_options }}
+          MAX_CHUNKS: ${{ inputs.max_chunks }}
+          MAX_ENVELOPE_BYTES: ${{ inputs.max_envelope_bytes }}
+        run: python3 .agents-personas/engine/review_key.py
+
+      - name: Find an earlier review
+        id: cached
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          PERSONA: ${{ inputs.persona }}
+          MODE: ${{ matrix.mode }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          REVIEW_KEY: ${{ steps.key.outputs.key }}
+        with:
+          script: |
+            // One head gets one model verdict per input set. A label event or
+            // a rerun on the same inputs reuses the earlier check run. Only a
+            // completed check run from the github-actions app with this exact
+            // key counts. A failure before a verdict carries no key.
+            const runs = await github.paginate(github.rest.checks.listForRef, {
+              owner: context.repo.owner, repo: context.repo.repo, ref: process.env.HEAD_SHA,
+              check_name: `${process.env.PERSONA} / ${process.env.MODE}`, filter: "all", per_page: 100,
+            });
+            const match = runs.find((run) =>
+              run.app?.slug === "github-actions" && run.status === "completed" &&
+              run.external_id === process.env.REVIEW_KEY &&
+              ["success", "neutral", "failure"].includes(run.conclusion));
+            core.setOutput("hit", match ? "true" : "false");
+            core.setOutput("conclusion", match ? match.conclusion : "");
+            if (match) {
+              core.info(`Reusing check run ${match.id} (${match.conclusion}) for this review key.`);
+            }
+
       - name: Fetch pull request head object
+        if: ${{ steps.cached.outputs.hit != 'true' }}
         env:
           HEAD_REPO_URL: ${{ needs.resolve.outputs.head_repo_url }}
           HEAD_REPO_FULL_NAME: ${{ needs.resolve.outputs.head_repo_full_name }}
@@ -456,6 +502,7 @@ jobs:
           PY
 
       - name: Install bubblewrap
+        if: ${{ steps.cached.outputs.hit != 'true' }}
         # Persona hooks run inside bubblewrap without network or runner files.
         # Version approved under Rule 9 on 2026-11-20 (noble-updates and noble-security).
         run: |
@@ -468,6 +515,7 @@ jobs:
           bwrap --version
 
       - name: Build review case
+        if: ${{ steps.cached.outputs.hit != 'true' }}
         # Persona hooks such as the euler prescan run here. The provider key
         # reaches only the next step. Every persona hook runs in a child
         # process with an allowlisted environment and an empty temporary
@@ -497,6 +545,7 @@ jobs:
 
       - name: Run review
         id: run
+        if: ${{ steps.cached.outputs.hit != 'true' }}
         env:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
           MODEL_CALL_COMMAND: ${{ inputs.model_call_command }}
@@ -543,12 +592,14 @@ jobs:
           PY
 
       - name: Publish check run
-        if: ${{ always() }}
+        # A reused review keeps its earlier check run and publishes none.
+        if: ${{ always() && steps.cached.outputs.hit != 'true' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         env:
           PERSONA: ${{ inputs.persona }}
           MODE: ${{ matrix.mode }}
           HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          REVIEW_KEY: ${{ steps.key.outputs.key }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
@@ -558,7 +609,7 @@ jobs:
             if (fs.existsSync(path)) {
               const rendered = JSON.parse(fs.readFileSync(path, "utf8"));
               request = {
-                name: rendered.check_name, conclusion: rendered.conclusion,
+                name: rendered.check_name, conclusion: rendered.conclusion, external_id: process.env.REVIEW_KEY,
                 output: { title: rendered.title, summary: rendered.summary, annotations: rendered.annotations },
               };
             } else {
@@ -606,6 +657,9 @@ jobs:
 
       - name: Fail on a gating verdict
         if: ${{ always() }}
+        env:
+          CACHED_HIT: ${{ steps.cached.outputs.hit }}
+          CACHED_CONCLUSION: ${{ steps.cached.outputs.conclusion }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -614,6 +668,12 @@ jobs:
           import sys
           from pathlib import Path
 
+          if os.environ.get("CACHED_HIT") == "true":
+              conclusion = os.environ.get("CACHED_CONCLUSION", "")
+              print(f"The earlier check run for this review key stands. Conclusion: {conclusion}.")
+              if conclusion == "failure":
+                  sys.exit("error: the reused review fails this mode")
+              sys.exit(0)
           path = Path(os.environ["RUNNER_TEMP"]) / "review" / "rendered.json"
           if not path.is_file():
               sys.exit("error: the review produced no verdict")

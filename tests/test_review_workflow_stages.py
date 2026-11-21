@@ -52,7 +52,9 @@ class StageTest(unittest.TestCase):
         for job in ("review", "fork-review"):
             names = {step["name"] for step in _review_steps(job) if "persona_options" in yaml.safe_dump(step)}
             with self.subTest(job=job):
-                self.assertEqual(names, {"Build review case", "Run review"})
+                # The key step hashes the options so a changed option set never reuses a
+                # cached verdict. The active human approved this entry.
+                self.assertEqual(names, {"Compute review key", "Build review case", "Run review"})
 
 
 if __name__ == "__main__":
