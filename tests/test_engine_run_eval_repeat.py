@@ -1,8 +1,8 @@
 """Test the repeated eval run and its agreement report in engine/run_eval.py.
 
 --repeat N sends every case N times. The report gives the share of runs
-that return the most common verdict for each case, and the number of cases
-whose runs all agree. A low share marks a case where the model verdict
+that return the most common verdict for each case. It also counts the cases
+with unanimous runs. A low share marks a case where the model verdict
 varies between identical runs.
 """
 import io
