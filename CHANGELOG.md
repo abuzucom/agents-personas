@@ -31,7 +31,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add `engine/run_eval.py --repeat N`. It sends every case N times and
   reports the share of runs with the most common verdict.
 - Record NEEDS-HUMAN with the findings of a retry that fails only on
-  process narration. Any other invalid retry still fails the run.
+  process narration or coverage lines. Any other invalid retry still fails
+  the run.
+- Add the `require_coverage` mode flag. A flagged review reply must open
+  with the mode line, a `Scope:` line, and an `Unseen:` line. The foucault
+  `security` and euler `quality` modes set it. The active human approved
+  the opening lines added to the scripted reply in the existing
+  `tests/test_euler_review_hooks.py`.
 - Add an optional `format_note` to each provider profile. The note joins
   the system prompt of that profile only. The `ollama-large` profile for
   minimax-m3.1-flash carries one.
