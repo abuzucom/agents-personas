@@ -3,10 +3,11 @@
 
 The review workflow stores this key in the external_id of the check run it
 publishes. A rerun with the same key reuses that check run and calls no
-model, so one head gets one model verdict per input set. The key covers
+model. One head therefore gets one model verdict per input set. The key covers
 every input that changes the review: the persona, the mode, both commits,
-the engine ref, the pull request title and body, the persona options, and
-the chunk caps. The digest holds no pull request text.
+the engine ref, the pull request title and body, the persona options, the
+chunk caps, the model call command, and the fail_on_block gate. The digest
+holds no pull request text.
 
 The CLI reads the fields from the environment and appends key=<value> to
 GITHUB_OUTPUT.
@@ -21,7 +22,7 @@ import sys
 
 KEY_VERSION = "review-v1"
 KEY_FIELDS = ("PERSONA", "MODE", "HEAD_SHA", "BASE_SHA", "PERSONAS_REF", "PR_TITLE", "PR_BODY",
-              "PERSONA_OPTIONS", "MAX_CHUNKS", "MAX_ENVELOPE_BYTES")
+              "PERSONA_OPTIONS", "MAX_CHUNKS", "MAX_ENVELOPE_BYTES", "MODEL_CALL_COMMAND", "FAIL_ON_BLOCK")
 
 
 class ReviewKeyError(ValueError):

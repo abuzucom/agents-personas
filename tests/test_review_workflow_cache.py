@@ -42,8 +42,11 @@ class CacheWiringTest(unittest.TestCase):
         self.assertEqual(step["id"], "key")
         self.assertIn("engine/review_key.py", step["run"])
         self.assertEqual(set(step["env"]), {"PERSONA", "MODE", "HEAD_SHA", "BASE_SHA", "PERSONAS_REF", "PR_TITLE",
-                                            "PR_BODY", "PERSONA_OPTIONS", "MAX_CHUNKS", "MAX_ENVELOPE_BYTES"})
+                                            "PR_BODY", "PERSONA_OPTIONS", "MAX_CHUNKS", "MAX_ENVELOPE_BYTES",
+                                            "MODEL_CALL_COMMAND", "FAIL_ON_BLOCK"})
         self.assertEqual(step["env"]["PERSONAS_REF"], "${{ inputs.personas_ref }}")
+        self.assertEqual(step["env"]["MODEL_CALL_COMMAND"], "${{ inputs.model_call_command }}")
+        self.assertEqual(step["env"]["FAIL_ON_BLOCK"], "${{ inputs.fail_on_block }}")
         self.assertNotIn("secrets.", yaml.safe_dump(step))
 
     def test_lookup_matches_app_status_name_and_key(self):
