@@ -71,7 +71,7 @@ on:
         type: boolean
         default: false
       paths:
-        description: "Optional newline-separated globs. The review runs only when a changed file matches."
+        description: "Optional newline-separated globs. The review runs only when a changed file matches. A leading ! excludes matching files."
         required: false
         type: string
         default: ""

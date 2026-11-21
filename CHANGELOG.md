@@ -14,9 +14,16 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.11.0] (2026-11-21)
+## [0.12.0] (2026-11-21)
 
 ### Added
+- Accept `!` exclusion patterns in the `paths` input. A pull request that
+  touches only excluded files gets a skipped check and no model call. The
+  foucault and euler self-reviews exclude the root `CHANGELOG.md` and
+  `README.md`.
+- Honor a `<persona>-scan-requested` label. A labeled pull request passes
+  the `paths` filter of that persona. The foucault and euler self-reviews
+  also start when a person adds the matching label.
 - Reuse one review per head. `engine/review_key.py` hashes the persona,
   mode, head, base, engine ref, pull request title and body, persona
   options, and chunk caps. Each published check run carries that key in
@@ -45,6 +52,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   minimax-m3.1-flash carries one.
 
 ### Changed
+- Rename the labels in `examples/label-caller.yml` to
+  `<persona>-scan-requested`. The file also serves a repository that wants
+  manual scans only. The active human approved the new label names in the
+  existing `tests/test_foucault_workflows.py`.
 - Send a fixed seed to Ollama, OpenAI-compatible, and Google providers. The
   Anthropic Messages API takes no seed.
 - Require coverage on two noun-only lines, `Scope:` and `Unseen:`, after the

@@ -84,7 +84,7 @@ on:
         type: boolean
         default: false
       paths:
-        description: "Optional newline-separated globs. The review runs only when a changed file matches. Empty reviews every pull request."
+        description: "Optional newline-separated globs. The review runs only when a changed file matches. A leading ! excludes matching files. Empty reviews every pull request."
         required: false
         type: string
         default: ""
@@ -129,6 +129,7 @@ jobs:
       modes: ${{ steps.modes.outputs.modes }}
       already_reviewed: ${{ steps.reviewed.outputs.already_reviewed }}
       paths_match: ${{ steps.paths.outputs.paths_match }}
+      scan_requested: ${{ steps.pull.outputs.scan_requested }}
     steps:
       - name: Resolve pull request
         id: pull
@@ -215,6 +216,10 @@ jobs:
             core.setOutput("head_repo_full_name", headName);
             core.setOutput("same_repository", String(headName.toLowerCase() === base.toLowerCase()));
             core.setOutput("pr_title", pull.title || "");
+            // A person with triage access or higher can add this label to
+            // request the review whatever the paths input selects.
+            const requestLabel = `${env.INPUT_PERSONA}-scan-requested`;
+            core.setOutput("scan_requested", String((pull.labels || []).some((label) => label.name === requestLabel)));
             core.setOutput("pr_body", (pull.body || "").slice(0, MAX_BODY_CHARS));
 
       - name: Check out the engine
@@ -306,6 +311,7 @@ jobs:
         id: paths
         env:
           PATH_PATTERNS: ${{ inputs.paths }}
+          SCAN_REQUESTED: ${{ steps.pull.outputs.scan_requested }}
         run: python3 .agents-personas/engine/path_filter.py "$RUNNER_TEMP/changed-files.json"
 
   skip-paths:
@@ -334,7 +340,7 @@ jobs:
               conclusion: "skipped",
               output: {
                 title: "No matching files",
-                summary: "No changed file matches the caller's paths input. The review did not run.",
+                summary: `No changed file matches the caller's paths input. The review did not run. Add the ${process.env.PERSONA}-scan-requested label to request it.`,
               },
             });
 

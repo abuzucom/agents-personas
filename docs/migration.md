@@ -15,14 +15,23 @@ Two caller files cover the planned workflow:
   request after CI. Mark `foucault / security` and `euler / quality` as
   required checks.
 - `examples/label-caller.yml` runs adorno, generay, and havel when a
-  maintainer adds a label. These checks stay optional.
+  maintainer adds a label. These checks stay optional. A repository that
+  wants manual scans only uses this pattern for every persona, foucault and
+  euler included, and skips the always-on caller.
 
 | Label | Job | Mode |
 |---|---|---|
-| `review:adorno` | adorno | default |
-| `review:generay` | generay | default (`time`) |
-| `review:generay-sync` | generay-sync | `sync` |
-| `review:havel` | havel | default |
+| `adorno-scan-requested` | adorno | default |
+| `generay-scan-requested` | generay | default (`time`) |
+| `generay-sync-scan-requested` | generay-sync | `sync` |
+| `havel-scan-requested` | havel | default |
+
+GitHub lets anyone with triage access or higher add or remove any label.
+Repository access is the only control on who requests a scan.
+
+A pull request that carries the `<persona>-scan-requested` label also passes
+the `paths` filter of that persona. An always-on caller that skips some
+files still reviews a labeled pull request.
 
 A person adds every label. A new push to a labeled pull request reviews
 again.
@@ -38,6 +47,18 @@ one. A pull request without a matching file gets a skipped check named
       paths: |
         src/**
         api/**
+```
+
+A pattern that starts with `!` excludes the files it matches. A pull request
+that touches only excluded files gets the same skipped check. This caller
+skips pull requests that change only the root changelog or README:
+
+```yaml
+    with:
+      personas_ref: "<sha>"
+      paths: |
+        !CHANGELOG.md
+        !README.md
 ```
 
 ### Required-check caveat
