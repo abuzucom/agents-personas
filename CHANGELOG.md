@@ -29,6 +29,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   reply in the existing `tests/test_engine_run_review.py`.
 - Add `engine/run_eval.py --repeat N`. It sends every case N times and
   reports the share of runs with the most common verdict.
+- Record NEEDS-HUMAN with the findings of a retry that fails only on
+  process narration. Any other invalid retry still fails the run.
+- Add an optional `format_note` to each provider profile. The note joins
+  the system prompt of that profile only. The `ollama-large` profile for
+  minimax-m3.1-flash carries one.
 
 ### Changed
 - Send a fixed seed to Ollama, OpenAI-compatible, and Google providers. The
@@ -37,7 +42,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `**Mode:**` line. The validator rejects a line outside a code fence that
   opens with Reviewed, Examined, Inspected, Traced, Checked, Analyzed,
   Verified, Looked, Went, Started, Review covered, or The review. The
-  rejection uses the existing single retry.
+  rejection uses the existing single retry. The prompt shows the three
+  opening lines and names no banned opener.
+- End every provider request with a short trusted reminder after the
+  review envelope. It names the opening and closing report lines.
+- Add the model call command and `fail_on_block` to the review key.
 - Require the hook sandbox by default. An empty
   `PERSONAS_REQUIRE_SANDBOX` or `1` fails closed without a trusted
   bubblewrap. Only `0` allows the warned local fallback.
