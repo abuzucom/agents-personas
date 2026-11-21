@@ -434,18 +434,19 @@ jobs:
           REVIEW_KEY: ${{ steps.key.outputs.key }}
         with:
           script: |
-            // One head gets one model verdict per input set. A label event or
-            // a rerun on the same inputs reuses the earlier check run. Only a
-            // completed check run from the github-actions app with this exact
-            // key counts. A failure before a verdict carries no key.
+            // A label event or a rerun on the same inputs reuses an earlier
+            // failing check run with this exact key. A failure before a
+            // verdict carries no key. Any workflow with checks: write can plant
+            // a check run with the key, and branch protection passes success
+            // and neutral. Only a failure gets reused, so a planted result can
+            // never suppress a review. Passing results always rerun.
             const runs = await github.paginate(github.rest.checks.listForRef, {
               owner: context.repo.owner, repo: context.repo.repo, ref: process.env.HEAD_SHA,
               check_name: `${process.env.PERSONA} / ${process.env.MODE}`, filter: "all", per_page: 100,
             });
             const match = runs.find((run) =>
               run.app?.slug === "github-actions" && run.status === "completed" &&
-              run.external_id === process.env.REVIEW_KEY &&
-              ["success", "neutral", "failure"].includes(run.conclusion));
+              run.external_id === process.env.REVIEW_KEY && run.conclusion === "failure");
             core.setOutput("hit", match ? "true" : "false");
             core.setOutput("conclusion", match ? match.conclusion : "");
             if (match) {
