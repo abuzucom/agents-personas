@@ -53,7 +53,7 @@ PROCESS_NARRATION_PATTERNS = (
 # A mode with require_coverage opens its report with these three lines. The
 # mode line holds only the mode value. Scope: and Unseen: each hold a noun
 # list. The check reads structure only and never judges the nouns.
-MODE_LINE_PATTERN = re.compile(r"^(?:\*\*Mode:\*\*|Mode:)[ \t]*\S+[ \t]*$")
+MODE_LINE_PATTERN = re.compile(r"^(?:\*\*Mode:\*\*|Mode:)[ \t]*(\S+)[ \t]*$")
 COVERAGE_LABELS = ("Scope:", "Unseen:")
 
 
@@ -132,11 +132,14 @@ def process_narration_lines(response: str) -> list[int]:
     return narration
 
 
-def coverage_problem(lines: list[str]) -> str:
+def coverage_problem(lines: list[str], expected_mode: str | None = None) -> str:
     """Return why the report opening breaks the coverage contract, or an empty string."""
     opening = [line.strip() for line in lines if line.strip()][:len(COVERAGE_LABELS) + 1]
-    if not opening or not MODE_LINE_PATTERN.match(opening[0]):
+    match = MODE_LINE_PATTERN.match(opening[0]) if opening else None
+    if match is None:
         return "the first coverage line must be the mode line with nothing after the mode value"
+    if expected_mode is not None and match.group(1) != expected_mode:
+        return f"the first coverage line must name mode {expected_mode}, not {match.group(1)}"
     for index, label in enumerate(COVERAGE_LABELS, start=1):
         line = opening[index] if index < len(opening) else ""
         if not line.startswith(label) or not line[len(label):].strip():
@@ -212,7 +215,7 @@ def validate_response(response: str, expected_mode: str | None = None,
     if narration:
         numbers = ", ".join(str(number) for number in narration[:5])
         raise NarrationError(f"process narration appears on report line(s): {numbers}")
-    problem = coverage_problem(lines) if require_coverage and not allow_narration else ""
+    problem = coverage_problem(lines, expected_mode) if require_coverage and not allow_narration else ""
     if problem:
         raise CoverageError(problem)
     return verdict, payload

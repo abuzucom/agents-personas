@@ -40,6 +40,7 @@ class CoverageCheckTest(unittest.TestCase):
             "empty scope": "**Mode:** PR\nScope:\nUnseen: callers.\n",
             "text after the mode": "Mode: PR, all 20 changed files\nScope: app.py.\nUnseen: callers.\n",
             "no mode line": "Scope: app.py.\nUnseen: callers.\n",
+            "wrong mode value": "**Mode:** File\nScope: app.py.\nUnseen: callers.\n",
         }
         for name, opening in openings.items():
             with self.subTest(case=name):
@@ -47,6 +48,11 @@ class CoverageCheckTest(unittest.TestCase):
                     validator.validate_response(_reply(opening), "PR", require_coverage=True)
                 self.assertIsInstance(caught.exception, validator.NarrationError)
                 self.assertIn("coverage", str(caught.exception))
+
+    def test_mode_value_is_free_without_an_expected_mode(self):
+        opening = "**Mode:** File\nScope: app.py.\nUnseen: callers.\n"
+        payload_free = _reply(opening).replace('"mode": "PR", ', "")
+        self.assertEqual(validator.validate_response(payload_free, None, require_coverage=True)[0], "APPROVE")
 
     def test_check_is_off_by_default(self):
         self.assertEqual(validator.validate_response(_reply(""), "PR")[0], "APPROVE")

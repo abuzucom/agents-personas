@@ -57,6 +57,8 @@ PR_SET_DUMPABLE = 4
 # stops a hung adapter process.
 ADAPTER_TIMEOUT_SECONDS = 1800
 MAX_PROBLEM_CHARS = 500
+# A confirmed chunk keeps both reports. This line separates them.
+CONFIRMATION_HEADING = "Confirmation run:"
 RETRY_NOTE = (
     "Engine note: the previous response failed validation ({problem}). Return a "
     "report that ends with the VERDICT line and the VERDICT_JSON line."
@@ -244,15 +246,32 @@ def finding_classes(findings: list) -> set:
     return {str(item.get("class") or item.get("file")) for item in findings if isinstance(item, dict)}
 
 
+def merge_findings(first: list, second: list) -> list:
+    """Return the first findings plus each second finding with a new class, file, and line."""
+    def identity(item) -> tuple:
+        return (item.get("class"), item.get("file"), item.get("line")) if isinstance(item, dict) else (repr(item),)
+
+    seen = {identity(item) for item in first}
+    return list(first) + [item for item in second if identity(item) not in seen]
+
+
 def confirm_block(first: ChunkResult, confirmation: ChunkResult) -> ChunkResult:
-    """Return the first BLOCK when the confirmation repeats a class, else NEEDS-HUMAN."""
+    """Return BLOCK when the confirmation repeats a class, else NEEDS-HUMAN.
+
+    Either way the result keeps the findings and reports of both runs. A
+    finding that only the confirmation run raised stays visible to a person.
+    """
     usage = sum_usage([first, confirmation])
+    findings = merge_findings(first.findings, confirmation.findings)
+    report = first.report
+    if confirmation.report:
+        report = f"{first.report}\n{CONFIRMATION_HEADING}\n{confirmation.report}"
     repeated = finding_classes(first.findings) & finding_classes(confirmation.findings)
     if confirmation.verdict == "BLOCK" and repeated:
-        return ChunkResult("BLOCK", first.findings, first.report, usage, first.reason)
+        return ChunkResult("BLOCK", findings, report, usage, first.reason)
     reason = (f"BLOCK not confirmed: the confirmation run returned {confirmation.verdict} "
               "without a repeated finding class")
-    return ChunkResult("NEEDS-HUMAN", first.findings, first.report, usage, reason)
+    return ChunkResult("NEEDS-HUMAN", findings, report, usage, reason)
 
 
 def review_confirmed_chunk(options: RunOptions, system_prompt: str, case_path: Path, entry: dict,

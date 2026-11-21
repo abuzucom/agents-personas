@@ -31,12 +31,25 @@ class BlockConfirmationTest(unittest.TestCase):
 
     def test_repeated_class_keeps_the_block(self):
         first = fixture._reply("BLOCK", [_finding("M14"), _finding("M3")])
-        self.script(first, fixture._reply("BLOCK", [_finding("M3", "other.py")]))
+        confirmation = fixture._reply("BLOCK", [_finding("M3", "other.py")])
+        self.script(first, confirmation)
         result = fixture.run_review.run_mode(self.options())
         self.assertEqual(result["verdict"], "BLOCK")
-        self.assertEqual(result["findings"], [_finding("M14"), _finding("M3")])
-        self.assertEqual(self.stored()["chunk_results"][0]["report"], first)
+        self.assertEqual(result["findings"], [_finding("M14"), _finding("M3"), _finding("M3", "other.py")])
+        self.assertEqual(self.stored()["chunk_results"][0]["report"],
+                         first + "\n" + fixture.run_review.CONFIRMATION_HEADING + "\n" + confirmation)
         self.assertEqual(len(self.prompts()), 2)
+
+    def test_new_class_from_the_confirmation_reaches_the_record(self):
+        self.script(fixture._reply("BLOCK", [_finding("M14")]), fixture._reply("BLOCK", [_finding("M9", "new.py")]))
+        result = fixture.run_review.run_mode(self.options())
+        self.assertEqual(result["verdict"], "NEEDS-HUMAN")
+        self.assertEqual(result["findings"], [_finding("M14"), _finding("M9", "new.py")])
+        self.assertIn(fixture.run_review.CONFIRMATION_HEADING, self.stored()["chunk_results"][0]["report"])
+
+    def test_identical_findings_appear_once(self):
+        self.script(fixture._reply("BLOCK", [_finding("M14")]), fixture._reply("BLOCK", [_finding("M14")]))
+        self.assertEqual(fixture.run_review.run_mode(self.options())["findings"], [_finding("M14")])
 
     def test_approve_on_confirmation_records_needs_human(self):
         self.script(fixture._reply("BLOCK", [_finding("M14")]), fixture._reply("APPROVE"))
@@ -55,9 +68,11 @@ class BlockConfirmationTest(unittest.TestCase):
         self.assertIn("BLOCK not confirmed", self.stored()["chunk_results"][0]["reason"])
 
     def test_capacity_on_confirmation_records_needs_human(self):
-        self.script(fixture._reply("BLOCK", [_finding("M14")]), CAPACITY_EXIT_CODE)
+        first = fixture._reply("BLOCK", [_finding("M14")])
+        self.script(first, CAPACITY_EXIT_CODE)
         result = fixture.run_review.run_mode(self.options())
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
+        self.assertEqual(self.stored()["chunk_results"][0]["report"], first)
         self.assertIn("BLOCK not confirmed", self.stored()["chunk_results"][0]["reason"])
 
     def test_findings_without_a_class_compare_by_file(self):
