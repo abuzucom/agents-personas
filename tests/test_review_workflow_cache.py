@@ -54,11 +54,19 @@ class CacheWiringTest(unittest.TestCase):
         self.assertEqual(step["id"], "cached")
         script = step["with"]["script"]
         for fragment in ("listForRef", 'filter: "all"', '"github-actions"', 'status === "completed"',
-                         "external_id === process.env.REVIEW_KEY", 'core.setOutput("hit"',
-                         'core.setOutput("conclusion"'):
+                         "external_id === process.env.REVIEW_KEY", 'run.conclusion === "failure"',
+                         'core.setOutput("hit"', 'core.setOutput("conclusion"'):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, script)
         self.assertEqual(step["env"]["REVIEW_KEY"], "${{ steps.key.outputs.key }}")
+
+    def test_lookup_never_reuses_a_passing_conclusion(self):
+        # Any workflow with checks: write can plant a check run with the key.
+        # Branch protection passes success and neutral. Reusing only failure
+        # means a planted result can never suppress a review.
+        script = _named("review")["Find an earlier review"]["with"]["script"]
+        self.assertNotIn('"success"', script)
+        self.assertNotIn('"neutral"', script)
 
     def test_hit_skips_the_fetch_build_model_and_publish_steps(self):
         for job in REVIEW_JOBS:

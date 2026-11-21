@@ -20,8 +20,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Reuse one review per head. `engine/review_key.py` hashes the persona,
   mode, head, base, engine ref, pull request title and body, persona
   options, and chunk caps. Each published check run carries that key in
-  its `external_id`. A rerun with the same key reuses the earlier check
-  run and calls no model. The active human approved the edit to the
+  its `external_id`. A rerun with the same key reuses an earlier failing
+  check run and calls no model. A passing result always reruns. A check run
+  that another workflow plants with the key never suppresses a review. The active human approved the edit to the
   existing `tests/test_review_workflow_stages.py` that admits the key step.
 - Confirm each chunk BLOCK with one more run. The BLOCK stands only when
   that run blocks with a finding class from the first run. Otherwise the
