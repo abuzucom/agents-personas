@@ -112,11 +112,12 @@ jobs:
           script: |
             const fs = require("fs");
             const path = `${process.env.RUNNER_TEMP}/eval.txt`;
-            // Grade lines quote model output. A fence longer than any backtick
-            // run keeps that text inert, and the bound keeps the summary small.
+            // Grade lines quote model output. GitHub caps a check summary at
+            // 65,535 characters. The text keeps its last 60,000 characters, and
+            // each run of three or more backticks becomes apostrophes. A fixed
+            // fence then keeps the text inert and the summary under the cap.
             const text = fs.existsSync(path) ? fs.readFileSync(path, "utf8").slice(-60000) : "The eval produced no output.";
-            const longest = Math.max(0, ...(text.match(/`+/g) || []).map((run) => run.length));
-            const fence = "`".repeat(Math.max(3, longest + 1));
+            const safe = text.replace(/`{3,}/g, (run) => "'".repeat(run.length));
             const passed = process.env.OUTCOME === "success";
             await github.rest.checks.create({
               owner: context.repo.owner, repo: context.repo.repo, head_sha: process.env.HEAD_SHA,
@@ -124,6 +125,6 @@ jobs:
               conclusion: passed ? "success" : "failure", details_url: process.env.RUN_URL,
               output: {
                 title: passed ? "Every live grade passed" : "The live eval failed",
-                summary: `${fence}\n${text}\n${fence}`,
+                summary: `\`\`\`\n${safe}\n\`\`\``,
               },
             });

@@ -76,6 +76,21 @@ class StageTest(unittest.TestCase):
         with self.assertRaisesRegex(stage_persona.StageError, "exceeds"):
             stage_persona.stage(self.source, "euler", self.target)
 
+    def test_file_count_cap_fails(self):
+        self.patch_cap("MAX_FILES", 2)
+        with self.assertRaisesRegex(stage_persona.StageError, "exceeds 2 files"):
+            stage_persona.stage(self.source, "euler", self.target)
+
+    def test_total_size_cap_fails(self):
+        self.patch_cap("MAX_TOTAL_BYTES", 4)
+        with self.assertRaisesRegex(stage_persona.StageError, "or 4 bytes"):
+            stage_persona.stage(self.source, "euler", self.target)
+
+    def patch_cap(self, name: str, value: int) -> None:
+        original = getattr(stage_persona, name)
+        setattr(stage_persona, name, value)
+        self.addCleanup(setattr, stage_persona, name, original)
+
     def test_unsafe_names_fail(self):
         for name in ("../euler", "_template", "Euler", "", "a" * 40):
             with self.subTest(name=name):

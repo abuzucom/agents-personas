@@ -98,6 +98,15 @@ class EvalJobTest(unittest.TestCase):
         self.assertIn("head_sha: process.env.HEAD_SHA", script)
         self.assertEqual(step["env"]["HEAD_SHA"], "${{ github.event.pull_request.head.sha }}")
 
+    def test_summary_stays_under_the_checks_limit(self):
+        # GitHub caps a check summary at 65,535 characters. A fixed fence and a
+        # 60,000-character text slice keep every summary under that cap.
+        script = self.steps["Publish the eval check"]["with"]["script"]
+        self.assertIn(".slice(-60000)", script)
+        self.assertIn('text.replace(/`{3,}/g, (run) => "\'".repeat(run.length))', script)
+        self.assertIn(r'summary: `\`\`\`\n${safe}\n\`\`\``', script)
+        self.assertNotIn("longest", script)
+
 
 if __name__ == "__main__":
     unittest.main()
