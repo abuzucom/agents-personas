@@ -31,6 +31,9 @@ mark a case with an unstable model verdict.
 in place of --root. The eval-live workflow grades pull request persona data
 with the grader from the default branch, so no pull request Python runs.
 
+--max-cases N fails the run before any model call when the selected cases
+exceed N. Each case costs one model call per repeat.
+
 A --model-call target is a callable call(system_prompt, mode, case_text) -> str.
 The mode argument carries the json_mode of the mode, or the mode name.
 """
@@ -346,9 +349,22 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--root", type=Path, default=REPO_ROOT, help="repository root")
     parser.add_argument("--extension-root", type=Path,
                         help="repository root that supplies eval/extra_checks.py in place of --root")
+    parser.add_argument("--max-cases", type=positive_count,
+                        help="fail before any model call when the selected cases exceed this count")
     parser.add_argument("--repeat", type=repeat_count, default=1,
                         help=f"send every case this many times, 1 to {MAX_REPEAT}, and report verdict agreement")
     return parser.parse_args(argv)
+
+
+def positive_count(value: str) -> int:
+    """Return a positive integer, or raise an argparse error."""
+    try:
+        count = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(f"expected a positive integer, not {value!r}") from error
+    if count < 1:
+        raise argparse.ArgumentTypeError(f"expected a positive integer, not {count}")
+    return count
 
 
 def repeat_count(value: str) -> int:
@@ -374,6 +390,8 @@ def main(argv: list[str]) -> int:
         model_call = resolve_model_call(options.model_call) if options.model_call else None
         if options.repeat > 1 and model_call is None:
             raise EvalError("--repeat needs --model-call")
+        if options.max_cases is not None and len(cases) > options.max_cases:
+            raise EvalError(f"{len(cases)} case(s) exceed --max-cases {options.max_cases}")
     except (reviewers.ReviewerError, EvalError, ImportError) as error:
         print(f"error: {error}. Fix the option or the persona files and rerun.", file=sys.stderr)
         return 1

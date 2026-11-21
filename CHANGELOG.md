@@ -27,6 +27,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add `run_eval.py --extension-root`. It loads `eval/extra_checks.py` from
   a trusted root. The eval-live run grades with the grader of the default
   branch.
+- Add `run_eval.py --max-cases`. It fails before any model call when the
+  selected cases exceed the cap. eval-live passes 150 and stops after 60
+  minutes. foucault raised both bounds.
 - Add the `stop-requested` label. It pauses every persona review on a pull
   request, scan requests included. A paused review publishes a skipped
   check titled "Scans stopped".

@@ -52,6 +52,8 @@ class EvalJobTest(unittest.TestCase):
 
     def test_job_holds_least_privilege(self):
         self.assertEqual(self.job["permissions"], {"checks": "write", "contents": "read"})
+        # A hung provider ends the run. The check step still publishes a failure.
+        self.assertEqual(self.job["timeout-minutes"], 60)
         self.assertEqual(self.job["strategy"]["matrix"]["persona"], "${{ fromJSON(needs.select.outputs.personas) }}")
 
     def test_checkouts_persist_no_credential(self):
@@ -74,7 +76,7 @@ class EvalJobTest(unittest.TestCase):
     def test_eval_uses_the_trusted_grader_and_the_staged_data(self):
         run = self.steps["Run the live eval"]["run"]
         for fragment in ('--root "$RUNNER_TEMP/eval-root"', "--extension-root .",
-                         "--model-call engine.call_model:call_model"):
+                         "--model-call engine.call_model:call_model", "--max-cases 150"):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, run)
         # Every mode runs once. --model-call shares the --mode prefix, so the

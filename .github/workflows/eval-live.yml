@@ -56,6 +56,8 @@ jobs:
     needs: select
     if: needs.select.outputs.personas != '[]'
     runs-on: ubuntu-24.04
+    # A hung provider ends the run. The check step still publishes a failure.
+    timeout-minutes: 60
     permissions:
       checks: write
       contents: read
@@ -94,8 +96,9 @@ jobs:
           MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           set -o pipefail
+          # The cap bounds model spend. foucault holds 68 cases and euler 41.
           python3 engine/run_eval.py --root "$RUNNER_TEMP/eval-root" --persona "$PERSONA" \
-            --extension-root . --model-call engine.call_model:call_model | tee "$RUNNER_TEMP/eval.txt"
+            --extension-root . --max-cases 150 --model-call engine.call_model:call_model 2>&1 | tee "$RUNNER_TEMP/eval.txt"
 
       - name: Publish the eval check
         if: ${{ always() }}
