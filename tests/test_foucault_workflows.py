@@ -112,8 +112,9 @@ class ExampleCallerTest(unittest.TestCase):
         workflow = _load(EXAMPLES / "label-caller.yml")
         trigger = _trigger(workflow)["pull_request_target"]
         self.assertEqual(trigger["types"], ["labeled", "synchronize"])
-        labels = {"adorno": "review:adorno", "generay": "review:generay",
-                  "generay-sync": "review:generay-sync", "havel": "review:havel"}
+        # The active human approved the <persona>-scan-requested label names.
+        labels = {"adorno": "adorno-scan-requested", "generay": "generay-scan-requested",
+                  "generay-sync": "generay-sync-scan-requested", "havel": "havel-scan-requested"}
         self.assertEqual(set(workflow["jobs"]), set(labels))
         for job_name, label in labels.items():
             with self.subTest(job=job_name):

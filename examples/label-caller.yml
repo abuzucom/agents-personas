@@ -1,6 +1,8 @@
 # Label caller for an adopting repository: .github/workflows/persona-review-labels.yml
 #
-# A maintainer adds a review:<persona> label to request an optional review.
+# A maintainer adds a <persona>-scan-requested label to request a review.
+# A repository without automatic scans can use this file alone. Only people
+# with triage access or higher can add a label.
 # Each new push to a labeled pull request reviews again. These checks stay
 # optional in branch protection. Replace the all-zero SHA with one
 # agents-personas commit SHA in every uses: pin and every personas_ref. The
@@ -25,7 +27,7 @@ permissions:
 
 jobs:
   adorno:
-    if: contains(github.event.pull_request.labels.*.name, 'review:adorno')
+    if: contains(github.event.pull_request.labels.*.name, 'adorno-scan-requested')
     permissions:
       checks: write
       contents: read
@@ -37,7 +39,7 @@ jobs:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
 
   generay:
-    if: contains(github.event.pull_request.labels.*.name, 'review:generay')
+    if: contains(github.event.pull_request.labels.*.name, 'generay-scan-requested')
     permissions:
       checks: write
       contents: read
@@ -49,7 +51,7 @@ jobs:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
 
   generay-sync:
-    if: contains(github.event.pull_request.labels.*.name, 'review:generay-sync')
+    if: contains(github.event.pull_request.labels.*.name, 'generay-sync-scan-requested')
     permissions:
       checks: write
       contents: read
@@ -62,7 +64,7 @@ jobs:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
 
   havel:
-    if: contains(github.event.pull_request.labels.*.name, 'review:havel')
+    if: contains(github.event.pull_request.labels.*.name, 'havel-scan-requested')
     permissions:
       checks: write
       contents: read

@@ -9,9 +9,14 @@ on:
   workflow_run:
     workflows: [Convention Sync Check]
     types: [completed]
+  # Adding the foucault-scan-requested label starts this review at once.
+  # pull_request_target runs this file from the default branch, so a pull
+  # request cannot edit it. The engine never executes the pull request head.
+  pull_request_target:
+    types: [labeled]
 
 concurrency:
-  group: foucault-security-review-${{ github.event.workflow_run.head_sha }}
+  group: foucault-security-review-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -19,7 +24,9 @@ permissions:
 
 jobs:
   foucault:
-    if: github.event.workflow_run.event == 'pull_request'
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request') ||
+      (github.event_name == 'pull_request_target' && github.event.label.name == 'foucault-scan-requested')
     permissions:
       checks: write
       contents: read
@@ -27,5 +34,10 @@ jobs:
     uses: ./.github/workflows/foucault-security-review.yml
     with:
       personas_ref: ${{ github.sha }}
+      # A pull request that changes only these root files gets a skipped
+      # check run and no model call.
+      paths: |
+        !CHANGELOG.md
+        !README.md
     secrets:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
