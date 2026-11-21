@@ -250,15 +250,15 @@ def context_from_envelope(envelope: dict, unreviewed: list[str]) -> ReviewContex
     target = envelope["REVIEW_TARGET"]
     files = target["files"]
     if is_engine_envelope(envelope):
-        # The engine time mode answers as TIME.md mode PR. Each file holds its patch.
+        # The engine time mode answers as TIME.md mode PR.
         mode, prescan = "PR", target.get("prescan", [])
-        line_ranges = {name: hunk_ranges(text) for name, text in files.items()}
     else:
         mode, prescan = envelope["mode"], envelope["TRUSTED_CONTEXT"].get("prescan", [])
-        # A generay PR envelope names the diff instead of the changed files.
-        # Only local modes get line ranges.
-        line_ranges = {} if mode == "PR" else {name: (range(1, len(text.splitlines()) + 1),)
-                                                for name, text in files.items()}
+    # A PR target holds patch text. A local target holds whole files.
+    if mode == "PR":
+        line_ranges = {name: hunk_ranges(text) for name, text in files.items()}
+    else:
+        line_ranges = {name: (range(1, len(text.splitlines()) + 1),) for name, text in files.items()}
     return ReviewContext(mode, set(files), {item["id"] for item in prescan}, unreviewed, line_ranges)
 
 

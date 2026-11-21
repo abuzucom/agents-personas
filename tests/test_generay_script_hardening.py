@@ -111,6 +111,14 @@ class FindingLocationTest(unittest.TestCase):
                 self.assertIn("finding line must be a positive integer",
                               self.problems(_engine_context(), line=line))
 
+    def test_generay_pr_envelope_checks_hunk_lines(self):
+        envelope = {"mode": "PR", "TRUSTED_CONTEXT": {"prescan": []},
+                    "REVIEW_TARGET": {"files": {"app.py": PATCH}}}
+        context = time_reply.context_from_envelope(envelope, [])
+        self.assertEqual(self.problems(context, line=11), [])
+        self.assertIn("finding line 999 is outside the review target for app.py",
+                      self.problems(context, line=999))
+
     def test_unhashable_file_is_a_problem_not_a_crash(self):
         for file in (["app.py"], {"path": "app.py"}):
             with self.subTest(file=file):
