@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.13.0] (2026-11-21)
+## [0.13.1] (2026-11-21)
 
 ### Added
 - Add the `stop-requested` label. It pauses every persona review on a pull
@@ -90,6 +90,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `/proc` key test only when the variable is unset. CI keeps `1`. The
   active human approved the edit to the existing
   `tests/test_euler_review_hooks.py`.
+
+### Fixed
+- Diff each review case from the merge base of base and head. A pull
+  request behind its base branch no longer shows the newer base commits in
+  reverse. euler reviewed a one-file probe as a 12-file change before the
+  fix.
 
 ## [0.10.0] (2026-11-20)
 

@@ -110,9 +110,20 @@ def decode_paths(raw_paths: list[bytes]) -> tuple[list[str], list[str]]:
     return paths, undecodable
 
 
+def diff_range(options: BuildOptions) -> str:
+    """Return the three-dot range from the merge base of base and head to head.
+
+    The workflow passes the current tip of the base branch. After that branch
+    moves, base..head would show its newer commits in reverse, as if the pull
+    request undid those commits. GitHub's pull request diff starts at the
+    merge base.
+    """
+    return f"{options.base}...{options.head}"
+
+
 def read_binary_paths(options: BuildOptions) -> set[str]:
     """Return the changed paths that git reports as binary."""
-    raw = run_git(options.repo, "diff", "-z", "--numstat", "--no-renames", options.base, options.head)
+    raw = run_git(options.repo, "diff", "-z", "--numstat", "--no-renames", diff_range(options))
     binary = set()
     for record in raw.split(b"\0"):
         fields = record.split(b"\t", NUMSTAT_SPLITS)
@@ -147,7 +158,7 @@ def split_raw_and_patches(output: bytes) -> tuple[list[bytes], list[bytes]]:
 def read_diff(options: BuildOptions) -> tuple[list[str], set[str], dict[str, str], list[str]]:
     """Return changed paths, binary paths, per-file text patches, and undecodable paths."""
     output = run_git(options.repo, "diff", "-z", "--raw", "-p", "--no-renames", "--no-color",
-                     options.base, options.head)
+                     diff_range(options))
     try:
         raw_paths, raw_patches = split_raw_and_patches(output)
     except ValueError as error:
