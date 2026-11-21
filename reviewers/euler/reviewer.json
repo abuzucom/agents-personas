@@ -9,7 +9,8 @@
       "prompt": "QUALITY.md",
       "review": true,
       "default": true,
-      "json_mode": "PR"
+      "json_mode": "PR",
+      "require_coverage": true
     },
     "file": {
       "prompt": "QUALITY.md",

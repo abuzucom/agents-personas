@@ -34,7 +34,7 @@ CAP_DEFAULTS = {"max_chunks": 20, "max_envelope_bytes": ENVELOPE_BYTE_CEILING}
 # json_mode names the VERDICT_JSON mode value a persona prompt emits, for
 # example "PR" in the foucault contract. Without it the engine skips the check.
 MODE_KEYS = frozenset({"prompt", "review", "context", "local", "default", "json_mode", "finding_rules",
-                       "verdict_line", "verdicts", *CAP_CEILINGS})
+                       "verdict_line", "verdicts", "require_coverage", *CAP_CEILINGS})
 # A local mode runs only on a workstation through engine/run_eval.py. Its
 # prompt answers on its own verdict line, for example "RISK: HIGH". A review
 # mode answers on the engine VERDICT line, which the CI validator gates on.
@@ -46,7 +46,9 @@ DEFAULT_VERDICTS = ("APPROVE", "BLOCK", "NEEDS-HUMAN")
 # for annotations, so keys must keep both.
 FINDING_RULE_KEYS = frozenset({"keys", "severities", "class_prefix"})
 REQUIRED_FINDING_KEYS = ("file", "line")
-MODE_FLAGS = ("review", "context", "local", "default")
+# require_coverage makes the validator check the Mode, Scope, and Unseen
+# opening lines of a review reply.
+MODE_FLAGS = ("review", "context", "local", "default", "require_coverage")
 NAME_CHARACTERS = frozenset(string.ascii_lowercase + string.digits + "-")
 
 

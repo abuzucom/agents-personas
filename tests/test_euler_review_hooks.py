@@ -60,7 +60,9 @@ def _patch(text: str) -> str:
 def _reply(verdict: str, prescan=(), findings=()) -> str:
     payload = {"schema_version": "1", "mode": "PR", "verdict": verdict, "findings": list(findings),
                "prescan": list(prescan)}
-    return f"Findings above.\n\nVERDICT: {verdict} - summary\nVERDICT_JSON: {json.dumps(payload)}\n"
+    # The euler quality mode requires the coverage lines. The active human approved this opening.
+    return (f"Mode: PR\nScope: app.py.\nUnseen: callers.\nFindings above.\n\nVERDICT: {verdict} - summary\n"
+            f"VERDICT_JSON: {json.dumps(payload)}\n")
 
 
 class TrustedContextTest(unittest.TestCase):

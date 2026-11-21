@@ -50,12 +50,23 @@ PROCESS_NARRATION_PATTERNS = (
 )
 
 
+# A mode with require_coverage opens its report with these three lines. The
+# mode line holds only the mode value. Scope: and Unseen: each hold a noun
+# list. The check reads structure only and never judges the nouns.
+MODE_LINE_PATTERN = re.compile(r"^(?:\*\*Mode:\*\*|Mode:)[ \t]*\S+[ \t]*$")
+COVERAGE_LABELS = ("Scope:", "Unseen:")
+
+
 class ResponseError(ValueError):
     """Report a response-contract failure."""
 
 
 class NarrationError(ResponseError):
     """Report process narration in an otherwise checked response."""
+
+
+class CoverageError(NarrationError):
+    """Report missing or malformed coverage lines in an otherwise checked response."""
 
 
 def _verdict_indexes(lines: list[str]) -> list[int]:
@@ -121,6 +132,18 @@ def process_narration_lines(response: str) -> list[int]:
     return narration
 
 
+def coverage_problem(lines: list[str]) -> str:
+    """Return why the report opening breaks the coverage contract, or an empty string."""
+    opening = [line.strip() for line in lines if line.strip()][:len(COVERAGE_LABELS) + 1]
+    if not opening or not MODE_LINE_PATTERN.match(opening[0]):
+        return "the first coverage line must be the mode line with nothing after the mode value"
+    for index, label in enumerate(COVERAGE_LABELS, start=1):
+        line = opening[index] if index < len(opening) else ""
+        if not line.startswith(label) or not line[len(label):].strip():
+            return f"coverage line {index + 1} must start with {label} and list nouns"
+    return ""
+
+
 def _validate_finding(finding: Any) -> None:
     """Require the file and line every annotation needs."""
     if not isinstance(finding, dict):
@@ -171,11 +194,13 @@ def _validate_payload(payload: dict[str, Any], verdict: str, expected_mode: str 
 
 def validate_response(response: str, expected_mode: str | None = None,
                       finding_rules: dict[str, Any] | None = None,
-                      allow_narration: bool = False) -> tuple[str, dict[str, Any]]:
+                      allow_narration: bool = False,
+                      require_coverage: bool = False) -> tuple[str, dict[str, Any]]:
     """Validate one bounded review response and return its verdict and JSON.
 
-    allow_narration skips only the narration check. The engine uses it to
-    keep the findings of a reply that still narrates after its retry.
+    require_coverage checks the Mode, Scope, and Unseen opening lines.
+    allow_narration skips the narration and coverage checks. The engine uses
+    it to keep the findings of a reply that still fails them after its retry.
     """
     if len(response.encode("utf-8")) > RESPONSE_LIMIT:
         raise ResponseError("response exceeds the configured limit")
@@ -187,6 +212,9 @@ def validate_response(response: str, expected_mode: str | None = None,
     if narration:
         numbers = ", ".join(str(number) for number in narration[:5])
         raise NarrationError(f"process narration appears on report line(s): {numbers}")
+    problem = coverage_problem(lines) if require_coverage and not allow_narration else ""
+    if problem:
+        raise CoverageError(problem)
     return verdict, payload
 
 

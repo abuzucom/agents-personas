@@ -172,10 +172,11 @@ def call_hook(persona_dir: Path | None, name: str, arguments: list,
 
 
 def validate_reply(response: str, case_path: Path, json_mode: str | None, finding_rules: dict | None,
-                   persona_dir: Path | None = None, allow_narration: bool = False) -> tuple[str, dict]:
+                   persona_dir: Path | None = None, allow_narration: bool = False,
+                   require_coverage: bool = False) -> tuple[str, dict]:
     """Return the verdict and payload of a reply that passes the engine and persona checks."""
     verdict, payload = check_review_response.validate_response(response, json_mode, finding_rules,
-                                                               allow_narration)
+                                                               allow_narration, require_coverage)
     sent = json.loads(case_path.read_text(encoding="utf-8"))
     present, problems = call_hook(persona_dir, "validate_reply", [payload, response, sent])
     if present and not isinstance(problems, list):
@@ -187,7 +188,8 @@ def validate_reply(response: str, case_path: Path, json_mode: str | None, findin
 
 def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
                  json_mode: str | None, finding_rules: dict | None = None,
-                 persona_dir: Path | None = None, run_name: str = "") -> ChunkResult:
+                 persona_dir: Path | None = None, run_name: str = "",
+                 require_coverage: bool = False) -> ChunkResult:
     """Review one envelope with at most one retry after an invalid reply."""
     work = case_path.parent
     stem = f"{case_path.stem}.{run_name}" if run_name else case_path.stem
@@ -206,7 +208,8 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
             diagnostics = review_output.clean_text(completed.stderr.strip(), MAX_PROBLEM_CHARS)
             raise ReviewError(f"model command failed with exit code {completed.returncode}: {diagnostics}")
         try:
-            verdict, payload = validate_reply(completed.stdout, case_path, json_mode, finding_rules, persona_dir)
+            verdict, payload = validate_reply(completed.stdout, case_path, json_mode, finding_rules, persona_dir,
+                                              require_coverage=require_coverage)
         except check_review_response.ResponseError as error:
             problem = str(error)[:MAX_PROBLEM_CHARS]
             note = "\n\n" + RETRY_NOTE.format(problem=problem) + "\n"
@@ -221,7 +224,7 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
 
 def narration_fallback(narrated: tuple[str, Path], case_path: Path, json_mode: str | None,
                        finding_rules: dict | None, persona_dir: Path | None, problem: str) -> ChunkResult:
-    """Return NEEDS-HUMAN with the findings of a retry that failed only on narration.
+    """Return NEEDS-HUMAN with the findings of a retry that failed only on narration or coverage.
 
     The reply passed every other engine and persona check. A person decides
     on its findings. The narrating report stays in the record.
@@ -256,10 +259,11 @@ def review_confirmed_chunk(options: RunOptions, system_prompt: str, case_path: P
                            persona_dir: Path | None) -> ChunkResult:
     """Review one envelope and confirm a BLOCK with one more run."""
     arguments = (options, system_prompt, case_path, entry.get("json_mode"), entry.get("finding_rules"), persona_dir)
-    first = review_chunk(*arguments)
+    coverage = bool(entry.get("require_coverage"))
+    first = review_chunk(*arguments, require_coverage=coverage)
     if first.verdict != "BLOCK":
         return first
-    return confirm_block(first, review_chunk(*arguments, run_name="confirm"))
+    return confirm_block(first, review_chunk(*arguments, run_name="confirm", require_coverage=coverage))
 
 
 def sum_usage(results: list[ChunkResult]) -> dict:

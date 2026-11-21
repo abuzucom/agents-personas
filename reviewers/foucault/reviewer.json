@@ -7,6 +7,7 @@
       "review": true,
       "default": true,
       "json_mode": "PR",
+      "require_coverage": true,
       "finding_rules": {
         "keys": ["severity", "class", "file", "line", "title"],
         "severities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
