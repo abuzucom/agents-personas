@@ -26,15 +26,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   existing `tests/test_review_workflow_stages.py` that admits the key step.
 - Confirm each chunk BLOCK with one more run. The BLOCK stands only when
   that run blocks with a finding class from the first run. Otherwise the
-  chunk records NEEDS-HUMAN. The active human approved the second scripted
-  reply in the existing `tests/test_engine_run_review.py`.
+  chunk records NEEDS-HUMAN. The result keeps the findings and reports of
+  both runs. The active human approved the second scripted reply in the
+  existing `tests/test_engine_run_review.py`.
 - Add `engine/run_eval.py --repeat N`. It sends every case N times and
   reports the share of runs with the most common verdict.
 - Record NEEDS-HUMAN with the findings of a retry that fails only on
   process narration or coverage lines. Any other invalid retry still fails
   the run.
 - Add the `require_coverage` mode flag. A flagged review reply must open
-  with the mode line, a `Scope:` line, and an `Unseen:` line. The foucault
+  with the mode line, a `Scope:` line, and an `Unseen:` line. The mode
+  line must name the expected mode. The foucault
   `security` and euler `quality` modes set it. The active human approved
   the opening lines added to the scripted reply in the existing
   `tests/test_euler_review_hooks.py`.
