@@ -111,6 +111,12 @@ class FindingLocationTest(unittest.TestCase):
                 self.assertIn("finding line must be a positive integer",
                               self.problems(_engine_context(), line=line))
 
+    def test_unhashable_file_is_a_problem_not_a_crash(self):
+        for file in (["app.py"], {"path": "app.py"}):
+            with self.subTest(file=file):
+                problems = self.problems(_engine_context(), file=file)
+                self.assertIn(f"finding cites {file} outside the changed files", problems)
+
     def test_local_finding_needs_a_file_in_the_target(self):
         for file in (None, "", "other.py"):
             with self.subTest(file=file):

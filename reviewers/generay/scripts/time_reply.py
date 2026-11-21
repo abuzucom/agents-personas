@@ -99,9 +99,11 @@ def location_problems(file: object, line: object, context: ReviewContext) -> lis
     inside a hunk of the file patch. A local line falls inside the file.
     """
     problems = []
-    if context.mode == "PR" and file not in context.changed_files:
+    # A list or object file is unhashable. The string test keeps the set lookup safe.
+    in_target = isinstance(file, str) and file in context.changed_files
+    if context.mode == "PR" and not in_target:
         problems.append(f"finding cites {file} outside the changed files")
-    elif context.mode != "PR" and (not isinstance(file, str) or file not in context.changed_files):
+    elif context.mode != "PR" and not in_target:
         problems.append(f"finding cites {file!r} outside the review target")
     if isinstance(line, bool) or not isinstance(line, int) or line < 1:
         return problems + ["finding line must be a positive integer"]
