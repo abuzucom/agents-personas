@@ -14,9 +14,30 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.1] (2026-11-21)
+## [0.11.0] (2026-11-21)
+
+### Added
+- Reuse one review per head. `engine/review_key.py` hashes the persona,
+  mode, head, base, engine ref, pull request title and body, persona
+  options, and chunk caps. Each published check run carries that key in
+  its `external_id`. A rerun with the same key reuses the earlier check
+  run and calls no model. The active human approved the edit to the
+  existing `tests/test_review_workflow_stages.py` that admits the key step.
+- Confirm each chunk BLOCK with one more run. The BLOCK stands only when
+  that run blocks with a finding class from the first run. Otherwise the
+  chunk records NEEDS-HUMAN. The active human approved the second scripted
+  reply in the existing `tests/test_engine_run_review.py`.
+- Add `engine/run_eval.py --repeat N`. It sends every case N times and
+  reports the share of runs with the most common verdict.
 
 ### Changed
+- Send a fixed seed to Ollama, OpenAI-compatible, and Google providers. The
+  Anthropic Messages API takes no seed.
+- Require coverage on two noun-only lines, `Scope:` and `Unseen:`, after the
+  `**Mode:**` line. The validator rejects a line outside a code fence that
+  opens with Reviewed, Examined, Inspected, Traced, Checked, Analyzed,
+  Verified, Looked, Went, Started, Review covered, or The review. The
+  rejection uses the existing single retry.
 - Require the hook sandbox by default. An empty
   `PERSONAS_REQUIRE_SANDBOX` or `1` fails closed without a trusted
   bubblewrap. Only `0` allows the warned local fallback.
