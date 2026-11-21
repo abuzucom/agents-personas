@@ -14,9 +14,19 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.13.0] (2026-11-21)
+## [0.14.0] (2026-11-21)
 
 ### Added
+- Add `.github/workflows/eval-live.yml`. A person adds the `eval-live`
+  label to grade each persona with changed files under `reviewers/<name>/`
+  against the live model, every mode, one call per case. Each persona gets
+  an `eval-live / <persona>` check.
+- Add `engine/stage_persona.py`. It copies the pull request persona as
+  data. It refuses symlinks, special files, oversized files, and unsafe
+  names, and drops Python outside `eval/cases/`.
+- Add `run_eval.py --extension-root`. It loads `eval/extra_checks.py` from
+  a trusted root. The eval-live run grades with the grader of the default
+  branch.
 - Add the `stop-requested` label. It pauses every persona review on a pull
   request, scan requests included. A paused review publishes a skipped
   check titled "Scans stopped".

@@ -27,6 +27,10 @@ Usage:
 of runs that return its most common verdict. Identical runs that disagree
 mark a case with an unstable model verdict.
 
+--extension-root names a repository root that supplies eval/extra_checks.py
+in place of --root. The eval-live workflow grades pull request persona data
+with the grader from the default branch, so no pull request Python runs.
+
 A --model-call target is a callable call(system_prompt, mode, case_text) -> str.
 The mode argument carries the json_mode of the mode, or the mode name.
 """
@@ -340,6 +344,8 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--case", help="run only the named case")
     parser.add_argument("--model-call", help="module:function called as call(system_prompt, mode, case_text)")
     parser.add_argument("--root", type=Path, default=REPO_ROOT, help="repository root")
+    parser.add_argument("--extension-root", type=Path,
+                        help="repository root that supplies eval/extra_checks.py in place of --root")
     parser.add_argument("--repeat", type=repeat_count, default=1,
                         help=f"send every case this many times, 1 to {MAX_REPEAT}, and report verdict agreement")
     return parser.parse_args(argv)
@@ -361,7 +367,9 @@ def main(argv: list[str]) -> int:
     options = parse_arguments(argv)
     try:
         persona_dir, manifest = reviewers.load_persona(options.root, options.persona)
-        extension = load_extension(persona_dir)
+        extension_root = options.extension_root
+        extension_dir = extension_root / "reviewers" / persona_dir.name if extension_root else persona_dir
+        extension = load_extension(extension_dir)
         cases, findings = collect_cases(persona_dir, manifest, options.mode, options.case, extension)
         model_call = resolve_model_call(options.model_call) if options.model_call else None
         if options.repeat > 1 and model_call is None:

@@ -12,6 +12,9 @@ Pull request reviewer personas on one shared review engine.
 - `python engine/run_eval.py --persona <name>` checks the eval cases of a
   persona. With `--model-call` and `--repeat N`, it sends each case N times
   and reports how often the runs agree on a verdict.
+- A person adds the `eval-live` label to grade the changed personas of a
+  pull request against the live model. The engine and the grader come from
+  the default branch. The pull request persona reaches the run as data.
 - The review workflow reuses a failing check run for the same head and
   input set. A passing result always reruns. A push, a title or body edit,
   or a changed option starts a new review.

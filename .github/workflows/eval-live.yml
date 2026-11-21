@@ -1,0 +1,126 @@
+name: eval-live
+
+# A person adds the eval-live label to grade the persona changes of a pull
+# request against the live model (plan decision 18). The run covers each
+# persona with changed files under reviewers/<name>/, every mode, one model
+# call per case. Remove and add the label again to rerun.
+#
+# pull_request_target runs this file from the default branch. The engine,
+# the grader in eval/extra_checks.py, and the model adapter come from the
+# default branch too. engine/stage_persona.py copies only the regular
+# non-Python files of each changed persona from the pull request head. No
+# pull request code runs while the provider key is present. Fork pull
+# requests start nothing.
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+concurrency:
+  group: eval-live-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  select:
+    if: github.event.label.name == 'eval-live' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      personas: ${{ steps.changed.outputs.personas }}
+    steps:
+      - name: List changed personas
+        id: changed
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            // A persona counts when the pull request adds or changes a file
+            // under reviewers/<name>/. A removed file names no persona to grade.
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner, repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number, per_page: 100,
+            });
+            const pattern = /^reviewers\/([a-z][a-z0-9-]{0,31})\//;
+            const personas = new Set();
+            for (const file of files) {
+              const match = pattern.exec(file.filename);
+              if (match && file.status !== "removed") {
+                personas.add(match[1]);
+              }
+            }
+            core.setOutput("personas", JSON.stringify([...personas].sort()));
+
+  eval:
+    needs: select
+    if: needs.select.outputs.personas != '[]'
+    runs-on: ubuntu-24.04
+    permissions:
+      checks: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        persona: ${{ fromJSON(needs.select.outputs.personas) }}
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check out the pull request personas
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: .pr-head
+          sparse-checkout: reviewers
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: '3.14'
+
+      - name: Stage the persona data
+        env:
+          PERSONA: ${{ matrix.persona }}
+        run: python3 engine/stage_persona.py --source .pr-head --persona "$PERSONA" --target "$RUNNER_TEMP/eval-root"
+
+      - name: Run the live eval
+        id: eval
+        env:
+          PERSONA: ${{ matrix.persona }}
+          MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -o pipefail
+          python3 engine/run_eval.py --root "$RUNNER_TEMP/eval-root" --persona "$PERSONA" \
+            --extension-root . --model-call engine.call_model:call_model | tee "$RUNNER_TEMP/eval.txt"
+
+      - name: Publish the eval check
+        if: ${{ always() }}
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        env:
+          PERSONA: ${{ matrix.persona }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          OUTCOME: ${{ steps.eval.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require("fs");
+            const path = `${process.env.RUNNER_TEMP}/eval.txt`;
+            // Grade lines quote model output. A fence longer than any backtick
+            // run keeps that text inert, and the bound keeps the summary small.
+            const text = fs.existsSync(path) ? fs.readFileSync(path, "utf8").slice(-60000) : "The eval produced no output.";
+            const longest = Math.max(0, ...(text.match(/`+/g) || []).map((run) => run.length));
+            const fence = "`".repeat(Math.max(3, longest + 1));
+            const passed = process.env.OUTCOME === "success";
+            await github.rest.checks.create({
+              owner: context.repo.owner, repo: context.repo.repo, head_sha: process.env.HEAD_SHA,
+              name: `eval-live / ${process.env.PERSONA}`, status: "completed",
+              conclusion: passed ? "success" : "failure", details_url: process.env.RUN_URL,
+              output: {
+                title: passed ? "Every live grade passed" : "The live eval failed",
+                summary: `${fence}\n${text}\n${fence}`,
+              },
+            });

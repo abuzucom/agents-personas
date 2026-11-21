@@ -24,6 +24,9 @@ Grade one mode against a model through the engine adapter. Set
 python engine/run_eval.py --persona foucault --mode file --model-call engine.call_model:call_model
 ```
 
+A pull request with the `eval-live` label runs the same live grading in CI.
+The default branch supplies the engine and `extra_checks.py`.
+
 `--model-call` imports and runs the named module. Name only a module under
 local control. Never take the value from pull request content.
 
