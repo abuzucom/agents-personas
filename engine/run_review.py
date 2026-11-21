@@ -193,8 +193,9 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
     stem = f"{case_path.stem}.{run_name}" if run_name else case_path.stem
     note = ""
     problem = ""
-    narrated = None
     for attempt in range(2):
+        # Only the latest attempt decides the fallback. Each attempt starts clear.
+        narrated = None
         prompt_path = work / f"{stem}.prompt.{attempt}.txt"
         usage_path = work / f"{stem}.usage.{attempt}.json"
         prompt_path.write_text(system_prompt + note, encoding="utf-8", newline="\n")
@@ -209,8 +210,8 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
         except check_review_response.ResponseError as error:
             problem = str(error)[:MAX_PROBLEM_CHARS]
             note = "\n\n" + RETRY_NOTE.format(problem=problem) + "\n"
-            narrates = isinstance(error, check_review_response.NarrationError)
-            narrated = (completed.stdout, usage_path) if narrates else None
+            if isinstance(error, check_review_response.NarrationError):
+                narrated = (completed.stdout, usage_path)
             continue
         return ChunkResult(verdict, payload["findings"], completed.stdout, read_usage(usage_path))
     if narrated is not None:

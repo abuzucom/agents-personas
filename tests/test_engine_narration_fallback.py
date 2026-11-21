@@ -75,6 +75,16 @@ class NarrationFallbackTest(unittest.TestCase):
         with self.assertRaisesRegex(fixture.run_review.ReviewError, "persona rule"):
             fixture.run_review.run_mode(self.options())
 
+    def test_narration_then_a_persona_rejection_fails_the_run(self):
+        # The first reply narrates. The second reply narrates no line but
+        # fails a persona rule. The fallback must not reach the first reply.
+        persona_dir = self.root / "reviewers" / "euler"
+        (persona_dir / "review_hooks.py").write_text(
+            "def validate_reply(payload, response, envelope):\n    return ['persona rule']\n", encoding="utf-8")
+        self.script(_narrating("APPROVE"), fixture._reply("APPROVE"))
+        with self.assertRaisesRegex(fixture.run_review.ReviewError, "invalid response after one retry: persona rule"):
+            fixture.run_review.run_mode(self.options())
+
     def test_clean_retry_keeps_its_own_verdict(self):
         self.script(_narrating("APPROVE"), fixture._reply("APPROVE"))
         self.assertEqual(fixture.run_review.run_mode(self.options())["verdict"], "APPROVE")
