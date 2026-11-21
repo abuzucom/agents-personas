@@ -17,7 +17,7 @@ ENGINE_DIR = Path(__file__).resolve().parent.parent / "engine"
 FIELDS = {
     "PERSONA": "euler", "MODE": "quality", "HEAD_SHA": "a" * 40, "BASE_SHA": "b" * 40,
     "PERSONAS_REF": "c" * 40, "PR_TITLE": "Title", "PR_BODY": "Body text", "PERSONA_OPTIONS": "",
-    "MAX_CHUNKS": "", "MAX_ENVELOPE_BYTES": "",
+    "MAX_CHUNKS": "", "MAX_ENVELOPE_BYTES": "", "MODEL_CALL_COMMAND": "", "FAIL_ON_BLOCK": "true",
 }
 
 
@@ -48,6 +48,14 @@ class ReviewKeyTest(unittest.TestCase):
         for name in review_key.KEY_FIELDS:
             with self.subTest(field=name):
                 self.assertNotEqual(review_key.review_key({**FIELDS, name: FIELDS[name] + "x"}), original)
+
+    def test_model_command_and_block_gate_are_key_fields(self):
+        # The adapter command changes the verdict. fail_on_block changes the
+        # conclusion of a BLOCK. A cached result must match both.
+        self.assertIn("MODEL_CALL_COMMAND", review_key.KEY_FIELDS)
+        self.assertIn("FAIL_ON_BLOCK", review_key.KEY_FIELDS)
+        changed = {**FIELDS, "FAIL_ON_BLOCK": "false"}
+        self.assertNotEqual(review_key.review_key(changed), review_key.review_key(FIELDS))
 
     def test_title_and_body_boundary_cannot_shift(self):
         moved = {**FIELDS, "PR_TITLE": "TitleBody", "PR_BODY": " text"}

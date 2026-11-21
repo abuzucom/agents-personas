@@ -420,6 +420,8 @@ jobs:
           PERSONA_OPTIONS: ${{ inputs.persona_options }}
           MAX_CHUNKS: ${{ inputs.max_chunks }}
           MAX_ENVELOPE_BYTES: ${{ inputs.max_envelope_bytes }}
+          MODEL_CALL_COMMAND: ${{ inputs.model_call_command }}
+          FAIL_ON_BLOCK: ${{ inputs.fail_on_block }}
         run: python3 .agents-personas/engine/review_key.py
 
       - name: Find an earlier review
