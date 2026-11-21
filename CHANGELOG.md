@@ -14,6 +14,22 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] (2026-11-21)
+
+### Changed
+- Require the hook sandbox by default. An empty
+  `PERSONAS_REQUIRE_SANDBOX` or `1` fails closed without a trusted
+  bubblewrap. Only `0` allows the warned local fallback.
+- Run bubblewrap only from `/usr/bin/bwrap`. The engine never searches
+  `PATH`. It rejects a symlink, a file not owned by root, and a file that a
+  group or other user can write.
+- Bind five runtime files from `/etc` in place of the whole directory:
+  `ld.so.cache`, `localtime`, `nsswitch.conf`, `passwd`, and `group`.
+- Set `PERSONAS_REQUIRE_SANDBOX=0` in the euler engine run test and the
+  `/proc` key test only when the variable is unset. CI keeps `1`. The
+  active human approved the edit to the existing
+  `tests/test_euler_review_hooks.py`.
+
 ## [0.10.0] (2026-11-20)
 
 ### Added

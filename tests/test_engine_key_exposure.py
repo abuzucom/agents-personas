@@ -86,8 +86,10 @@ class ProcEnvironTest(unittest.TestCase):
             _git(repo, "add", "app.py")
             _git(repo, "commit", "-q", "-m", "head")
             head = _git(repo, "rev-parse", "HEAD")
+            # Hosts without bubblewrap fall back to the plain child. CI sets 1 and keeps the sandbox required.
             environment = {**os.environ, "MODEL_API_KEY": SYNTHETIC_KEY,
-                           "MODEL_CALL_COMMAND": "python adapter/fake.py"}
+                           "MODEL_CALL_COMMAND": "python adapter/fake.py",
+                           "PERSONAS_REQUIRE_SANDBOX": os.environ.get("PERSONAS_REQUIRE_SANDBOX", "0")}
             completed = subprocess.run(
                 [sys.executable, str(ENGINE_DIR / "run_review.py"), "--root", str(base_dir / "personas"),
                  "--persona", "euler", "--mode", "quality", "--repo", str(repo), "--base", base, "--head", head,

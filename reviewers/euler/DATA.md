@@ -15,9 +15,11 @@ The provider receives no GitHub token, no provider configuration file, and no
 other repository secret. The prescan runs in the build step. That step holds
 no secret. Every euler hook runs in a child process with an allowlisted
 environment that holds no credential. The child starts in an empty
-temporary home. In CI, bubblewrap runs each hook without network access.
-The hook sees only system files, the Python installation, the engine, the
-persona, and the head tree copy (decision 33). On Linux, the engine
+temporary home. Bubblewrap runs each hook without network access. A run
+without a trusted `/usr/bin/bwrap` fails closed unless
+`PERSONAS_REQUIRE_SANDBOX=0` allows a local fallback. The hook sees only
+`/usr`, five runtime files in `/etc`, the Python installation, the engine,
+the persona, and the head tree copy (decision 33). On Linux, the engine
 process is non-dumpable. A hook cannot read the key from `/proc`. Only the
 review step holds `MODEL_API_KEY`.
 
