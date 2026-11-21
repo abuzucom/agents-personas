@@ -39,6 +39,14 @@ PROCESS_NARRATION_PATTERNS = (
         r"is this\b|does this\b)",
         re.IGNORECASE,
     ),
+    # A coverage sentence such as "Reviewed all 18 changed files" narrates the
+    # review. The report states coverage in the noun-only Scope: and Unseen:
+    # lines instead.
+    re.compile(
+        r"^\s*(?:(?:[-*+])\s+|\d+[.)]\s+)?(?:reviewed|examined|inspected|traced|checked|analyzed|"
+        r"verified|looked|went|started|review covered|the review)\b",
+        re.IGNORECASE,
+    ),
 )
 
 
