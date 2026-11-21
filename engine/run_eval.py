@@ -21,6 +21,11 @@ Usage:
     python engine/run_eval.py --persona foucault
     python engine/run_eval.py --persona foucault --mode file
     python engine/run_eval.py --persona foucault --model-call mymodule:call_model
+    python engine/run_eval.py --persona foucault --model-call mymodule:call_model --repeat 5
+
+--repeat N sends every case N times and reports, for each case, the share
+of runs that return its most common verdict. Identical runs that disagree
+mark a case with an unstable model verdict.
 
 A --model-call target is a callable call(system_prompt, mode, case_text) -> str.
 The mode argument carries the json_mode of the mode, or the mode name.
@@ -33,6 +38,7 @@ import hashlib
 import importlib
 import json
 import sys
+from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 
@@ -55,6 +61,10 @@ EXTENSION_PATH = Path("eval") / "extra_checks.py"
 VERDICT_JSON_PREFIX = "VERDICT_JSON:"
 REVIEW_STATUS_PREFIX = "REVIEW STATUS:"
 REASON_SEPARATOR = " - "
+# Each repeat costs one model call per case. The bound keeps a typo from
+# starting thousands of calls.
+MAX_REPEAT = 20
+MISSING_VERDICT = "(no verdict line)"
 ModelCall = Callable[[str, str, str], str]
 
 
@@ -223,6 +233,28 @@ def verdict_matches(expected_verdict: str, response: str, mode: dict) -> tuple[b
     return expected_verdict in accepted, actual
 
 
+def final_verdict(response: str, mode: dict) -> str:
+    """Return the verdict token on the last verdict line of a reply."""
+    label, _verdicts = reviewers.verdict_rules(mode)
+    prefix = f"{label}:"
+    lines = [line for line in response.splitlines() if line.startswith(prefix)]
+    if not lines:
+        return MISSING_VERDICT
+    return lines[-1].strip()[len(prefix):].split(REASON_SEPARATOR, 1)[0].strip()
+
+
+def agreement_lines(verdicts_by_case: dict[str, list[str]]) -> list[str]:
+    """Return one agreement line per case and a closing total."""
+    lines = []
+    unanimous = 0
+    for name, verdicts in verdicts_by_case.items():
+        verdict, count = Counter(verdicts).most_common(1)[0]
+        unanimous += 1 if count == len(verdicts) else 0
+        lines.append(f"  agreement {name}: {count}/{len(verdicts)} {verdict}")
+    lines.append(f"{unanimous}/{len(verdicts_by_case)} case(s) agree on every run")
+    return lines
+
+
 def review_status_matches(expected_status: str, response: str) -> bool:
     """Return whether the final REVIEW STATUS line carries the expected status."""
     lines = [line for line in response.splitlines() if line.startswith(REVIEW_STATUS_PREFIX)]
@@ -275,22 +307,28 @@ def resolve_model_call(spec: str) -> ModelCall:
 
 
 def run_live(persona_dir: Path, manifest: dict, cases: list[dict], model_call: ModelCall,
-             extension=None) -> int:
-    """Send every case to the model, print each grade, and return the failure count."""
+             extension=None, repeat: int = 1) -> int:
+    """Send every case to the model repeat times, print each grade, and return the failure count."""
     custom_input = getattr(extension, "build_model_input", None)
     failures = checks = 0
+    verdicts_by_case: dict[str, list[str]] = {}
     for case in cases:
         mode = manifest["modes"][case["mode"]]
+        name = f"{case['mode']}/{case['name']}"
         system_prompt = reviewers.prompt_path(persona_dir, mode["prompt"]).read_text(encoding="utf-8")
         model_input = custom_input(case, system_prompt) if custom_input else None
         if model_input is None:
             model_input = default_model_input(case, system_prompt)
-        response = model_call(system_prompt, case["prompt_mode"], model_input)
-        for label, passed, detail in grade_response(case, response, mode, extension):
-            checks += 1
-            failures += 0 if passed else 1
-            print(f"  {'pass' if passed else 'FAIL'}  {case['mode']}/{case['name']} ({label}): {detail}")
+        for _run in range(repeat):
+            response = model_call(system_prompt, case["prompt_mode"], model_input)
+            verdicts_by_case.setdefault(name, []).append(final_verdict(response, mode))
+            for label, passed, detail in grade_response(case, response, mode, extension):
+                checks += 1
+                failures += 0 if passed else 1
+                print(f"  {'pass' if passed else 'FAIL'}  {name} ({label}): {detail}")
     print(f"\n{checks - failures}/{checks} response checks passed")
+    if repeat > 1 and verdicts_by_case:
+        print("\n".join(agreement_lines(verdicts_by_case)))
     return failures
 
 
@@ -302,7 +340,20 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--case", help="run only the named case")
     parser.add_argument("--model-call", help="module:function called as call(system_prompt, mode, case_text)")
     parser.add_argument("--root", type=Path, default=REPO_ROOT, help="repository root")
+    parser.add_argument("--repeat", type=repeat_count, default=1,
+                        help=f"send every case this many times, 1 to {MAX_REPEAT}, and report verdict agreement")
     return parser.parse_args(argv)
+
+
+def repeat_count(value: str) -> int:
+    """Return a repeat count within 1 to MAX_REPEAT, or raise an argparse error."""
+    try:
+        count = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(f"--repeat takes an integer, not {value!r}") from error
+    if not 1 <= count <= MAX_REPEAT:
+        raise argparse.ArgumentTypeError(f"--repeat takes 1 to {MAX_REPEAT}, not {count}")
+    return count
 
 
 def main(argv: list[str]) -> int:
@@ -313,6 +364,8 @@ def main(argv: list[str]) -> int:
         extension = load_extension(persona_dir)
         cases, findings = collect_cases(persona_dir, manifest, options.mode, options.case, extension)
         model_call = resolve_model_call(options.model_call) if options.model_call else None
+        if options.repeat > 1 and model_call is None:
+            raise EvalError("--repeat needs --model-call")
     except (reviewers.ReviewerError, EvalError, ImportError) as error:
         print(f"error: {error}. Fix the option or the persona files and rerun.", file=sys.stderr)
         return 1
@@ -324,7 +377,7 @@ def main(argv: list[str]) -> int:
     if model_call is None:
         print(f"structure check only: {len(cases)} case(s) valid, no model call configured")
         return 0
-    return 1 if run_live(persona_dir, manifest, cases, model_call, extension) else 0
+    return 1 if run_live(persona_dir, manifest, cases, model_call, extension, options.repeat) else 0
 
 
 if __name__ == "__main__":
