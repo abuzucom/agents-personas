@@ -6,7 +6,9 @@
       "prompt": "PROMPT.md",
       "review": true,
       "context": false,
-      "default": true
+      "default": true,
+      "json_mode": "PR",
+      "require_coverage": true
     }
   }
 }

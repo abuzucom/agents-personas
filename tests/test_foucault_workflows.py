@@ -113,14 +113,14 @@ class ExampleCallerTest(unittest.TestCase):
         trigger = _trigger(workflow)["pull_request_target"]
         # The active human approved unlabeled for review after stop-requested goes.
         self.assertEqual(trigger["types"], ["labeled", "synchronize", "unlabeled"])
-        # The active human approved the <persona>-scan-requested label names.
+        # The active human approved the <persona>-scan-requested label names and
+        # the removal of the generay-sync job. The sync mode has no review delivery.
         labels = {"adorno": "adorno-scan-requested", "generay": "generay-scan-requested",
-                  "generay-sync": "generay-sync-scan-requested", "havel": "havel-scan-requested"}
+                  "havel": "havel-scan-requested"}
         self.assertEqual(set(workflow["jobs"]), set(labels))
         for job_name, label in labels.items():
             with self.subTest(job=job_name):
                 self.assertIn(f"'{label}'", workflow["jobs"][job_name]["if"])
-        self.assertEqual(workflow["jobs"]["generay-sync"]["with"]["modes"], "sync")
 
 
 if __name__ == "__main__":

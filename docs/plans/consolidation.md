@@ -48,10 +48,10 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 21 | Non-gating verdicts (2026-11-20) | `NEEDS-HUMAN` always sets the mode check to `neutral` and emits a run warning. It never blocks CI. `fail_on_block` gates `BLOCK` only. With `fail_on_block: false`, `BLOCK` also concludes `neutral`. |
 | 22 | Action pins (2026-11-20) | Engine workflows pin checkout v7.0.1, setup-python v7.1.0, github-script v9.0.0, and upload-artifact v7.0.2 at the euler and generay SHAs. |
 | 17 | Engine hardening (2026-11-20) | Fenced untrusted content, a shared injection corpus, one resolve job, one provider table, per-mode caps, timeouts with one retry, and usage in each check. |
-| 18 | Evals and data (2026-11-20) | Live evals need prompt changes plus a human `eval-live` label. Each persona carries `DATA.md`. |
+| 18 | Evals and data (2026-11-20) | CI runs eval structure checks only. Live model evals run locally through `engine/run_eval.py`. The `eval-live` CI job left the plan on 2026-11-21. Each persona carries `DATA.md`. |
 | 19 | Adopters and releases (2026-11-20) | `docs/migration.md` and `examples/` guide adopters. The active human moves each repo. One repo SemVer with per-persona notes. |
 | 20 | Persona template and metrics (2026-11-20) | `reviewers/_template/` scaffolds new personas. Each run writes a metrics step summary. |
-| 23 | Caller patterns (2026-11-20) | foucault and euler run on every pull request through a `workflow_run` caller after CI. Branch protection requires both checks. adorno, generay, and havel run through a `pull_request_target` caller on `labeled` and `synchronize`. Each job checks its own `review:<persona>` label. The generay sync job checks `review:generay-sync`. Those checks stay optional. `examples/always-on-caller.yml` and `examples/label-caller.yml` show both. |
+| 23 | Caller patterns (2026-11-20) | foucault and euler run on every pull request through a `workflow_run` caller after CI. Branch protection requires both checks. adorno, generay, and havel run through a `pull_request_target` caller on `labeled`, `synchronize`, and `unlabeled`. Each job checks its own `<persona>-scan-requested` label. The `stop-requested` label skips every persona. Those checks stay optional. `examples/always-on-caller.yml` and `examples/label-caller.yml` show both. |
 | 24 | Path filter (2026-11-20) | `review.yml` and every wrapper take an optional `paths` input of newline-separated globs. A pull request without a matching changed file gets a skipped check named "No matching files". No `enabled` input exists. |
 | 25 | Finding rules (2026-11-20) | A review mode can declare `finding_rules` in `reviewer.json`. The block names the exact finding keys, the allowed severities, and a class prefix. The shared validator enforces each rule. foucault declares five keys, CRITICAL to LOW, and the `2.` prefix. |
 | 26 | Local modes (2026-11-20) | Each persona keeps its workstation modes, for example foucault File, Piece, and Wholesale. A mode with `local: true` has no CI delivery. `verdict_line` and `verdicts` name its verdict form. `json_mode` names the mode string the prompt expects. All source eval cases move into `eval/cases/<mode>/`. |
@@ -63,6 +63,7 @@ The active human accepted breaking public API changes. Callers switch `uses:` ta
 | 32 | Hook isolation limit (2026-11-20) | A persona hook child gets an allowlisted environment and an empty temporary directory as its working directory and home. It keeps network access and read access to the runner filesystem. Decision 33 closes the network and filesystem gap on Linux. Checkouts persist no credential, and the token reaches only the fetch step. On Linux the engine marks itself non-dumpable, and the review step runs it through `exec`, so a hook cannot read the key from `/proc`. |
 | 33 | Hook sandbox (2026-11-20) | On Linux every persona hook runs under bubblewrap 0.9.0-1ubuntu0.3, pinned under Rule 9 on `ubuntu-24.04`. The sandbox unshares the network and the PID namespace. It binds `/usr`, the Python installation, `engine/`, and the persona read-only. From `/etc` it binds only `ld.so.cache`, `localtime`, `nsswitch.conf`, `passwd`, and `group`. Only the empty home and the head tree copy are writable. An AppArmor profile in `engine/apparmor/bwrap` grants `userns` to bwrap only, since Ubuntu 24.04 restricts user namespaces. The engine runs only `/usr/bin/bwrap` and never searches `PATH`. That file must be a root-owned regular file that no group or other user can write. The engine requires the sandbox by default (2026-11-21). An empty value or `1` fails closed without a trusted bwrap. Only `PERSONAS_REQUIRE_SANDBOX=0` allows a warned local fallback to the plain child. `off` serves plumbing tests only. Any other value fails closed. `sandbox-check.yml` proves the sandbox on every pull request. macOS and Windows keep the plain child. |
 | 34 | Review variance (2026-11-21) | Identical runs of one model can disagree on a verdict. Four controls narrow that spread. The workflow reuses a failing check run with the same review key. A label event or a rerun on those inputs then calls no model. The key in `engine/review_key.py` covers the persona, mode, head, base, engine ref, pull request title and body, persona options, and chunk caps. Providers with a seed parameter receive a fixed seed. A chunk BLOCK stands only when one confirmation run blocks with a repeated finding class. Otherwise the chunk records NEEDS-HUMAN. Either way the chunk keeps the findings and reports of both runs. `engine/run_eval.py --repeat N` measures the agreement rate. The report contract forbids coverage narration and states coverage on the `Scope:` and `Unseen:` lines. The prompt shows those opening lines and names no banned opener. A trusted reminder ends each user message. A provider profile can add a `format_note` for its model. A review mode with `require_coverage` must open with the mode line, `Scope:`, and `Unseen:`. The foucault and euler review modes set it. A retry that fails only on narration or coverage records NEEDS-HUMAN with its findings. The review key also covers the model call command and `fail_on_block`. The job concurrency group cancels an earlier run for the same pull request and mode. Two runs therefore never both finish a model call. Any workflow with `checks: write` in the caller repository can create a check run with a matching key. Branch protection passes success and neutral. The cache reuses only failure. A planted check run therefore never suppresses a review. |
+| 35 | generay port (2026-11-21) | generay moves to `reviewers/generay` from `abuzucom/generay` at `309d425`. The `time` review mode loads `TIME.md` and `SYNC.md` through a prompt list and requires the coverage lines. The `sync` mode delivers context only. The local `file`, `piece`, `wholesale`, and `contract` modes keep the generay verdict lines. The time prescan runs as the `case_context` hook and places advisory candidates in `REVIEW_TARGET`. The `validate_reply` hook applies the generay reply rules. generay defines no `forced_verdict`. The wrapper requires `MODEL_API_KEY`. This repository self-reviews with generay only under the `generay-scan-requested` label. The label example drops the generay sync job. |
 
 ## Two repos
 
@@ -148,8 +149,8 @@ The engine replaces both forms with one rule:
 ```json
 {
   "modes": {
-    "time": { "prompt": "TIME.md", "review": true, "default": true },
-    "sync": { "prompt": "SYNC.md", "review": true, "context": true }
+    "time": { "prompt": ["TIME.md", "SYNC.md"], "review": true, "default": true },
+    "sync": { "prompt": "SYNC.md", "context": true }
   }
 }
 ```
@@ -158,22 +159,19 @@ The engine replaces both forms with one rule:
 - `context: true` lets `engine/render_context.py --persona <name> --mode <mode>` print the mode for an agent context. That command replaces the manual SYNC paste.
 - `local: true` keeps a mode for workstation runs through `engine/run_eval.py` only (decision 26).
 - Each persona has exactly one default mode. A single-mode persona declares one entry.
-- Each mode runs as a separate check with a separate verdict, for example `generay / time` and `generay / sync`. Branch protection can require each check alone.
+- A mode prompt names one file or a list of files. The engine joins a list in order. The generay time mode loads `TIME.md` and `SYNC.md` together.
+- Each review mode runs as a separate check with a separate verdict, for example `generay / time`. Branch protection can require each check alone. The generay `sync` mode delivers context only and posts no check.
 - `engine/check_reviewers.py` validates every `reviewer.json`. It rejects a missing default, a missing prompt file, and a mode without delivery. The engine rejects an unknown mode and a mode without review delivery.
 - Eval cases live in `reviewers/<name>/eval/cases/<mode>/`. `run_eval.py --persona <name> --mode <mode>` runs the cases of one mode. Context modes get render checks for stable output, ASCII, and size.
 - The engine holds no persona-specific branch. A new mode for any persona adds one entry and its eval cases.
 
-An adopter runs time on every pull request and sync on chosen pull requests:
+An adopter runs generay on chosen pull requests:
 
 ```yaml
 jobs:
   generay:
+    if: contains(github.event.pull_request.labels.*.name, 'generay-scan-requested')
     uses: abuzucom/agents-personas/.github/workflows/generay-time-review.yml@<sha>
-  generay-sync:
-    if: contains(github.event.pull_request.labels.*.name, 'generay-sync')
-    uses: abuzucom/agents-personas/.github/workflows/generay-time-review.yml@<sha>
-    with:
-      modes: sync
 ```
 
 The caller condition can use a label, a `paths:` filter, or a base branch. A person applies any label. Agents never apply labels (Rule 23).
@@ -235,7 +233,7 @@ One reusable job in `review.yml` resolves the pull request for every persona. It
 ### Evals in CI
 
 - Eval structure checks run on every pull request.
-- Live model evals run only when files under `reviewers/<name>/` change and a person applies the `eval-live` label. Agents never apply labels (Rule 23).
+- Live model evals run locally through `engine/run_eval.py`. No CI job calls a model for evals.
 
 ### Data handling
 

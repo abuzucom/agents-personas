@@ -16,6 +16,10 @@ MAX_NAME_LENGTH = 32
 # Context output lands in an agent prompt. The cap keeps one mode well under
 # the policy size budget a client loads beside it.
 MAX_CONTEXT_BYTES = 32 * 1024
+# A mode can split its prompt across files, for example a main policy and a
+# companion rule set. The engine joins them in list order with this line.
+MAX_PROMPT_FILES = 4
+PROMPT_SEPARATOR = "\n"
 TOP_LEVEL_KEYS = frozenset({"persona", "function", "modes", "options"})
 # options declares the caller values a persona accepts through the
 # persona_options workflow input, for example euler's exclude_paths.
@@ -111,6 +115,26 @@ def prompt_path(persona_dir: Path, relative: object) -> Path:
     if Path(relative).is_absolute() or not candidate.is_relative_to(base):
         raise ReviewerError(f"prompt '{relative}' escapes the persona directory")
     return candidate
+
+
+def prompt_paths(persona_dir: Path, prompt: object) -> list[Path]:
+    """Return the prompt file paths of one mode in order.
+
+    The prompt names one file or a list of 1 to MAX_PROMPT_FILES distinct
+    files. Each path stays inside the persona directory.
+    """
+    if isinstance(prompt, str):
+        return [prompt_path(persona_dir, prompt)]
+    if not isinstance(prompt, list) or not prompt or len(prompt) > MAX_PROMPT_FILES:
+        raise ReviewerError(f"prompt must name one file or a list of 1 to {MAX_PROMPT_FILES} files")
+    if len(set(map(str, prompt))) != len(prompt):
+        raise ReviewerError("prompt lists a file twice")
+    return [prompt_path(persona_dir, item) for item in prompt]
+
+
+def load_prompt(persona_dir: Path, prompt: object) -> str:
+    """Return the prompt text of one mode, joining a file list in order."""
+    return PROMPT_SEPARATOR.join(path.read_text(encoding="utf-8") for path in prompt_paths(persona_dir, prompt))
 
 
 def _is_string_list(value: object) -> bool:
@@ -223,11 +247,12 @@ def _mode_findings(persona_dir: Path, name: str, mode: object) -> list[str]:
     if not any(mode.get(flag) is True for flag in ("review", "context", "local")):
         findings.append(f"{label}: no delivery (set review, context, or local to true)")
     try:
-        path = prompt_path(persona_dir, mode.get("prompt"))
+        paths = prompt_paths(persona_dir, mode.get("prompt"))
     except ReviewerError as error:
         return findings + [f"{label}: {error}"]
-    if not path.is_file():
-        findings.append(f"{label}: prompt '{mode.get('prompt')}' is missing")
+    base = Path(persona_dir).resolve()
+    findings += [f"{label}: prompt '{path.relative_to(base).as_posix()}' is missing"
+                 for path in paths if not path.is_file()]
     return findings
 
 

@@ -23,7 +23,6 @@ Two caller files cover the planned workflow:
 |---|---|---|
 | `adorno-scan-requested` | adorno | default |
 | `generay-scan-requested` | generay | default (`time`) |
-| `generay-sync-scan-requested` | generay-sync | `sync` |
 | `havel-scan-requested` | havel | default |
 
 GitHub lets anyone with triage access or higher add or remove any label.
@@ -150,3 +149,38 @@ Two behaviors change with the engine:
 
 euler's File, Piece, and Wholesale modes run locally as the `file`, `piece`,
 and `wholesale` modes. `reviewers/euler/eval/README.md` shows the commands.
+
+## generay
+
+generay moves from `abuzucom/generay` to the `generay` persona.
+
+| Old | New |
+|---|---|
+| `abuzucom/generay/.github/workflows/time-review.yml@<sha>` | `abuzucom/agents-personas/.github/workflows/generay-time-review.yml@<sha>` |
+| `time_ref` | `personas_ref` |
+| `pr_number` (number, required) | `pr_number` (string, optional, resolved when empty) |
+| `base_sha`, `head_sha` (required) | `base_sha`, `head_sha` (optional, resolved when empty) |
+| `pr_title`, `pr_body` | none. The engine reads both from the pull request |
+| `fail_on_block` gates BLOCK and NEEDS-HUMAN | `fail_on_block` gates BLOCK. NEEDS-HUMAN warns and concludes neutral |
+| `exclude_paths` | `exclude_paths` |
+| `max_chunks` (number, default 20) | `max_chunks` (number, default 20) |
+| none | `fork_review` |
+| none | `modes`, empty selects `time` |
+| none | `paths` |
+| none | `model_call_command`, `pr_comment`, `head_repo_url`, `head_repo_full_name` |
+
+The secret stays `MODEL_API_KEY` with `required: true`. A fork pull request
+without `fork_review: true` posts a `skipped` check. The `fork-review`
+environment runs fork reviews after a person approves each run.
+
+The check run name changes from `time-review` to `generay / time`. The
+comment drops the `<!-- generay-time-review -->` marker. It uses the shared
+layout with a `## Generay time review: <VERDICT>` heading.
+
+The `time` mode sends `TIME.md` and `SYNC.md` as one prompt. The `sync` mode
+delivers context only and posts no check. The deterministic prescan
+candidates reach the model inside the untrusted review target.
+
+generay's File, Piece, Wholesale, and Contract modes run locally as the
+`file`, `piece`, `wholesale`, and `contract` modes.
+`reviewers/generay/eval/README.md` shows the commands.

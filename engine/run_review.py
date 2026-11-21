@@ -372,7 +372,7 @@ def run_mode(options: RunOptions) -> dict:
         case = build_case(options, caps, ChildHooks(persona_dir), persona_options)
     if options.stage == "build":
         return {"stage": "build", "chunks": len(case["chunks"]), "unreviewed": case["unreviewed"]}
-    prompt_text = reviewers.prompt_path(persona_dir, entry["prompt"]).read_text(encoding="utf-8")
+    prompt_text = reviewers.load_prompt(persona_dir, entry["prompt"])
     system_prompt = envelope.with_fence_rule(prompt_text)
     case_dir = options.out_dir / "case" / "envelopes"
     results = [review_confirmed_chunk(options, system_prompt, case_dir / chunk["envelope"], entry, persona_dir)
