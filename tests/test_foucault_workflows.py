@@ -111,7 +111,8 @@ class ExampleCallerTest(unittest.TestCase):
     def test_label_example_gates_each_job_on_its_label(self):
         workflow = _load(EXAMPLES / "label-caller.yml")
         trigger = _trigger(workflow)["pull_request_target"]
-        self.assertEqual(trigger["types"], ["labeled", "synchronize"])
+        # The active human approved unlabeled for review after stop-requested goes.
+        self.assertEqual(trigger["types"], ["labeled", "synchronize", "unlabeled"])
         # The active human approved the <persona>-scan-requested label names.
         labels = {"adorno": "adorno-scan-requested", "generay": "generay-scan-requested",
                   "generay-sync": "generay-sync-scan-requested", "havel": "havel-scan-requested"}

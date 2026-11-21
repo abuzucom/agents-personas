@@ -14,9 +14,20 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.12.0] (2026-11-21)
+## [0.13.0] (2026-11-21)
 
 ### Added
+- Add the `stop-requested` label. It pauses every persona review on a pull
+  request, scan requests included. A paused review publishes a skipped
+  check titled "Scans stopped".
+- Add `.github/workflows/stop-requested-notice.yml`. It posts a comment
+  when a person adds `stop-requested`. The comment says to remove the label
+  to review before merge.
+- Review the current head when a person removes `stop-requested`. The
+  self-review callers and `examples/label-caller.yml` listen to
+  `unlabeled`. The active human approved the new trigger types in the
+  existing `tests/test_scan_request_label.py` and
+  `tests/test_foucault_workflows.py`.
 - Accept `!` exclusion patterns in the `paths` input. A pull request that
   touches only excluded files gets a skipped check and no model call. The
   foucault and euler self-reviews exclude the root `CHANGELOG.md` and

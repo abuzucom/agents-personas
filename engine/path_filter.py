@@ -11,7 +11,8 @@ files skips the review.
 
 SCAN_REQUESTED=true selects the pull request whatever the patterns say. The
 workflow sets it when the pull request carries the <persona>-scan-requested
-label.
+label. STOP_REQUESTED=true deselects the pull request over every other input.
+The workflow sets it when the pull request carries the stop-requested label.
 """
 
 from __future__ import annotations
@@ -73,8 +74,9 @@ def main(argv: list[str]) -> int:
     except (OSError, ValueError) as error:
         print(f"error: {error}. Fix the paths input and rerun.", file=sys.stderr)
         return 1
+    stopped = os.environ.get("STOP_REQUESTED") == "true"
     requested = os.environ.get("SCAN_REQUESTED") == "true"
-    match = "true" if requested or any_match(files, patterns) else "false"
+    match = "true" if not stopped and (requested or any_match(files, patterns)) else "false"
     with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
         output.write(f"paths_match={match}\n")
     return 0

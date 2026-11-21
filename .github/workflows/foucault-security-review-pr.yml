@@ -10,10 +10,11 @@ on:
     workflows: [Convention Sync Check]
     types: [completed]
   # Adding the foucault-scan-requested label starts this review at once.
+  # Removing stop-requested reviews the current head once.
   # pull_request_target runs this file from the default branch, so a pull
   # request cannot edit it. The engine never executes the pull request head.
   pull_request_target:
-    types: [labeled]
+    types: [labeled, unlabeled]
 
 concurrency:
   group: foucault-security-review-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
@@ -26,7 +27,8 @@ jobs:
   foucault:
     if: >-
       (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request') ||
-      (github.event_name == 'pull_request_target' && github.event.label.name == 'foucault-scan-requested')
+      (github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name == 'foucault-scan-requested') ||
+      (github.event_name == 'pull_request_target' && github.event.action == 'unlabeled' && github.event.label.name == 'stop-requested')
     permissions:
       checks: write
       contents: read

@@ -8,6 +8,9 @@
 # agents-personas commit SHA in every uses: pin and every personas_ref. The
 # adorno, generay, and havel wrappers land with their migrations.
 #
+# Removing the stop-requested label reviews again with every persona whose
+# scan label is on. Removing any other label starts nothing.
+#
 # pull_request_target runs this file from the base branch, so a pull request
 # cannot edit the caller. The engine reads the head as git objects and never
 # executes it. Fork pull requests get a skipped check and no secret.
@@ -16,7 +19,7 @@ name: persona-review-labels
 
 on:
   pull_request_target:
-    types: [labeled, synchronize]
+    types: [labeled, synchronize, unlabeled]
 
 concurrency:
   group: persona-review-labels-${{ github.event.pull_request.number }}-${{ github.event.label.name || 'push' }}
@@ -27,7 +30,9 @@ permissions:
 
 jobs:
   adorno:
-    if: contains(github.event.pull_request.labels.*.name, 'adorno-scan-requested')
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'adorno-scan-requested') &&
+      (github.event.action != 'unlabeled' || github.event.label.name == 'stop-requested')
     permissions:
       checks: write
       contents: read
@@ -39,7 +44,9 @@ jobs:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
 
   generay:
-    if: contains(github.event.pull_request.labels.*.name, 'generay-scan-requested')
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'generay-scan-requested') &&
+      (github.event.action != 'unlabeled' || github.event.label.name == 'stop-requested')
     permissions:
       checks: write
       contents: read
@@ -51,7 +58,9 @@ jobs:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
 
   generay-sync:
-    if: contains(github.event.pull_request.labels.*.name, 'generay-sync-scan-requested')
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'generay-sync-scan-requested') &&
+      (github.event.action != 'unlabeled' || github.event.label.name == 'stop-requested')
     permissions:
       checks: write
       contents: read
@@ -64,7 +73,9 @@ jobs:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
 
   havel:
-    if: contains(github.event.pull_request.labels.*.name, 'havel-scan-requested')
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'havel-scan-requested') &&
+      (github.event.action != 'unlabeled' || github.event.label.name == 'stop-requested')
     permissions:
       checks: write
       contents: read
