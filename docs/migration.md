@@ -33,6 +33,18 @@ A pull request that carries the `<persona>-scan-requested` label also passes
 the `paths` filter of that persona. An always-on caller that skips some
 files still reviews a labeled pull request.
 
+The `stop-requested` label pauses every persona during a burst of commits.
+It wins over every `<persona>-scan-requested` label.
+
+- Each paused review publishes a skipped check titled "Scans stopped".
+  Branch protection treats a skipped check as passed.
+- `.github/workflows/stop-requested-notice.yml` posts a comment when a
+  person adds the label. The comment says to remove the label to review the
+  pull request before merge. Copy the file to use the notice.
+- Removing the label reviews the current head with each persona that
+  applies. A caller needs the `pull_request_target` `unlabeled` trigger for
+  that. `examples/label-caller.yml` carries it.
+
 A person adds every label. A new push to a labeled pull request reviews
 again.
 

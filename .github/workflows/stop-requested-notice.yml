@@ -1,0 +1,35 @@
+name: stop-requested-notice
+
+# A person adds the stop-requested label to pause persona reviews during a
+# burst of commits. Each paused review publishes a skipped check, and branch
+# protection treats a skipped check as passed. This workflow posts one
+# comment per label add so the pull request shows how to resume. The job
+# checks out nothing and holds no secret. Adopters copy this file.
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  notice:
+    if: github.event.label.name == 'stop-requested'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post the stop notice
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: [
+                "<!-- stop-requested-notice -->",
+                "The stop-requested label pauses automatic persona reviews on this pull request. Each review posts a skipped check.",
+                "",
+                "Remove the `stop-requested` label to review the current head before merge.",
+              ].join("\n"),
+            });

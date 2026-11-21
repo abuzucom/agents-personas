@@ -81,7 +81,8 @@ class CallerTriggerTest(unittest.TestCase):
             workflow = _workflow(name)
             job = workflow["jobs"][persona]
             with self.subTest(persona=persona):
-                self.assertEqual(_trigger(workflow)["pull_request_target"], {"types": ["labeled"]})
+                # The active human approved unlabeled for the stop-requested label.
+                self.assertEqual(_trigger(workflow)["pull_request_target"], {"types": ["labeled", "unlabeled"]})
                 self.assertIn(f"github.event.label.name == '{persona}-scan-requested'", job["if"])
                 self.assertIn("github.event_name == 'pull_request_target'", job["if"])
                 self.assertIn("github.event.workflow_run.event == 'pull_request'", job["if"])

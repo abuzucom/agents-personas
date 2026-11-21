@@ -130,6 +130,7 @@ jobs:
       already_reviewed: ${{ steps.reviewed.outputs.already_reviewed }}
       paths_match: ${{ steps.paths.outputs.paths_match }}
       scan_requested: ${{ steps.pull.outputs.scan_requested }}
+      stop_requested: ${{ steps.pull.outputs.stop_requested }}
     steps:
       - name: Resolve pull request
         id: pull
@@ -220,6 +221,8 @@ jobs:
             // request the review whatever the paths input selects.
             const requestLabel = `${env.INPUT_PERSONA}-scan-requested`;
             core.setOutput("scan_requested", String((pull.labels || []).some((label) => label.name === requestLabel)));
+            // stop-requested pauses every persona, a scan request included.
+            core.setOutput("stop_requested", String((pull.labels || []).some((label) => label.name === "stop-requested")));
             core.setOutput("pr_body", (pull.body || "").slice(0, MAX_BODY_CHARS));
 
       - name: Check out the engine
@@ -312,6 +315,7 @@ jobs:
         env:
           PATH_PATTERNS: ${{ inputs.paths }}
           SCAN_REQUESTED: ${{ steps.pull.outputs.scan_requested }}
+          STOP_REQUESTED: ${{ steps.pull.outputs.stop_requested }}
         run: python3 .agents-personas/engine/path_filter.py "$RUNNER_TEMP/changed-files.json"
 
   skip-paths:
@@ -330,18 +334,24 @@ jobs:
           PERSONA: ${{ inputs.persona }}
           MODE: ${{ matrix.mode }}
           HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          STOP_REQUESTED: ${{ needs.resolve.outputs.stop_requested }}
         with:
           script: |
+            const stopped = process.env.STOP_REQUESTED === "true";
+            const output = stopped ? {
+              title: "Scans stopped",
+              summary: "The pull request carries the stop-requested label. Remove the stop-requested label to review it before merge.",
+            } : {
+              title: "No matching files",
+              summary: `No changed file matches the caller's paths input. The review did not run. Add the ${process.env.PERSONA}-scan-requested label to request it.`,
+            };
             await github.rest.checks.create({
               owner: context.repo.owner, repo: context.repo.repo,
               name: `${process.env.PERSONA} / ${process.env.MODE}`,
               head_sha: process.env.HEAD_SHA,
               status: "completed",
               conclusion: "skipped",
-              output: {
-                title: "No matching files",
-                summary: `No changed file matches the caller's paths input. The review did not run. Add the ${process.env.PERSONA}-scan-requested label to request it.`,
-              },
+              output,
             });
 
   skip-fork:
