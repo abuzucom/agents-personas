@@ -127,9 +127,11 @@ def prompt_paths(persona_dir: Path, prompt: object) -> list[Path]:
         return [prompt_path(persona_dir, prompt)]
     if not isinstance(prompt, list) or not prompt or len(prompt) > MAX_PROMPT_FILES:
         raise ReviewerError(f"prompt must name one file or a list of 1 to {MAX_PROMPT_FILES} files")
-    if len(set(map(str, prompt))) != len(prompt):
+    paths = [prompt_path(persona_dir, item) for item in prompt]
+    # Resolved paths catch spellings such as A.md and ./A.md of one file.
+    if len(set(paths)) != len(paths):
         raise ReviewerError("prompt lists a file twice")
-    return [prompt_path(persona_dir, item) for item in prompt]
+    return paths
 
 
 def load_prompt(persona_dir: Path, prompt: object) -> str:
