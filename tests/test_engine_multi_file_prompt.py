@@ -62,8 +62,8 @@ class ManifestPromptListTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.persona = self.root / "reviewers" / "sample"
         self.persona.mkdir(parents=True)
-        (self.persona / "A.md").write_text("a\n", encoding="ascii")
-        (self.persona / "B.md").write_text("b\n", encoding="ascii")
+        (self.persona / "A.md").write_bytes(b"a\n")
+        (self.persona / "B.md").write_bytes(b"b\n")
 
     def write(self, prompt) -> None:
         manifest = {"persona": "sample", "function": "review", "modes": {
