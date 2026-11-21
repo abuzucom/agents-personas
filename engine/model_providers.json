@@ -14,7 +14,8 @@
       "endpoint": "https://ollama.com/api",
       "model": "minimax-m3.1-flash",
       "max_output_tokens": 16384,
-      "max_input_tokens": 900000
+      "max_input_tokens": 900000,
+      "format_note": "- Model note: write the second report line as the literal text `Scope:` followed by nouns, and the third as `Unseen:` followed by nouns. Start each later line with a finding, a file path, or a conclusion."
     },
     "openai-compatible": {
       "protocol": "openai-compatible",
