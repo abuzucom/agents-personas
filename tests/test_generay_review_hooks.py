@@ -66,7 +66,8 @@ def _reply(verdict: str, prescan=(), findings=(), escalations=()) -> str:
 def _envelope(prescan_ids=(), unreviewed=()) -> dict:
     prescan = [{"id": item, "file": "app.py", "line": 2, "check": "C9.1"} for item in prescan_ids]
     return {"TRUSTED_CONTEXT": {"persona": "generay"},
-            "REVIEW_TARGET": {"files": {"app.py": "patch"}, "prescan": prescan, "unreviewed": list(unreviewed)}}
+            "REVIEW_TARGET": {"files": {"app.py": _patch("a\nb\n")}, "prescan": prescan,
+                              "unreviewed": list(unreviewed)}}
 
 
 def _finding(**changes) -> dict:

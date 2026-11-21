@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -44,6 +45,8 @@ MODE_LINES = {
     "Piece": ("RISK (partial)", RISK_TOKENS),
     "Contract": ("CONTRACT", CONTRACT_TOKENS),
 }
+# A missing new-side count means one line, as in git's unified diff.
+HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(?P<start>\d+)(?:,(?P<count>\d+))? @@")
 
 
 @dataclass(frozen=True)
@@ -54,6 +57,9 @@ class ReviewContext:
     changed_files: set[str]
     prescan_ids: set[str]
     unreviewed: list[str]
+    # Line ranges a finding may cite, keyed by file. A file without an
+    # entry carries no line check.
+    line_ranges: dict[str, tuple[range, ...]] = field(default_factory=dict)
 
 
 def load_checks(policy_paths: tuple[Path, ...] = DEFAULT_POLICIES) -> dict[str, check_doc_policy.PolicyCheck]:
@@ -83,11 +89,39 @@ def finding_problems(item: object, context: ReviewContext, checks: dict) -> list
         problems.append(f"finding severity must be one of {', '.join(SEVERITIES)}")
     if item.get("confidence") not in CONFIDENCES:
         problems.append("finding confidence must be certain or likely")
-    if not isinstance(item.get("line"), int):
-        problems.append("finding line must be an integer")
-    if context.mode == "PR" and item.get("file") not in context.changed_files:
-        problems.append(f"finding cites {item.get('file')} outside the changed files")
+    return problems + location_problems(item.get("file"), item.get("line"), context)
+
+
+def location_problems(file: object, line: object, context: ReviewContext) -> list[str]:
+    """Return problems with the file and line one finding cites.
+
+    TIME.md requires a file and line in the review target. A PR line falls
+    inside a hunk of the file patch. A local line falls inside the file.
+    """
+    problems = []
+    if context.mode == "PR" and file not in context.changed_files:
+        problems.append(f"finding cites {file} outside the changed files")
+    elif context.mode != "PR" and (not isinstance(file, str) or file not in context.changed_files):
+        problems.append(f"finding cites {file!r} outside the review target")
+    if isinstance(line, bool) or not isinstance(line, int) or line < 1:
+        return problems + ["finding line must be a positive integer"]
+    ranges = context.line_ranges.get(file) if isinstance(file, str) else None
+    if ranges is not None and not any(line in span for span in ranges):
+        problems.append(f"finding line {line} is outside the review target for {file}")
     return problems
+
+
+def hunk_ranges(patch: str) -> tuple[range, ...]:
+    """Return the new-side line range of every hunk in one patch."""
+    spans = []
+    for text in patch.splitlines():
+        header = HUNK_HEADER.match(text)
+        if header is None:
+            continue
+        start = int(header.group("start"))
+        count = int(header.group("count") or 1)
+        spans.append(range(start, start + count))
+    return tuple(spans)
 
 
 def escalation_problems(entries: object, checks: dict) -> list[str]:
@@ -212,12 +246,18 @@ def unreviewed_from_envelope(envelope: dict) -> list[str]:
 def context_from_envelope(envelope: dict, unreviewed: list[str]) -> ReviewContext:
     """Return the validation context for one envelope."""
     target = envelope["REVIEW_TARGET"]
+    files = target["files"]
     if is_engine_envelope(envelope):
-        # The engine time mode answers as TIME.md mode PR.
+        # The engine time mode answers as TIME.md mode PR. Each file holds its patch.
         mode, prescan = "PR", target.get("prescan", [])
+        line_ranges = {name: hunk_ranges(text) for name, text in files.items()}
     else:
         mode, prescan = envelope["mode"], envelope["TRUSTED_CONTEXT"].get("prescan", [])
-    return ReviewContext(mode, set(target["files"]), {item["id"] for item in prescan}, unreviewed)
+        # A generay PR envelope names the diff instead of the changed files.
+        # Only local modes get line ranges.
+        line_ranges = {} if mode == "PR" else {name: (range(1, len(text.splitlines()) + 1),)
+                                                for name, text in files.items()}
+    return ReviewContext(mode, set(files), {item["id"] for item in prescan}, unreviewed, line_ranges)
 
 
 def main() -> int:
