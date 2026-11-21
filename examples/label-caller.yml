@@ -6,7 +6,7 @@
 # Each new push to a labeled pull request reviews again. These checks stay
 # optional in branch protection. Replace the all-zero SHA with one
 # agents-personas commit SHA in every uses: pin and every personas_ref. The
-# adorno, generay, and havel wrappers land with their migrations.
+# adorno and havel wrappers land with their migrations.
 #
 # Removing the stop-requested label reviews again with every persona whose
 # scan label is on. Removing any other label starts nothing.
@@ -54,21 +54,6 @@ jobs:
     uses: abuzucom/agents-personas/.github/workflows/generay-time-review.yml@0000000000000000000000000000000000000000
     with:
       personas_ref: "0000000000000000000000000000000000000000"
-    secrets:
-      MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
-
-  generay-sync:
-    if: >-
-      contains(github.event.pull_request.labels.*.name, 'generay-sync-scan-requested') &&
-      (github.event.action != 'unlabeled' || github.event.label.name == 'stop-requested')
-    permissions:
-      checks: write
-      contents: read
-      pull-requests: write
-    uses: abuzucom/agents-personas/.github/workflows/generay-time-review.yml@0000000000000000000000000000000000000000
-    with:
-      personas_ref: "0000000000000000000000000000000000000000"
-      modes: sync
     secrets:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
 
