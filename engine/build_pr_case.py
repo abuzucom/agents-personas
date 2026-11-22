@@ -80,6 +80,8 @@ class BuildOptions:
     max_envelope_bytes: int
     hooks: Any = None
     persona_options: dict = field(default_factory=dict)
+    # The trusted subset of persona_options. Each envelope carries it in TRUSTED_CONTEXT.
+    trusted_options: dict = field(default_factory=dict)
     max_blob_bytes: int = MAX_HEAD_BLOB_BYTES
     max_tree_bytes: int = MAX_HEAD_TREE_BYTES
 
@@ -412,6 +414,7 @@ def chunk_budget(options: BuildOptions, changed: list[str], context: dict | None
         context=context,
         changed_files=changed,
         unreviewed=changed,
+        options=options.trusted_options,
     )
     budget = options.max_envelope_bytes - len(skeleton.encode("utf-8"))
     if budget < 1:
@@ -477,6 +480,7 @@ def build(options: BuildOptions) -> None:
             context=persona_hooks.chunk_context(hook_context["context"], files),
             changed_files=changed,
             unreviewed=unreviewed,
+            options=options.trusted_options,
         )
         if len(text.encode("utf-8")) > options.max_envelope_bytes:
             raise RuntimeError(
