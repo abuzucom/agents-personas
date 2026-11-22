@@ -7,16 +7,19 @@ reports token usage and accepts a provider name from MODEL_PROVIDER.
 
 from __future__ import annotations
 
+import base64
+import http.client
+import io
 import json
 import os
 import random
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlsplit
-from urllib.request import Request, urlopen
+from urllib.parse import quote, unquote, urlsplit
+from urllib.request import getproxies, proxy_bypass
 
 CONFIG_PATH = Path(__file__).with_name("model_providers.json")
 # Usage field names per protocol: (container key, input key, output key).
@@ -134,6 +137,99 @@ class InputTooLargeError(ProviderError):
 
 class ContextOverflowError(ProviderError):
     """Report a provider rejection that a larger context window can avoid."""
+
+
+HTTPS_DEFAULT_PORT = 443
+# Statuses from this value up report a failed request.
+HTTP_ERROR_STATUS = 400
+
+
+class ProviderRequest(NamedTuple):
+    """Hold the HTTPS URL, JSON body, headers, and method of one provider call."""
+
+    url: str
+    data: bytes
+    headers: dict[str, str]
+    method: str = "POST"
+
+
+class HTTPSResponse:
+    """Expose one provider response and close its connection on exit."""
+
+    def __init__(self, response: http.client.HTTPResponse, connection: http.client.HTTPSConnection):
+        self.headers = response.headers
+        self._response = response
+        self._connection = connection
+
+    def read(self, limit: int = -1) -> bytes:
+        """Return at most limit body bytes."""
+        return self._response.read(limit)
+
+    def __enter__(self) -> HTTPSResponse:
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self._connection.close()
+
+
+def _proxy_tunnel(host: str) -> tuple[str, int | None, dict[str, str]] | None:
+    """Return the HTTPS_PROXY host, port, and CONNECT headers, or None for a direct call.
+
+    urllib honored HTTPS_PROXY and NO_PROXY. This transport keeps both. A
+    proxy URL with credentials adds a Basic proxy authorization header.
+    """
+    proxy = getproxies().get("https")
+    if not proxy or proxy_bypass(host):
+        return None
+    parts = urlsplit(proxy if "://" in proxy else f"http://{proxy}")
+    if not parts.hostname:
+        raise ProviderError("HTTPS_PROXY names no host. Set it to http://<host>:<port>.")
+    headers = {}
+    if parts.username:
+        credentials = f"{unquote(parts.username)}:{unquote(parts.password or '')}"
+        headers["Proxy-Authorization"] = "Basic " + base64.b64encode(credentials.encode()).decode("ascii")
+    return parts.hostname, parts.port, headers
+
+
+def _connect(host: str, port: int, timeout: float) -> http.client.HTTPSConnection:
+    """Return a TLS connection to host, through the HTTPS proxy when one applies."""
+    tunnel = _proxy_tunnel(host)
+    if tunnel is None:
+        return http.client.HTTPSConnection(host, port, timeout=timeout)
+    proxy_host, proxy_port, proxy_headers = tunnel
+    connection = http.client.HTTPSConnection(proxy_host, proxy_port, timeout=timeout)
+    connection.set_tunnel(host, port, headers=proxy_headers or None)
+    return connection
+
+
+def open_https(request: ProviderRequest, timeout: float) -> HTTPSResponse:
+    """Send one request over HTTPS and return the open response.
+
+    Any scheme but HTTPS fails before a connection opens. A network failure
+    raises URLError. A 4xx or 5xx status raises HTTPError with a bounded
+    copy of the body.
+    """
+    parts = urlsplit(request.url)
+    host = parts.hostname
+    if parts.scheme != "https" or not host:
+        raise ProviderError("provider requests use HTTPS only")
+    connection = _connect(host, parts.port or HTTPS_DEFAULT_PORT, timeout)
+    target = parts.path or "/"
+    if parts.query:
+        target = f"{target}?{parts.query}"
+    try:
+        connection.request(request.method, target, body=request.data, headers=request.headers)
+        response = connection.getresponse()
+    except (OSError, http.client.HTTPException) as error:
+        connection.close()
+        raise URLError(error) from error
+    if response.status < HTTP_ERROR_STATUS:
+        return HTTPSResponse(response, connection)
+    try:
+        body = response.read(MAX_ERROR_BODY_BYTES)
+    finally:
+        connection.close()
+    raise HTTPError(request.url, response.status, response.reason, response.headers, io.BytesIO(body))
 
 
 def _read_text_from_env(name: str) -> str:
@@ -284,7 +380,7 @@ def _message_payload(system_prompt: str, case_text: str) -> list[dict[str, str]]
 
 
 def _build_request(profile: dict[str, Any], system_prompt: str,
-                   case_text: str, api_key: str) -> Request:
+                   case_text: str, api_key: str) -> ProviderRequest:
     protocol = profile["protocol"]
     model = profile["model"]
     max_tokens = profile.get("max_output_tokens", 8192)
@@ -335,12 +431,7 @@ def _build_request(profile: dict[str, Any], system_prompt: str,
             },
         }
     serialized = json.dumps(body, ensure_ascii=True, separators=(",", ":"))
-    return Request(
-        url,
-        data=serialized.encode("utf-8"),
-        headers=_headers(protocol, api_key),
-        method="POST",
-    )
+    return ProviderRequest(url, serialized.encode("utf-8"), _headers(protocol, api_key), "POST")
 
 
 def _read_response(response: Any) -> dict[str, Any]:
@@ -434,9 +525,9 @@ def _is_context_overflow(error: HTTPError) -> bool:
     return any(marker in body for marker in CONTEXT_OVERFLOW_MARKERS)
 
 
-def _request_once(request: Request) -> tuple[dict[str, Any], int | None, str | None]:
+def _request_once(request: ProviderRequest) -> tuple[dict[str, Any], int | None, str | None]:
     try:
-        with urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+        with open_https(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             return _read_response(response), None, None
     except HTTPError as error:
         if error.code in RETRYABLE_STATUS_CODES:

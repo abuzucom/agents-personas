@@ -62,7 +62,7 @@ def _http_error(code: int, body: bytes = b"") -> HTTPError:
 
 
 class _FakeResponse:
-    """Minimal urlopen response carrying one provider reply."""
+    """Minimal open_https response carrying one provider reply."""
 
     def __init__(self, text: str, document: dict | None = None):
         self.headers = {}
@@ -85,7 +85,7 @@ def _call(responses: list, large: bool = True, models: list | None = None,
     """Run call_model_with_usage against scripted provider results."""
     sent = models if models is not None else []
 
-    def fake_urlopen(request, timeout):
+    def fake_open_https(request, timeout):
         del timeout
         sent.append(json.loads(request.data.decode("utf-8"))["model"])
         result = responses.pop(0)
@@ -97,7 +97,7 @@ def _call(responses: list, large: bool = True, models: list | None = None,
     variables.update(environment or {})
     with patch.dict("os.environ", variables, clear=False), \
             patch.object(call_model, "_load_config", return_value=_config(large=large)), \
-            patch.object(call_model, "urlopen", fake_urlopen), \
+            patch.object(call_model, "open_https", fake_open_https), \
             patch.object(call_model.time, "sleep"):
         return call_model.call_model_with_usage("p", "PR", "c")
 
@@ -168,7 +168,7 @@ class UsageTest(unittest.TestCase):
             }
             with patch.dict("os.environ", environment), \
                     patch.object(call_model, "_load_config", return_value=_config()), \
-                    patch.object(call_model, "urlopen", lambda request, timeout: _FakeResponse("r")), \
+                    patch.object(call_model, "open_https", lambda request, timeout: _FakeResponse("r")), \
                     contextlib.redirect_stdout(io.StringIO()) as output:
                 exit_code = call_model.main()
             usage = json.loads((root / "usage.json").read_text(encoding="utf-8"))
