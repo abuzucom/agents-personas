@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -29,6 +30,8 @@ SEVERITIES = ("HIGH", "MEDIUM", "LOW")
 CONFIDENCES = ("certain", "likely")
 PRESCAN_STATUSES = ("confirmed", "dismissed")
 VERDICT_RANK = {"APPROVE": 0, "NEEDS-HUMAN": 1, "BLOCK": 2}
+# A missing new-side count means one line, as in git's unified diff.
+HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(?P<start>\d+)(?:,(?P<count>\d+))? @@")
 
 
 @dataclass(frozen=True)
@@ -39,6 +42,9 @@ class ReviewContext:
     changed_files: set[str]
     prescan_ids: set[str]
     unreviewed: list[str]
+    # Line ranges a finding may cite, keyed by file. A file without an
+    # entry carries no line check.
+    line_ranges: dict[str, tuple[range, ...]] = field(default_factory=dict)
 
 
 def load_classes(policy_path: Path) -> dict[str, check_quality_policy.PolicyClass]:
@@ -67,14 +73,42 @@ def finding_problems(item: object, context: ReviewContext, classes: dict) -> lis
         problems.append(f"advisory class {class_id} rated {severity}, ceiling is LOW")
     if item.get("confidence") not in CONFIDENCES:
         problems.append("finding confidence must be certain or likely")
-    if not isinstance(item.get("line"), int):
-        problems.append("finding line must be an integer")
-    cited_file = item.get("file")
+    return problems + location_problems(item.get("file"), item.get("line"), context)
+
+
+def location_problems(cited_file: object, line: object, context: ReviewContext) -> list[str]:
+    """Return problems with the file and line one finding cites.
+
+    A finding cites a file and line in the review target. A PR line falls
+    inside a hunk of the file patch. A local line falls inside the file.
+    """
     if not isinstance(cited_file, str):
-        problems.append("finding file must be a string")
-    elif context.mode == "PR" and cited_file not in context.changed_files:
-        problems.append(f"finding cites {cited_file} outside the changed files")
+        problems = ["finding file must be a string"]
+    elif cited_file in context.changed_files:
+        problems = []
+    elif context.mode == "PR":
+        problems = [f"finding cites {cited_file} outside the changed files"]
+    else:
+        problems = [f"finding cites {cited_file!r} outside the review target"]
+    if isinstance(line, bool) or not isinstance(line, int) or line < 1:
+        return problems + ["finding line must be a positive integer"]
+    ranges = context.line_ranges.get(cited_file) if isinstance(cited_file, str) else None
+    if ranges is not None and not any(line in span for span in ranges):
+        problems.append(f"finding line {line} is outside the review target for {cited_file}")
     return problems
+
+
+def hunk_ranges(patch: str) -> tuple[range, ...]:
+    """Return the new-side line range of every hunk in one patch."""
+    spans = []
+    for text in patch.splitlines():
+        header = HUNK_HEADER.match(text)
+        if header is None:
+            continue
+        start = int(header.group("start"))
+        count = int(header.group("count") or 1)
+        spans.append(range(start, start + count))
+    return tuple(spans)
 
 
 def required_verdict(findings: list[dict], classes: dict) -> str:
@@ -174,12 +208,18 @@ def unreviewed_from_envelope(envelope: dict) -> list[str]:
 def context_from_envelope(envelope: dict, unreviewed: list[str]) -> ReviewContext:
     """Return the validation context for one envelope."""
     target = envelope["REVIEW_TARGET"]
+    files = target["files"]
     if is_engine_envelope(envelope):
         # The engine quality mode answers as QUALITY.md mode PR.
         mode, prescan = "PR", target.get("prescan", [])
     else:
         mode, prescan = envelope["mode"], envelope["TRUSTED_CONTEXT"].get("prescan", [])
-    return ReviewContext(mode, set(target["files"]), {item["id"] for item in prescan}, unreviewed)
+    # A PR target holds patch text. A local target holds whole files.
+    if mode == "PR":
+        line_ranges = {name: hunk_ranges(text) for name, text in files.items()}
+    else:
+        line_ranges = {name: (range(1, len(text.splitlines()) + 1),) for name, text in files.items()}
+    return ReviewContext(mode, set(files), {item["id"] for item in prescan}, unreviewed, line_ranges)
 
 
 def main() -> int:

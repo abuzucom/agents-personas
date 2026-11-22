@@ -15,7 +15,7 @@ repository.
 | `scripts/check_quality_policy.py` | `scripts/check_quality_policy.py` | none |
 | `scripts/review_report.py` | `scripts/review_report.py` | none |
 | `scripts/review_envelope.py` | `scripts/review_envelope.py` | none |
-| `scripts/quality_reply.py` | `ci/check_review_response.py` | new name, docstring note, and the engine envelope layout |
+| `scripts/quality_reply.py` | `ci/check_review_response.py` | new name, docstring note, the engine envelope layout, and finding location checks |
 | `scripts/prescan.py` | the prescan half of `ci/build_pr_case.py` | takes an extracted tree |
 | `review_hooks.py` | `ci/run_review.py` and `ci/build_pr_case.py` | engine hook functions |
 | `eval/extra_checks.py` | `eval/run_eval.py` | euler checks beyond the engine core |
