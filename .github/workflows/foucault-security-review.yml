@@ -1,3 +1,4 @@
+---
 name: foucault-security-review
 
 # foucault wrapper over the engine workflow. It fixes the persona. The
@@ -12,7 +13,7 @@ name: foucault-security-review
 #
 # The check run is named "foucault / security". Pass only the provider key.
 
-on:
+"on":
   workflow_call:
     inputs:
       personas_ref:
@@ -70,7 +71,9 @@ on:
         type: boolean
         default: false
       paths:
-        description: "Optional newline-separated globs. The review runs only when a changed file matches. A leading ! excludes matching files."
+        description: >-
+          Optional newline-separated globs. The review runs only when a changed file matches. A leading !
+          excludes matching files.
         required: false
         type: string
         default: ""

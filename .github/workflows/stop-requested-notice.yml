@@ -1,3 +1,4 @@
+---
 name: stop-requested-notice
 
 # A person adds the stop-requested label to pause persona reviews during a
@@ -6,7 +7,7 @@ name: stop-requested-notice
 # comment per label add so the pull request shows how to resume. The job
 # checks out nothing and holds no secret. Adopters copy this file.
 
-on:
+"on":
   pull_request_target:
     types: [labeled]
 
@@ -28,7 +29,8 @@ jobs:
               issue_number: context.payload.pull_request.number,
               body: [
                 "<!-- stop-requested-notice -->",
-                "The stop-requested label pauses automatic persona reviews on this pull request. Each review posts a skipped check.",
+                "The stop-requested label pauses automatic persona reviews on this pull request. " +
+                  "Each review posts a skipped check.",
                 "",
                 "Remove the `stop-requested` label to review the current head before merge.",
               ].join("\n"),

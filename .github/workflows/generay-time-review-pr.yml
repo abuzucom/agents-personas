@@ -1,3 +1,4 @@
+---
 name: generay-time-review-pr
 
 # Self-review: generay reviews this repository's pull requests only on
@@ -10,7 +11,7 @@ name: generay-time-review-pr
 # branch, so a pull request cannot edit it. The engine never executes the
 # pull request head.
 
-on:
+"on":
   workflow_run:
     workflows: [Convention Sync Check]
     types: [completed]
@@ -28,8 +29,10 @@ jobs:
   generay:
     if: >-
       (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request') ||
-      (github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name == 'generay-scan-requested') ||
-      (github.event_name == 'pull_request_target' && github.event.action == 'unlabeled' && github.event.label.name == 'stop-requested')
+      (github.event_name == 'pull_request_target' && github.event.action == 'labeled' &&
+      github.event.label.name == 'generay-scan-requested') ||
+      (github.event_name == 'pull_request_target' && github.event.action == 'unlabeled' &&
+      github.event.label.name == 'stop-requested')
     permissions:
       checks: write
       contents: read

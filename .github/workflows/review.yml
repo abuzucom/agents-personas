@@ -1,3 +1,4 @@
+---
 name: persona-review
 
 # Reusable engine workflow. A persona wrapper calls it with one persona and
@@ -22,7 +23,7 @@ name: persona-review
 # step checks out or executes pull request head code. The engine reads the
 # head as git objects only.
 
-on:
+"on":
   workflow_call:
     inputs:
       personas_ref:
@@ -64,7 +65,9 @@ on:
         type: string
         default: ""
       model_call_command:
-        description: "Optional adapter: python or python3, then a workspace-relative .py path. No shell runs it. Empty uses the engine adapter."
+        description: >-
+          Optional adapter: python or python3, then a workspace-relative .py path. No shell runs it. Empty
+          uses the engine adapter.
         required: false
         type: string
         default: ""
@@ -74,7 +77,9 @@ on:
         type: boolean
         default: true
       fail_on_block:
-        description: "Fail the mode check on BLOCK. False concludes neutral. NEEDS-HUMAN warns and always concludes neutral."
+        description: >-
+          Fail the mode check on BLOCK. False concludes neutral. NEEDS-HUMAN warns and always concludes
+          neutral.
         required: false
         type: boolean
         default: true
@@ -84,12 +89,16 @@ on:
         type: boolean
         default: false
       paths:
-        description: "Optional newline-separated globs. The review runs only when a changed file matches. A leading ! excludes matching files. Empty reviews every pull request."
+        description: >-
+          Optional newline-separated globs. The review runs only when a changed file matches. A leading !
+          excludes matching files. Empty reviews every pull request.
         required: false
         type: string
         default: ""
       persona_options:
-        description: "Optional JSON object of persona options, for example {\"exclude_paths\": \"tests/**\"}. The persona manifest declares the names."
+        description: >-
+          Optional JSON object of persona options, for example {"exclude_paths": "tests/**"}. The persona
+          manifest declares the names.
         required: false
         type: string
         default: ""
@@ -222,7 +231,8 @@ jobs:
             const requestLabel = `${env.INPUT_PERSONA}-scan-requested`;
             core.setOutput("scan_requested", String((pull.labels || []).some((label) => label.name === requestLabel)));
             // stop-requested pauses every persona, a scan request included.
-            core.setOutput("stop_requested", String((pull.labels || []).some((label) => label.name === "stop-requested")));
+            const stopLabeled = (pull.labels || []).some((label) => label.name === "stop-requested");
+            core.setOutput("stop_requested", String(stopLabeled));
             core.setOutput("pr_body", (pull.body || "").slice(0, MAX_BODY_CHARS));
 
       - name: Check out the engine
@@ -340,10 +350,12 @@ jobs:
             const stopped = process.env.STOP_REQUESTED === "true";
             const output = stopped ? {
               title: "Scans stopped",
-              summary: "The pull request carries the stop-requested label. Remove the stop-requested label to review it before merge.",
+              summary: "The pull request carries the stop-requested label. " +
+                "Remove the stop-requested label to review it before merge.",
             } : {
               title: "No matching files",
-              summary: `No changed file matches the caller's paths input. The review did not run. Add the ${process.env.PERSONA}-scan-requested label to request it.`,
+              summary: "No changed file matches the caller's paths input. The review did not run. " +
+                `Add the ${process.env.PERSONA}-scan-requested label to request it.`,
             };
             await github.rest.checks.create({
               owner: context.repo.owner, repo: context.repo.repo,
@@ -356,7 +368,9 @@ jobs:
 
   skip-fork:
     needs: resolve
-    if: needs.resolve.outputs.paths_match == 'true' && needs.resolve.outputs.same_repository != 'true' && inputs.fork_review != true
+    if: >-
+      needs.resolve.outputs.paths_match == 'true' && needs.resolve.outputs.same_repository != 'true' &&
+      inputs.fork_review != true
     runs-on: ubuntu-latest
     permissions:
       checks: write
@@ -380,13 +394,16 @@ jobs:
               conclusion: "skipped",
               output: {
                 title: "Skipped for fork pull request",
-                summary: "Fork pull requests get no model review and no secret. Set fork_review: true to review through the fork-review environment.",
+                summary: "Fork pull requests get no model review and no secret. " +
+                  "Set fork_review: true to review through the fork-review environment.",
               },
             });
 
   review:
     needs: resolve
-    if: needs.resolve.outputs.paths_match == 'true' && needs.resolve.outputs.same_repository == 'true' && inputs.fork_review != true
+    if: >-
+      needs.resolve.outputs.paths_match == 'true' && needs.resolve.outputs.same_repository == 'true' &&
+      inputs.fork_review != true
     # The pinned image keeps the bubblewrap package version stable.
     runs-on: ubuntu-24.04
     permissions:
@@ -635,7 +652,10 @@ jobs:
               // A run without a valid verdict never reports a pass.
               request = {
                 name: `${process.env.PERSONA} / ${process.env.MODE}`, conclusion: "failure",
-                output: { title: "Review failed before a verdict", summary: "The workflow run log names the failed step." },
+                output: {
+                  title: "Review failed before a verdict",
+                  summary: "The workflow run log names the failed step.",
+                },
               };
             }
             await github.rest.checks.create({
