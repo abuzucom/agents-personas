@@ -21,6 +21,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   each trusted value in `TRUSTED_CONTEXT.options`, under the trusted
   digest. Untrusted options stay out of the envelope. An envelope without
   trusted options keeps its old shape.
+- Accept a top-level `option_notes` block in `reviewer.json`. It maps a
+  trusted string option value to one fixed note. The engine adds the note
+  to the result, the check summary, and the pull request comment.
 - List the persona eval runner and the persona checkers in
   `hooks/workflow-scripts.txt`. A structure eval and every persona checker
   run without a prompt. A model eval routes to consent and accepts only the
