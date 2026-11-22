@@ -25,7 +25,9 @@ PROMPT_SEPARATOR = "\n"
 TOP_LEVEL_KEYS = frozenset({"persona", "function", "modes", "options"})
 # options declares the caller values a persona accepts through the
 # persona_options workflow input, for example euler's exclude_paths.
-OPTION_KEYS = frozenset({"type", "default"})
+# "trusted" is optional. A trusted value joins TRUSTED_CONTEXT. The caller
+# workflow alone sets an option value. Pull request content has no path to it.
+OPTION_KEYS = frozenset({"type", "default", "trusted"})
 OPTION_TYPES = {"string": str, "integer": int, "boolean": bool}
 OPTION_NAME_CHARACTERS = frozenset(string.ascii_lowercase + string.digits + "_")
 MAX_OPTION_CHARS = 4096
@@ -331,6 +333,8 @@ def option_findings(options: object) -> list[str]:
             findings.append(f"option '{name}': type must be one of {sorted(OPTION_TYPES)}")
         elif "default" not in spec or _option_value_problem(name, kind, spec["default"]):
             findings.append(f"option '{name}': default does not match type '{kind}'")
+        if not isinstance(spec.get("trusted", False), bool):
+            findings.append(f"option '{name}': trusted must be true or false")
     return findings
 
 
@@ -358,6 +362,12 @@ def resolve_options(manifest: dict, requested: str) -> dict:
             raise ReviewerError(problem)
         resolved[name] = value
     return resolved
+
+
+def trusted_option_values(manifest: dict, resolved: dict) -> dict:
+    """Return the resolved values of the options the manifest marks trusted."""
+    declared = manifest.get("options", {})
+    return {name: value for name, value in resolved.items() if declared.get(name, {}).get("trusted") is True}
 
 
 def validate_persona(persona_dir: Path) -> list[str]:
