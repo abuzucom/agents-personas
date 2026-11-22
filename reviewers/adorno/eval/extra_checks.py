@@ -45,7 +45,12 @@ def validate_expected(mode: str, expected: dict) -> list[str]:
     problems = []
     classes = expected["expected_classes"]
     if isinstance(classes, list):
-        problems += [f"unknown class '{item}' in expected_classes" for item in classes if item not in KNOWN_CLASSES]
+        # A list or object entry is unhashable. The string test keeps the set lookup safe.
+        for item in classes:
+            if not isinstance(item, str):
+                problems.append(f"expected_classes entries must be strings: {item!r}")
+            elif item not in KNOWN_CLASSES:
+                problems.append(f"unknown class '{item}' in expected_classes")
     else:
         problems.append("expected_classes must be a list")
     if not isinstance(expected.get("notes"), str) or not expected["notes"].strip():

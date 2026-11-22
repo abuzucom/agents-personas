@@ -46,6 +46,13 @@ class ValidateExpectedTest(unittest.TestCase):
         self.assertIn("unknown class '2.99' in expected_classes", problems)
         self.assertIn("unknown class '9.1' in expected_classes", problems)
 
+    def test_non_string_class_is_a_problem_not_a_crash(self):
+        problems = extension.validate_expected("file", _expected(expected_classes=["2.1", {"id": "2.1"}, 2]))
+        self.assertEqual(
+            problems,
+            ["expected_classes entries must be strings: {'id': '2.1'}", "expected_classes entries must be strings: 2"],
+        )
+
     def test_non_ascii_flag_needs_fixture_notes(self):
         problems = extension.validate_expected("file", _expected(allow_non_ascii=True))
         self.assertIn("allow_non_ascii: true requires fixture_notes explaining why", problems)
