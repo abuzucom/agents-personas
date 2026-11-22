@@ -36,7 +36,7 @@ class AuditPolicyTest(unittest.TestCase):
         self.assertFalse(any("exceeds" in item for item in _violations(b"| " + b"x" * 130)))
 
     def test_non_ascii_policy_fails(self):
-        self.assertTrue(any("ASCII" in item for item in _violations("cafeé".encode("utf-8"))))
+        self.assertTrue(any("ASCII" in item for item in _violations("cafeé".encode())))
 
     def test_crlf_policy_fails(self):
         self.assertTrue(any("LF" in item for item in _violations(b"## 0. Review Modes\r\n")))

@@ -77,7 +77,7 @@ def main(argv: list[str]) -> int:
     stopped = os.environ.get("STOP_REQUESTED") == "true"
     requested = os.environ.get("SCAN_REQUESTED") == "true"
     match = "true" if not stopped and (requested or any_match(files, patterns)) else "false"
-    with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+    with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
         output.write(f"paths_match={match}\n")
     return 0
 

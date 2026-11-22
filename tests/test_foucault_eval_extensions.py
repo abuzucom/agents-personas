@@ -112,7 +112,7 @@ class GradeExtensionTest(unittest.TestCase):
         case = _case("security", "report-process-narration-pr")
         required = case["expected"]["report_contract"]["required_finding"]
         finding = {"severity": "HIGH", "title": "Defect", **required}
-        grades = dict((label, passed) for label, passed, _ in extension.grade_response(case, _report([finding])))
+        grades = {label: passed for label, passed, _ in extension.grade_response(case, _report([finding]))}
         self.assertEqual(grades, {"VERDICT_JSON shape": True, "report contract": True})
 
     def test_report_contract_fails_without_prior_status_or_finding(self):

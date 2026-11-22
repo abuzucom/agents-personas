@@ -233,7 +233,7 @@ class RenderContextCliTest(unittest.TestCase):
 
     def test_non_ascii_prompt_is_refused(self):
         sync = self.root / "reviewers" / "generay" / "SYNC.md"
-        sync.write_bytes("café\n".encode("utf-8"))
+        sync.write_bytes("café\n".encode())
         result = self.render("generay", "sync")
         self.assertEqual(result.returncode, 1)
         self.assertIn("not ASCII", result.stderr)

@@ -15,8 +15,10 @@ ALLOWED_ENGINE_COMMANDS = (
     "python engine/check_review_response.py out/response.txt --mode PR",
 )
 CONSENT_ENGINE_COMMANDS = (
-    "python engine/build_pr_case.py --persona euler --mode quality --base origin/main --head HEAD"
-    " --pr-number 7 --out-dir out",
+    (
+        "python engine/build_pr_case.py --persona euler --mode quality --base origin/main --head HEAD"
+        " --pr-number 7 --out-dir out"
+    ),
 )
 UNLISTED_ENGINE_COMMANDS = (
     "python engine/call_model.py",
