@@ -42,11 +42,14 @@ from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 
-try:
-    import persona_hooks
-    import reviewers
-except ImportError:
-    from engine import persona_hooks, reviewers
+# The engine directory joins the import path, so these imports resolve
+# both when a script runs directly and when a test loads it from a file.
+_ENGINE_DIR = str(Path(__file__).resolve().parent)
+if _ENGINE_DIR not in sys.path:
+    sys.path.insert(0, _ENGINE_DIR)
+
+import persona_hooks  # resolved through the path set above
+import reviewers  # resolved through the path set above
 
 ENGINE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ENGINE_DIR.parent

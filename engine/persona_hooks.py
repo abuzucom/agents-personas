@@ -43,6 +43,8 @@ def load_module(path: Path, module_name: str) -> ModuleType | None:
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"{path.name} must be a regular file")
     spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"{path.name} cannot load as a Python module")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

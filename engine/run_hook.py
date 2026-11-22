@@ -16,10 +16,13 @@ import json
 import sys
 from pathlib import Path
 
-try:
-    import persona_hooks
-except ImportError:
-    from engine import persona_hooks
+# The engine directory joins the import path, so these imports resolve
+# both when a script runs directly and when a test loads it from a file.
+_ENGINE_DIR = str(Path(__file__).resolve().parent)
+if _ENGINE_DIR not in sys.path:
+    sys.path.insert(0, _ENGINE_DIR)
+
+import persona_hooks  # resolved through the path set above
 
 HOOKS = ("case_context", "validate_reply", "forced_verdict")
 

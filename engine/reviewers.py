@@ -6,6 +6,7 @@ in its manifest, so this module is the single reader of that schema.
 import json
 import string
 from pathlib import Path
+from typing import Any, TypeGuard
 
 MANIFEST_NAME = "reviewer.json"
 REVIEWERS_DIRECTORY = "reviewers"
@@ -139,7 +140,7 @@ def load_prompt(persona_dir: Path, prompt: object) -> str:
     return PROMPT_SEPARATOR.join(path.read_text(encoding="utf-8") for path in prompt_paths(persona_dir, prompt))
 
 
-def _is_string_list(value: object) -> bool:
+def _is_string_list(value: object) -> TypeGuard[list[str]]:
     """Return whether a value is a non-empty list of non-empty strings."""
     return (isinstance(value, list) and bool(value)
             and all(isinstance(item, str) and item for item in value))
@@ -179,7 +180,7 @@ def resolve_caps(mode: dict, requested: dict | None = None) -> dict:
     unknown = sorted(set(requested) - set(CAP_CEILINGS))
     if unknown:
         raise ReviewerError(f"unknown cap request {unknown}")
-    caps = {"clamped": []}
+    caps: dict[str, Any] = {"clamped": []}
     for name, ceiling in CAP_CEILINGS.items():
         limit = mode.get(name, CAP_DEFAULTS[name])
         request = requested.get(name)
@@ -285,12 +286,14 @@ def _option_value_problem(name: str, kind: str, value: object) -> str | None:
     if not isinstance(value, expected) or (expected is int and isinstance(value, bool)):
         article = "an" if kind == "integer" else "a"
         return f"option '{name}' must be {article} {kind}"
+    if expected is not str or not isinstance(value, str):
+        return None
     # Newlines and tabs stay legal. A YAML block scalar carries a glob list that way.
     allowed = all(character in OPTION_WHITESPACE or (character.isascii() and character.isprintable())
-                  for character in value) if expected is str else True
+                  for character in value)
     if not allowed:
         return f"option '{name}' must be printable ASCII"
-    if expected is str and len(value) > MAX_OPTION_CHARS:
+    if len(value) > MAX_OPTION_CHARS:
         return f"option '{name}' holds at most {MAX_OPTION_CHARS} characters"
     return None
 

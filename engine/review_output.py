@@ -5,7 +5,6 @@ The workflow publishes the rendered JSON as written. Every decision about the
 conclusion, the header line, and the caps lives here, where tests reach it.
 """
 
-from __future__ import annotations
 
 import argparse
 import json
@@ -86,7 +85,7 @@ def clean_text(text: object, limit: int) -> str:
 def annotations(findings: list[dict], changed_files: list[str]) -> list[dict]:
     """Return annotations for findings on changed files, capped for one update."""
     changed = set(changed_files)
-    items = []
+    items: list[dict] = []
     for finding in findings:
         if finding.get("file") not in changed or len(items) == MAX_ANNOTATIONS:
             continue
