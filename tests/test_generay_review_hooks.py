@@ -3,6 +3,7 @@
 The end-to-end tests run engine/run_review.py with the committed generay
 persona against a real git repository and a scripted adapter.
 """
+
 import importlib.util
 import json
 import os
@@ -17,9 +18,13 @@ ENGINE_DIR = REPO_ROOT / "engine"
 PERSONA_DIR = REPO_ROOT / "reviewers" / "generay"
 GIT_ENV = {
     **os.environ,
-    "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid",
-    "GIT_COMMITTER_NAME": "Test", "GIT_COMMITTER_EMAIL": "test@example.invalid",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_SYSTEM": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "Test",
+    "GIT_AUTHOR_EMAIL": "test@example.invalid",
+    "GIT_COMMITTER_NAME": "Test",
+    "GIT_COMMITTER_EMAIL": "test@example.invalid",
 }
 ADAPTER_SOURCE = """import json, sys
 from pathlib import Path
@@ -48,8 +53,9 @@ hooks = persona_hooks.load_review_hooks(PERSONA_DIR)
 
 
 def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
-                          check=True, env=GIT_ENV).stdout.strip()
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], capture_output=True, text=True, check=True, env=GIT_ENV
+    ).stdout.strip()
 
 
 def _patch(text: str) -> str:
@@ -58,22 +64,36 @@ def _patch(text: str) -> str:
 
 
 def _reply(verdict: str, prescan=(), findings=(), escalations=()) -> str:
-    payload = {"schema_version": "1", "mode": "PR", "verdict": verdict, "findings": list(findings),
-               "escalations": list(escalations), "prescan": list(prescan)}
+    payload = {
+        "schema_version": "1",
+        "mode": "PR",
+        "verdict": verdict,
+        "findings": list(findings),
+        "escalations": list(escalations),
+        "prescan": list(prescan),
+    }
     return f"{COVERAGE}Findings above.\nVERDICT: {verdict}\nVERDICT_JSON: {json.dumps(payload)}\n"
 
 
 def _envelope(prescan_ids=(), unreviewed=()) -> dict:
     prescan = [{"id": item, "file": "app.py", "line": 2, "check": "C9.1"} for item in prescan_ids]
-    return {"TRUSTED_CONTEXT": {"persona": "generay"},
-            "REVIEW_TARGET": {"files": {"app.py": _patch("a\nb\n")}, "prescan": prescan,
-                              "unreviewed": list(unreviewed)}}
+    return {
+        "TRUSTED_CONTEXT": {"persona": "generay"},
+        "REVIEW_TARGET": {"files": {"app.py": _patch("a\nb\n")}, "prescan": prescan, "unreviewed": list(unreviewed)},
+    }
 
 
 def _finding(**changes) -> dict:
     check = hooks.CHECKS["C9.1"]
-    finding = {"severity": "MEDIUM", "check": "C9.1", "method": check.method, "file": "app.py", "line": 2,
-               "title": "naive now", "confidence": "certain"}
+    finding = {
+        "severity": "MEDIUM",
+        "check": "C9.1",
+        "method": check.method,
+        "file": "app.py",
+        "line": 2,
+        "title": "naive now",
+        "confidence": "certain",
+    }
     finding.update(changes)
     return finding
 
@@ -109,8 +129,9 @@ class ValidateReplyTest(unittest.TestCase):
         return hooks.validate_reply({}, reply, _envelope(**envelope_changes))
 
     def test_resolved_prescan_and_valid_finding_pass(self):
-        reply = _reply("APPROVE", [{"id": "P1", "status": "dismissed", "reason": "zone set upstream"}],
-                       [_finding(severity="LOW")])
+        reply = _reply(
+            "APPROVE", [{"id": "P1", "status": "dismissed", "reason": "zone set upstream"}], [_finding(severity="LOW")]
+        )
         self.assertEqual(self.problems(reply, prescan_ids=["P1"]), [])
 
     def test_unresolved_prescan_item_fails(self):
@@ -164,10 +185,20 @@ class EngineRunTest(unittest.TestCase):
         self.out = base_dir / "out"
 
     def options(self, **changes):
-        values = {"root": REPO_ROOT, "persona": "generay", "mode": "time", "repo": self.repo,
-                  "base": self.base, "head": self.head, "pr_number": 3, "out_dir": self.out,
-                  "title": "Title", "body": "Body", "requested_caps": {},
-                  "model_call_command": "python adapter/fake.py"}
+        values = {
+            "root": REPO_ROOT,
+            "persona": "generay",
+            "mode": "time",
+            "repo": self.repo,
+            "base": self.base,
+            "head": self.head,
+            "pr_number": 3,
+            "out_dir": self.out,
+            "title": "Title",
+            "body": "Body",
+            "requested_caps": {},
+            "model_call_command": "python adapter/fake.py",
+        }
         values.update(changes)
         return run_review.RunOptions(**values)
 
@@ -182,8 +213,10 @@ class EngineRunTest(unittest.TestCase):
 
     def test_valid_reply_approves_with_both_policies_in_the_prompt(self):
         run_review.run_mode(self.options(stage="build"))
-        resolutions = [{"id": item["id"], "status": "dismissed", "reason": "zone set upstream"}
-                       for item in self.sent()["REVIEW_TARGET"]["prescan"]]
+        resolutions = [
+            {"id": item["id"], "status": "dismissed", "reason": "zone set upstream"}
+            for item in self.sent()["REVIEW_TARGET"]["prescan"]
+        ]
         (self.adapter_dir / "steps.json").write_text(json.dumps([_reply("APPROVE", resolutions)]), encoding="utf-8")
         result = run_review.run_mode(self.options(stage="review"))
         self.assertEqual(result["verdict"], "APPROVE")

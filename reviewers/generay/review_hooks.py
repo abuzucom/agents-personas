@@ -22,8 +22,7 @@ CHECKS = time_reply.load_checks()
 
 def case_context(head_dir: Path, changed: list[str], patches: dict[str, str], options: dict) -> dict:
     """Return the prescan candidates and the files that exhaust the parsers."""
-    items, unparsed = time_prescan.build_prescan(Path(head_dir), changed, patches,
-                                                 options["exclude_paths"].split())
+    items, unparsed = time_prescan.build_prescan(Path(head_dir), changed, patches, options["exclude_paths"].split())
     return {"context": {"prescan": items}, "unreviewed": unparsed}
 
 

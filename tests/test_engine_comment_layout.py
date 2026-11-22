@@ -1,4 +1,5 @@
 """Test the euler-style review comment that every persona posts."""
+
 import importlib.util
 import json
 import subprocess
@@ -26,9 +27,19 @@ output = _load("review_output")
 
 def _result(**changes) -> dict:
     result = {
-        "persona": "euler", "mode": "quality", "base_sha": BASE_SHA, "head_sha": HEAD_SHA,
-        "verdict": "APPROVE", "reasons": [], "findings": [], "changed_files": [], "unreviewed": [],
-        "chunks": 2, "clamped": [], "usage": {}, "duration_seconds": 1.0,
+        "persona": "euler",
+        "mode": "quality",
+        "base_sha": BASE_SHA,
+        "head_sha": HEAD_SHA,
+        "verdict": "APPROVE",
+        "reasons": [],
+        "findings": [],
+        "changed_files": [],
+        "unreviewed": [],
+        "chunks": 2,
+        "clamped": [],
+        "usage": {},
+        "duration_seconds": 1.0,
         "chunk_results": [
             {"name": "001", "verdict": "APPROVE", "report": "First report.\nVERDICT: APPROVE", "reason": ""},
             {"name": "002", "verdict": "APPROVE", "report": "Second report.", "reason": ""},
@@ -63,14 +74,19 @@ class CommentLayoutTest(unittest.TestCase):
         self.assertIn("### Chunk 002: APPROVE", lines)
 
     def test_report_sits_inside_a_fence_longer_than_its_backticks(self):
-        result = _result(chunk_results=[{"name": "001", "verdict": "BLOCK",
-                                          "report": "Has ```` four ticks.", "reason": ""}])
+        result = _result(
+            chunk_results=[{"name": "001", "verdict": "BLOCK", "report": "Has ```` four ticks.", "reason": ""}]
+        )
         body = output.render(result, fail_on_block=True, run_url=RUN_URL)["comment_body"]
         self.assertIn("`````\nHas ```` four ticks.\n`````", body)
 
     def test_chunk_without_report_shows_its_reason(self):
-        result = _result(verdict="NEEDS-HUMAN", chunk_results=[
-            {"name": "001", "verdict": "NEEDS-HUMAN", "report": "", "reason": "input exceeds every model capacity"}])
+        result = _result(
+            verdict="NEEDS-HUMAN",
+            chunk_results=[
+                {"name": "001", "verdict": "NEEDS-HUMAN", "report": "", "reason": "input exceeds every model capacity"}
+            ],
+        )
         lines = _lines(result)
         self.assertIn("### Chunk 001: NEEDS-HUMAN", lines)
         self.assertIn("input exceeds every model capacity", lines)
@@ -89,8 +105,12 @@ class CommentLayoutTest(unittest.TestCase):
         self.assertIn("### Chunk 001: APPROVE", _lines(result))
 
     def test_long_comment_stays_under_the_cap(self):
-        result = _result(chunk_results=[{"name": f"{index:03d}", "verdict": "APPROVE",
-                                          "report": "x" * 20_000, "reason": ""} for index in range(1, 6)])
+        result = _result(
+            chunk_results=[
+                {"name": f"{index:03d}", "verdict": "APPROVE", "report": "x" * 20_000, "reason": ""}
+                for index in range(1, 6)
+            ]
+        )
         body = output.render(result, fail_on_block=True, run_url=RUN_URL)["comment_body"]
         self.assertLessEqual(len(body), output.MAX_COMMENT_CHARS)
         self.assertTrue(body.endswith(output.TRUNCATION_NOTE))
@@ -105,9 +125,21 @@ class CliRunUrlTest(unittest.TestCase):
             target = Path(directory) / "rendered.json"
             source.write_text(json.dumps(_result()), encoding="utf-8")
             completed = subprocess.run(
-                [sys.executable, str(ENGINE_DIR / "review_output.py"), str(source), "--fail-on-block", "true",
-                 "--run-url", RUN_URL, "--out", str(target)],
-                capture_output=True, text=True, check=False)
+                [
+                    sys.executable,
+                    str(ENGINE_DIR / "review_output.py"),
+                    str(source),
+                    "--fail-on-block",
+                    "true",
+                    "--run-url",
+                    RUN_URL,
+                    "--out",
+                    str(target),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             rendered = json.loads(target.read_text(encoding="utf-8"))
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn(f"Workflow run: {RUN_URL}", rendered["comment_body"])

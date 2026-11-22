@@ -1,4 +1,5 @@
 """Test the foucault wrapper, the self-review caller, and the caller examples."""
+
 import re
 import unittest
 from pathlib import Path
@@ -12,9 +13,20 @@ SELF_CALLER = WORKFLOWS / "foucault-security-review-pr.yml"
 ENGINE = WORKFLOWS / "review.yml"
 EXAMPLES = REPO_ROOT / "examples"
 SHA = re.compile(r"^[0-9a-f]{40}$")
-FORWARDED_INPUTS = {"personas_ref", "modes", "pr_number", "base_sha", "head_sha", "head_repo_url",
-                    "head_repo_full_name", "model_call_command", "pr_comment", "fail_on_block",
-                    "fork_review", "paths"}
+FORWARDED_INPUTS = {
+    "personas_ref",
+    "modes",
+    "pr_number",
+    "base_sha",
+    "head_sha",
+    "head_repo_url",
+    "head_repo_full_name",
+    "model_call_command",
+    "pr_comment",
+    "fail_on_block",
+    "fork_review",
+    "paths",
+}
 REVIEW_PERMISSIONS = {"checks": "write", "contents": "read", "pull-requests": "write"}
 
 
@@ -40,8 +52,9 @@ class WrapperTest(unittest.TestCase):
         self.assertEqual(set(self.call["inputs"]), FORWARDED_INPUTS)
         for name in FORWARDED_INPUTS:
             with self.subTest(input=name):
-                self.assertEqual(self.call["inputs"][name].get("required", False),
-                                 engine_inputs[name].get("required", False))
+                self.assertEqual(
+                    self.call["inputs"][name].get("required", False), engine_inputs[name].get("required", False)
+                )
                 self.assertEqual(self.call["inputs"][name]["type"], engine_inputs[name]["type"])
 
     def test_wrapper_calls_the_engine_for_foucault_with_the_default_mode(self):
@@ -115,8 +128,11 @@ class ExampleCallerTest(unittest.TestCase):
         self.assertEqual(trigger["types"], ["labeled", "synchronize", "unlabeled"])
         # The active human approved the <persona>-scan-requested label names and
         # the removal of the generay-sync job. The sync mode has no review delivery.
-        labels = {"adorno": "adorno-scan-requested", "generay": "generay-scan-requested",
-                  "havel": "havel-scan-requested"}
+        labels = {
+            "adorno": "adorno-scan-requested",
+            "generay": "generay-scan-requested",
+            "havel": "havel-scan-requested",
+        }
         self.assertEqual(set(workflow["jobs"]), set(labels))
         for job_name, label in labels.items():
             with self.subTest(job=job_name):

@@ -5,6 +5,7 @@ process. engine/run_review.py marks itself non-dumpable at startup, which
 makes its environ unreadable to the hook child. The review step runs the
 engine through exec, so no shell process keeps the key either.
 """
+
 import json
 import os
 import subprocess
@@ -19,9 +20,13 @@ ENGINE_DIR = Path(__file__).resolve().parent.parent / "engine"
 WORKFLOW_PATH = ENGINE_DIR.parent / ".github" / "workflows" / "review.yml"
 GIT_ENV = {
     **os.environ,
-    "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid",
-    "GIT_COMMITTER_NAME": "Test", "GIT_COMMITTER_EMAIL": "test@example.invalid",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_SYSTEM": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "Test",
+    "GIT_AUTHOR_EMAIL": "test@example.invalid",
+    "GIT_COMMITTER_NAME": "Test",
+    "GIT_COMMITTER_EMAIL": "test@example.invalid",
 }
 SYNTHETIC_KEY = "synthetic-provider-key-for-exposure-test"
 # The hook tries to read the environ of its parent, the engine process.
@@ -43,8 +48,9 @@ sys.stdout.write("Mode: PR\\nScope: the diff.\\nVERDICT: APPROVE\\nVERDICT_JSON:
 
 
 def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
-                          check=True, env=GIT_ENV).stdout.strip()
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], capture_output=True, text=True, check=True, env=GIT_ENV
+    ).stdout.strip()
 
 
 class WorkflowExecTest(unittest.TestCase):
@@ -70,8 +76,11 @@ class ProcEnvironTest(unittest.TestCase):
             persona_dir.mkdir(parents=True)
             (persona_dir / "Q.md").write_text("Review code quality.\n", encoding="ascii")
             (persona_dir / "review_hooks.py").write_text(HOOKS_SOURCE, encoding="utf-8")
-            manifest = {"persona": "euler", "function": "quality", "modes": {"quality": {
-                "prompt": "Q.md", "review": True, "default": True, "json_mode": "PR"}}}
+            manifest = {
+                "persona": "euler",
+                "function": "quality",
+                "modes": {"quality": {"prompt": "Q.md", "review": True, "default": True, "json_mode": "PR"}},
+            }
             (persona_dir / "reviewer.json").write_text(json.dumps(manifest), encoding="utf-8")
             repo = base_dir / "repo"
             repo.mkdir()
@@ -87,14 +96,39 @@ class ProcEnvironTest(unittest.TestCase):
             _git(repo, "commit", "-q", "-m", "head")
             head = _git(repo, "rev-parse", "HEAD")
             # Hosts without bubblewrap fall back to the plain child. CI sets 1 and keeps the sandbox required.
-            environment = {**os.environ, "MODEL_API_KEY": SYNTHETIC_KEY,
-                           "MODEL_CALL_COMMAND": "python adapter/fake.py",
-                           "PERSONAS_REQUIRE_SANDBOX": os.environ.get("PERSONAS_REQUIRE_SANDBOX", "0")}
+            environment = {
+                **os.environ,
+                "MODEL_API_KEY": SYNTHETIC_KEY,
+                "MODEL_CALL_COMMAND": "python adapter/fake.py",
+                "PERSONAS_REQUIRE_SANDBOX": os.environ.get("PERSONAS_REQUIRE_SANDBOX", "0"),
+            }
             completed = subprocess.run(
-                [sys.executable, str(ENGINE_DIR / "run_review.py"), "--root", str(base_dir / "personas"),
-                 "--persona", "euler", "--mode", "quality", "--repo", str(repo), "--base", base, "--head", head,
-                 "--pr-number", "1", "--out-dir", str(base_dir / "out")],
-                cwd=repo, env=environment, capture_output=True, text=True, check=False)
+                [
+                    sys.executable,
+                    str(ENGINE_DIR / "run_review.py"),
+                    "--root",
+                    str(base_dir / "personas"),
+                    "--persona",
+                    "euler",
+                    "--mode",
+                    "quality",
+                    "--repo",
+                    str(repo),
+                    "--base",
+                    base,
+                    "--head",
+                    head,
+                    "--pr-number",
+                    "1",
+                    "--out-dir",
+                    str(base_dir / "out"),
+                ],
+                cwd=repo,
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("VERDICT: APPROVE", completed.stdout)
 

@@ -1,4 +1,5 @@
 """Test the optional json_mode key of a reviewer.json mode."""
+
 import importlib.util
 import json
 import sys

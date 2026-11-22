@@ -4,6 +4,7 @@ Ported from abuzucom/euler tests/test_run_eval.py, test_eval_false_positives.py,
 and test_review_narration.py at 9488a8c. A temporary euler persona holds the
 cases. It reuses the committed manifest, prompt, scripts, and extension.
 """
+
 import importlib.util
 import json
 import shutil
@@ -39,8 +40,10 @@ VERDICT_JSON: {"schema_version": "1", "mode": "PR", "verdict": "BLOCK", "finding
 
 
 def _json_line(mode: str, verdict: str, findings="[]") -> str:
-    return (f'VERDICT_JSON: {{"schema_version":"1","mode":"{mode}","verdict":"{verdict}",'
-            f'"findings":{findings},"prescan":[]}}\n')
+    return (
+        f'VERDICT_JSON: {{"schema_version":"1","mode":"{mode}","verdict":"{verdict}",'
+        f'"findings":{findings},"prescan":[]}}\n'
+    )
 
 
 class CaseFixture(unittest.TestCase):
@@ -66,8 +69,9 @@ class CaseFixture(unittest.TestCase):
         return run_eval.collect_cases(self.persona_dir, MANIFEST, extension=extension)[1]
 
     def load(self, mode: str, slug: str) -> dict:
-        case, findings = run_eval.load_case(self.persona_dir / "eval" / "cases" / mode / slug, mode,
-                                            MANIFEST["modes"][mode], extension)
+        case, findings = run_eval.load_case(
+            self.persona_dir / "eval" / "cases" / mode / slug, mode, MANIFEST["modes"][mode], extension
+        )
         assert not findings, findings
         return case
 
@@ -77,8 +81,13 @@ class CaseFixture(unittest.TestCase):
 
     @staticmethod
     def valid_expected(**overrides) -> dict:
-        expected = {"mode": "PR", "expected_verdict": "BLOCK", "expected_classes": ["M1"],
-                    "expect_json": True, "notes": "The handler swallows the error."}
+        expected = {
+            "mode": "PR",
+            "expected_verdict": "BLOCK",
+            "expected_classes": ["M1"],
+            "expect_json": True,
+            "notes": "The handler swallows the error.",
+        }
         expected.update(overrides)
         return expected
 
@@ -131,15 +140,15 @@ class StructureTest(CaseFixture):
     def test_invalid_active_work_elapsed_fails(self):
         cases = ((True, "bad-timeout-bool"), ("600", "bad-timeout-string"), (-1, "bad-timeout-negative"))
         for value, slug in cases:
-            self.write_case("quality", slug, self.valid_expected(active_work_elapsed_seconds=value),
-                            {"diff.patch": ""})
+            self.write_case("quality", slug, self.valid_expected(active_work_elapsed_seconds=value), {"diff.patch": ""})
         findings = self.findings()
         for _, slug in cases:
             self.assertIn(f"quality/{slug}: active_work_elapsed_seconds must be a non-negative integer", findings)
 
     def test_bad_review_status_fails(self):
-        self.write_case("quality", "bad-status", self.valid_expected(expected_review_status="APPROVE"),
-                        {"diff.patch": ""})
+        self.write_case(
+            "quality", "bad-status", self.valid_expected(expected_review_status="APPROVE"), {"diff.patch": ""}
+        )
         self.assertIn("quality/bad-status: expected_review_status must be NEEDS-HUMAN", self.findings())
 
 
@@ -164,7 +173,8 @@ class LiveEvaluationTest(CaseFixture):
         expected = self.valid_expected(expected_verdict="APPROVE", expected_classes=[])
         self.write_case("quality", "resolved-q4-pr", expected, {"diff.patch": "+x\n"})
         response = "VERDICT: APPROVE - The fix resolves division by zero.\n" + _json_line(
-            "PR", "APPROVE", '[{"class":"Q4"}]')
+            "PR", "APPROVE", '[{"class":"Q4"}]'
+        )
         self.assertIn("classes: unexpected class Q4", self.failures(self.load("quality", "resolved-q4-pr"), response))
 
     def test_case_text_is_the_euler_envelope(self):
@@ -185,8 +195,12 @@ class LiveEvaluationTest(CaseFixture):
         self.assertIn("M1", classes)
 
     def test_timeout_metadata_and_status_are_enforced(self):
-        expected = self.valid_expected(expected_verdict="NEEDS-HUMAN", expected_classes=[],
-                                       expected_review_status="NEEDS-HUMAN", active_work_elapsed_seconds=600)
+        expected = self.valid_expected(
+            expected_verdict="NEEDS-HUMAN",
+            expected_classes=[],
+            expected_review_status="NEEDS-HUMAN",
+            active_work_elapsed_seconds=600,
+        )
         self.write_case("quality", "timeout-pr", expected, {"diff.patch": "+x\n"})
         case = self.load("quality", "timeout-pr")
         envelope = json.loads(extension.build_model_input(case, "prompt"))
@@ -213,14 +227,16 @@ class LiveEvaluationTest(CaseFixture):
     def test_null_findings_reported_without_crash(self):
         self.write_case("quality", "ok-pr", self.valid_expected(), {"diff.patch": "+x\n"})
         response = "VERDICT: BLOCK - M1 swallowed exception.\n" + _json_line("PR", "BLOCK", "null")
-        self.assertIn("classes: VERDICT_JSON findings must be an array",
-                      self.failures(self.load("quality", "ok-pr"), response))
+        self.assertIn(
+            "classes: VERDICT_JSON findings must be an array", self.failures(self.load("quality", "ok-pr"), response)
+        )
 
     def test_eval_flags_process_narration_when_requested(self):
         expected = self.valid_expected(expected_verdict="APPROVE", expected_classes=[], forbid_process_narration=True)
         self.write_case("quality", "review-narration-pr", expected, {"diff.patch": "+x\n"})
         report = "Let me inspect the changed code first.\nVERDICT: APPROVE - No confirmed findings.\n" + _json_line(
-            "PR", "APPROVE")
+            "PR", "APPROVE"
+        )
         failures = self.failures(self.load("quality", "review-narration-pr"), report)
         self.assertTrue(any(item.startswith("process narration") for item in failures), failures)
 

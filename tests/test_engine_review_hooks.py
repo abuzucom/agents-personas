@@ -4,6 +4,7 @@ A persona ships reviewers/<name>/review_hooks.py. The tests write a real hook
 file into a temporary persona and run the engine stages against a real git
 repository with a scripted adapter.
 """
+
 import importlib.util
 import json
 import os
@@ -16,9 +17,13 @@ from pathlib import Path
 ENGINE_DIR = Path(__file__).resolve().parent.parent / "engine"
 GIT_ENV = {
     **os.environ,
-    "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid",
-    "GIT_COMMITTER_NAME": "Test", "GIT_COMMITTER_EMAIL": "test@example.invalid",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_SYSTEM": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "Test",
+    "GIT_AUTHOR_EMAIL": "test@example.invalid",
+    "GIT_COMMITTER_NAME": "Test",
+    "GIT_COMMITTER_EMAIL": "test@example.invalid",
 }
 ADAPTER_SOURCE = """import json, os, sys
 from pathlib import Path
@@ -88,13 +93,18 @@ run_review = _load("run_review")
 
 
 def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
-                          check=True, env=GIT_ENV).stdout.strip()
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], capture_output=True, text=True, check=True, env=GIT_ENV
+    ).stdout.strip()
 
 
 def _reply(verdict: str, prescan_ids=()) -> str:
-    payload = {"mode": "PR", "verdict": verdict, "findings": [],
-               "prescan": [{"id": item, "status": "dismissed", "reason": "fine"} for item in prescan_ids]}
+    payload = {
+        "mode": "PR",
+        "verdict": verdict,
+        "findings": [],
+        "prescan": [{"id": item, "status": "dismissed", "reason": "fine"} for item in prescan_ids],
+    }
     return f"Mode: PR\nScope: the diff.\nVERDICT: {verdict}\nVERDICT_JSON: {json.dumps(payload)}\n"
 
 
@@ -107,8 +117,13 @@ class HookFixture(unittest.TestCase):
         # the sandbox.
         previous_mode = os.environ.get("PERSONAS_REQUIRE_SANDBOX")
         os.environ["PERSONAS_REQUIRE_SANDBOX"] = "off"
-        self.addCleanup(lambda: os.environ.pop("PERSONAS_REQUIRE_SANDBOX") if previous_mode is None
-                        else os.environ.__setitem__("PERSONAS_REQUIRE_SANDBOX", previous_mode))
+        self.addCleanup(
+            lambda: (
+                os.environ.pop("PERSONAS_REQUIRE_SANDBOX")
+                if previous_mode is None
+                else os.environ.__setitem__("PERSONAS_REQUIRE_SANDBOX", previous_mode)
+            )
+        )
         self.temp = tempfile.TemporaryDirectory()
         base_dir = Path(self.temp.name)
         self.root = base_dir / "personas"
@@ -117,10 +132,15 @@ class HookFixture(unittest.TestCase):
         (self.persona_dir / "Q.md").write_text("Review code quality.\n", encoding="ascii")
         (self.persona_dir / "review_hooks.py").write_text(HOOKS_SOURCE, encoding="utf-8")
         self.record = base_dir / "record.json"
-        manifest = {"persona": "euler", "function": "quality",
-                    "options": {"record": {"type": "string", "default": str(self.record)},
-                                "blocking": {"type": "string", "default": ""}},
-                    "modes": {"quality": {"prompt": "Q.md", "review": True, "default": True, "json_mode": "PR"}}}
+        manifest = {
+            "persona": "euler",
+            "function": "quality",
+            "options": {
+                "record": {"type": "string", "default": str(self.record)},
+                "blocking": {"type": "string", "default": ""},
+            },
+            "modes": {"quality": {"prompt": "Q.md", "review": True, "default": True, "json_mode": "PR"}},
+        }
         (self.persona_dir / "reviewer.json").write_text(json.dumps(manifest), encoding="utf-8")
         self.repo = base_dir / "repo"
         self.repo.mkdir()
@@ -151,10 +171,20 @@ class HookFixture(unittest.TestCase):
         (self.adapter_dir / "steps.json").write_text(json.dumps(list(steps)), encoding="utf-8")
 
     def options(self, **changes):
-        values = {"root": self.root, "persona": "euler", "mode": "quality", "repo": self.repo,
-                  "base": self.base, "head": self.head, "pr_number": 3, "out_dir": self.out,
-                  "title": "Title", "body": "Body", "requested_caps": {},
-                  "model_call_command": "python adapter/fake.py"}
+        values = {
+            "root": self.root,
+            "persona": "euler",
+            "mode": "quality",
+            "repo": self.repo,
+            "base": self.base,
+            "head": self.head,
+            "pr_number": 3,
+            "out_dir": self.out,
+            "title": "Title",
+            "body": "Body",
+            "requested_caps": {},
+            "model_call_command": "python adapter/fake.py",
+        }
         values.update(changes)
         return run_review.RunOptions(**values)
 
@@ -235,10 +265,21 @@ class HeadTreeLimitTest(HookFixture):
 
     def test_oversized_changed_file_becomes_unreviewed(self):
         options = builder.BuildOptions(
-            repo=self.repo, base=self.base, head=self.head, out_dir=self.out, persona="euler", mode="quality",
-            title="T", body="B", pr_number=1, max_chunks=20, max_envelope_bytes=200_000,
+            repo=self.repo,
+            base=self.base,
+            head=self.head,
+            out_dir=self.out,
+            persona="euler",
+            mode="quality",
+            title="T",
+            body="B",
+            pr_number=1,
+            max_chunks=20,
+            max_envelope_bytes=200_000,
             hooks=run_review.persona_hooks.load_review_hooks(self.persona_dir),
-            persona_options={"record": str(self.record), "blocking": ""}, max_blob_bytes=4)
+            persona_options={"record": str(self.record), "blocking": ""},
+            max_blob_bytes=4,
+        )
         result = builder.collect_case_context(options, ["file1.py", "notes.md", "pkg/file0.py"], {})
         self.assertEqual(sorted(set(result["unreviewed"])), ["file1.py", "notes.md", "pkg/file0.py"])
         seen = json.loads(self.record.read_text(encoding="utf-8"))["seen"]
@@ -246,10 +287,21 @@ class HeadTreeLimitTest(HookFixture):
 
     def test_tree_over_budget_skips_the_hook_and_marks_every_change(self):
         options = builder.BuildOptions(
-            repo=self.repo, base=self.base, head=self.head, out_dir=self.out, persona="euler", mode="quality",
-            title="T", body="B", pr_number=1, max_chunks=20, max_envelope_bytes=200_000,
+            repo=self.repo,
+            base=self.base,
+            head=self.head,
+            out_dir=self.out,
+            persona="euler",
+            mode="quality",
+            title="T",
+            body="B",
+            pr_number=1,
+            max_chunks=20,
+            max_envelope_bytes=200_000,
             hooks=run_review.persona_hooks.load_review_hooks(self.persona_dir),
-            persona_options={"record": str(self.record), "blocking": ""}, max_tree_bytes=8)
+            persona_options={"record": str(self.record), "blocking": ""},
+            max_tree_bytes=8,
+        )
         changed = ["file1.py", "notes.md", "pkg/file0.py"]
         result = builder.collect_case_context(options, changed, {})
         self.assertEqual(result, {"context": {}, "unreviewed": changed})
@@ -263,8 +315,7 @@ class EnvelopeContextTest(unittest.TestCase):
     """
 
     def build(self, context):
-        return json.loads(envelope.build_envelope("euler", "quality", {"a.py": "+x\n"}, "T", "B", {},
-                                                  context=context))
+        return json.loads(envelope.build_envelope("euler", "quality", {"a.py": "+x\n"}, "T", "B", {}, context=context))
 
     def test_context_keys_join_case_context_and_digest(self):
         with_item = self.build({"prescan": [{"id": "P1", "file": "a.py"}]})
@@ -353,7 +404,8 @@ class ReviewStageTest(HookFixture):
     def test_review_stage_reuses_the_built_case(self):
         run_review.run_mode(self.options(stage="build"))
         (self.out / "case" / "envelopes" / "001.json").write_text(
-            (self.out / "case" / "envelopes" / "001.json").read_text().replace("Title", "Built"))
+            (self.out / "case" / "envelopes" / "001.json").read_text().replace("Title", "Built")
+        )
         self.script(_reply("APPROVE", ("P1", "P2")))
         result = run_review.run_mode(self.options(stage="review"))
         self.assertIn("Built", json.dumps(self.sent_envelopes()[0]))
@@ -407,8 +459,10 @@ class ReviewStageTest(HookFixture):
         allowed = run_review.HOOK_ENVIRONMENT_NAMES
         # macOS adds this variable to every new process. The engine never passes it.
         platform_added = {"__CF_USER_TEXT_ENCODING"}
-        self.assertTrue(all(name.upper() in allowed or name.upper().startswith("LC_") or name in platform_added
-                            for name in names), names)
+        self.assertTrue(
+            all(name.upper() in allowed or name.upper().startswith("LC_") or name in platform_added for name in names),
+            names,
+        )
 
     def test_hooks_run_in_an_empty_temporary_home(self):
         self.script(_reply("APPROVE", ("P1", "P2")))
@@ -440,8 +494,12 @@ class ReviewStageTest(HookFixture):
 
     def test_review_stage_rejects_a_case_built_for_another_input(self):
         run_review.run_mode(self.options(stage="build"))
-        changes = {"base": self.head, "pr_number": 4, "requested_caps": {"max_chunks": 5},
-                   "persona_options": '{"blocking": "x"}'}
+        changes = {
+            "base": self.head,
+            "pr_number": 4,
+            "requested_caps": {"max_chunks": 5},
+            "persona_options": '{"blocking": "x"}',
+        }
         for name, value in changes.items():
             with self.subTest(changed=name), self.assertRaisesRegex(run_review.ReviewError, "Rerun the build"):
                 run_review.run_mode(self.options(stage="review", **{name: value}))

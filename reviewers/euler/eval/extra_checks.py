@@ -60,8 +60,11 @@ def validate_expected(mode: str, expected: dict) -> list[str]:
 def case_files(case: dict) -> dict[str, str]:
     """Return the review files of one case keyed by file name."""
     case_dir = Path(case["dir"])
-    return {path.name: path.read_text(encoding="utf-8") for path in sorted(case_dir.iterdir())
-            if path.is_file() and path.name not in RESERVED_FILES}
+    return {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted(case_dir.iterdir())
+        if path.is_file() and path.name not in RESERVED_FILES
+    }
 
 
 def validate_case(case: dict) -> list[str]:
@@ -92,8 +95,9 @@ def build_model_input(case: dict, system_prompt: str) -> str:
     elapsed = case["expected"].get("active_work_elapsed_seconds")
     if elapsed is not None:
         metadata["active_work_elapsed_seconds"] = elapsed
-    return review_envelope.build_envelope(case["prompt_mode"], case_files(case), case["context"],
-                                          prescan_for(case), metadata)
+    return review_envelope.build_envelope(
+        case["prompt_mode"], case_files(case), case["context"], prescan_for(case), metadata
+    )
 
 
 def final_line_matches(case: dict, report: review_report.ParsedReport) -> bool:
@@ -107,7 +111,7 @@ def final_line_matches(case: dict, report: review_report.ParsedReport) -> bool:
     final_line = f"{report.label}: {report.value}" if report.label else ""
     if not final_line.startswith(expected_verdict):
         return False
-    remainder = final_line[len(expected_verdict):]
+    remainder = final_line[len(expected_verdict) :]
     return not remainder or not (remainder[0].isalnum() or remainder[0] == "-")
 
 

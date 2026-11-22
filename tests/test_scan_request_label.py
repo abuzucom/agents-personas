@@ -4,6 +4,7 @@ A pull request that carries the <persona>-scan-requested label reviews with
 that persona even when the paths input excludes every changed file. Each
 self-review caller also starts when a person adds its label.
 """
+
 import os
 import subprocess
 import sys
@@ -32,10 +33,18 @@ def _path_match(files: str, scan_requested: str) -> str:
         changed = Path(directory) / "files.json"
         changed.write_text(files, encoding="utf-8")
         output = Path(directory) / "output.txt"
-        environment = {**os.environ, "PATH_PATTERNS": "!CHANGELOG.md\n!README.md",
-                       "SCAN_REQUESTED": scan_requested, "GITHUB_OUTPUT": str(output)}
-        subprocess.run([sys.executable, str(REPO_ROOT / "engine" / "path_filter.py"), str(changed)],
-                       env=environment, check=True, capture_output=True)
+        environment = {
+            **os.environ,
+            "PATH_PATTERNS": "!CHANGELOG.md\n!README.md",
+            "SCAN_REQUESTED": scan_requested,
+            "GITHUB_OUTPUT": str(output),
+        }
+        subprocess.run(
+            [sys.executable, str(REPO_ROOT / "engine" / "path_filter.py"), str(changed)],
+            env=environment,
+            check=True,
+            capture_output=True,
+        )
         return output.read_text(encoding="utf-8").strip()
 
 

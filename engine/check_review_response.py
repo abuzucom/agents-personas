@@ -99,7 +99,7 @@ def _parse_json_line(lines: list[str]) -> dict[str, Any]:
         raise ResponseError("no VERDICT_JSON line")
     json_index = json_indexes[-1]
     try:
-        payload = json.loads(lines[json_index][len(VERDICT_JSON_PREFIX):].lstrip())
+        payload = json.loads(lines[json_index][len(VERDICT_JSON_PREFIX) :].lstrip())
     except json.JSONDecodeError as error:
         raise ResponseError("VERDICT_JSON is not valid JSON") from error
     if not isinstance(payload, dict):
@@ -120,7 +120,7 @@ def process_narration_lines(response: str) -> list[int]:
         return []
     narration = []
     fenced = False
-    for index, line in enumerate(lines[:indexes[-1]]):
+    for index, line in enumerate(lines[: indexes[-1]]):
         stripped = line.lstrip()
         if stripped.startswith("```"):
             fenced = not fenced
@@ -134,7 +134,7 @@ def process_narration_lines(response: str) -> list[int]:
 
 def coverage_problem(lines: list[str], expected_mode: str | None = None) -> str:
     """Return why the report opening breaks the coverage contract, or an empty string."""
-    opening = [line.strip() for line in lines if line.strip()][:len(COVERAGE_LABELS) + 1]
+    opening = [line.strip() for line in lines if line.strip()][: len(COVERAGE_LABELS) + 1]
     match = MODE_LINE_PATTERN.match(opening[0]) if opening else None
     if match is None:
         return "the first coverage line must be the mode line with nothing after the mode value"
@@ -142,7 +142,7 @@ def coverage_problem(lines: list[str], expected_mode: str | None = None) -> str:
         return f"the first coverage line must name mode {expected_mode}, not {match.group(1)}"
     for index, label in enumerate(COVERAGE_LABELS, start=1):
         line = opening[index] if index < len(opening) else ""
-        if not line.startswith(label) or not line[len(label):].strip():
+        if not line.startswith(label) or not line[len(label) :].strip():
             return f"coverage line {index + 1} must start with {label} and list nouns"
     return ""
 
@@ -170,13 +170,14 @@ def _validate_finding_rules(finding: dict[str, Any], rules: dict[str, Any]) -> N
     if prefix is None:
         return
     value = finding.get("class")
-    suffix = value[len(prefix):] if isinstance(value, str) and value.startswith(prefix) else ""
+    suffix = value[len(prefix) :] if isinstance(value, str) and value.startswith(prefix) else ""
     if not (suffix.isascii() and suffix.isdigit()):
         raise ResponseError(f"finding class must be '{prefix}' followed by digits")
 
 
-def _validate_payload(payload: dict[str, Any], verdict: str, expected_mode: str | None,
-                      finding_rules: dict[str, Any] | None = None) -> None:
+def _validate_payload(
+    payload: dict[str, Any], verdict: str, expected_mode: str | None, finding_rules: dict[str, Any] | None = None
+) -> None:
     """Check the payload keys, verdict, mode, and findings."""
     missing = sorted(REQUIRED_JSON_KEYS - set(payload))
     if missing:
@@ -184,8 +185,7 @@ def _validate_payload(payload: dict[str, Any], verdict: str, expected_mode: str 
     if payload["verdict"] != verdict:
         raise ResponseError("VERDICT_JSON verdict does not match the VERDICT line")
     if expected_mode is not None and payload.get("mode") != expected_mode:
-        raise ResponseError(
-            f"VERDICT_JSON mode '{payload.get('mode')}' does not match expected mode '{expected_mode}'")
+        raise ResponseError(f"VERDICT_JSON mode '{payload.get('mode')}' does not match expected mode '{expected_mode}'")
     findings = payload["findings"]
     if not isinstance(findings, list):
         raise ResponseError("VERDICT_JSON findings is not a list")
@@ -195,10 +195,13 @@ def _validate_payload(payload: dict[str, Any], verdict: str, expected_mode: str 
             _validate_finding_rules(finding, finding_rules)
 
 
-def validate_response(response: str, expected_mode: str | None = None,
-                      finding_rules: dict[str, Any] | None = None,
-                      allow_narration: bool = False,
-                      require_coverage: bool = False) -> tuple[str, dict[str, Any]]:
+def validate_response(
+    response: str,
+    expected_mode: str | None = None,
+    finding_rules: dict[str, Any] | None = None,
+    allow_narration: bool = False,
+    require_coverage: bool = False,
+) -> tuple[str, dict[str, Any]]:
     """Validate one bounded review response and return its verdict and JSON.
 
     require_coverage checks the Mode, Scope, and Unseen opening lines.
@@ -233,8 +236,7 @@ def main(argv: list[str]) -> int:
         response = options.response.read_bytes().decode("utf-8")
         verdict, _payload = validate_response(response, options.mode)
     except (OSError, UnicodeError, ResponseError) as error:
-        print(f"invalid review response: {error}. Fix the model output contract and rerun.",
-              file=sys.stderr)
+        print(f"invalid review response: {error}. Fix the model output contract and rerun.", file=sys.stderr)
         return 1
     print(f"VERDICT: {verdict}")
     return 0

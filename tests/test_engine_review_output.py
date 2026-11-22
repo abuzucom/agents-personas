@@ -1,4 +1,5 @@
 """Test engine/review_output.py, the check and comment rendering for one mode."""
+
 import importlib.util
 import json
 import subprocess
@@ -24,10 +25,18 @@ output = _load("review_output")
 
 def _result(**changes) -> dict:
     result = {
-        "persona": "euler", "mode": "quality", "head_sha": HEAD_SHA, "verdict": "BLOCK",
-        "reasons": [], "findings": [{"file": "app.py", "line": 4, "severity": "HIGH", "title": "Bad loop"}],
-        "changed_files": ["app.py"], "unreviewed": [], "chunks": 2, "clamped": [],
-        "usage": {"input_tokens": 1200, "output_tokens": 300}, "duration_seconds": 12.5,
+        "persona": "euler",
+        "mode": "quality",
+        "head_sha": HEAD_SHA,
+        "verdict": "BLOCK",
+        "reasons": [],
+        "findings": [{"file": "app.py", "line": 4, "severity": "HIGH", "title": "Bad loop"}],
+        "changed_files": ["app.py"],
+        "unreviewed": [],
+        "chunks": 2,
+        "clamped": [],
+        "usage": {"input_tokens": 1200, "output_tokens": 300},
+        "duration_seconds": 12.5,
         "reports": ["Mode: PR\nOne finding.\nVERDICT: BLOCK\nVERDICT_JSON: {}"],
     }
     result.update(changes)
@@ -141,8 +150,9 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(output.render(_result(), fail_on_block=False)["conclusion"], "neutral")
 
     def test_missing_usage_renders_as_unknown(self):
-        summary = output.render(_result(usage={"input_tokens": None, "output_tokens": None}),
-                                fail_on_block=True)["summary"]
+        summary = output.render(_result(usage={"input_tokens": None, "output_tokens": None}), fail_on_block=True)[
+            "summary"
+        ]
         self.assertIn("unknown", summary)
 
 
@@ -155,18 +165,38 @@ class CliTest(unittest.TestCase):
             target = Path(directory) / "rendered.json"
             source.write_text(json.dumps(_result(verdict="APPROVE", findings=[])), encoding="utf-8")
             completed = subprocess.run(
-                [sys.executable, str(ENGINE_DIR / "review_output.py"), str(source),
-                 "--fail-on-block", "true", "--out", str(target)],
-                capture_output=True, text=True, check=False)
+                [
+                    sys.executable,
+                    str(ENGINE_DIR / "review_output.py"),
+                    str(source),
+                    "--fail-on-block",
+                    "true",
+                    "--out",
+                    str(target),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             rendered = json.loads(target.read_text(encoding="utf-8"))
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(rendered["conclusion"], "success")
 
     def test_cli_rejects_bad_flag_value(self):
         completed = subprocess.run(
-            [sys.executable, str(ENGINE_DIR / "review_output.py"), "missing.json",
-             "--fail-on-block", "maybe", "--out", "x.json"],
-            capture_output=True, text=True, check=False)
+            [
+                sys.executable,
+                str(ENGINE_DIR / "review_output.py"),
+                "missing.json",
+                "--fail-on-block",
+                "maybe",
+                "--out",
+                "x.json",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         self.assertNotEqual(completed.returncode, 0)
 
 

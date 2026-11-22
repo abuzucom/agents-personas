@@ -4,6 +4,7 @@ Every review mode must later pass the corpus in a live eval. These checks
 cover the corpus structure and the engine side of the defense: each payload
 lands inside REVIEW_TARGET and never in the trusted context.
 """
+
 import importlib.util
 import json
 import sys
@@ -73,8 +74,10 @@ class CorpusContainmentTest(unittest.TestCase):
         for case in _cases():
             with self.subTest(case=case["id"]):
                 document = _envelope_for(case)
-                self.assertIn(case["payload"], json.dumps(document["REVIEW_TARGET"]) + json.dumps(
-                    document["REVIEW_TARGET"], ensure_ascii=False))
+                self.assertIn(
+                    case["payload"],
+                    json.dumps(document["REVIEW_TARGET"]) + json.dumps(document["REVIEW_TARGET"], ensure_ascii=False),
+                )
                 self.assertNotIn(case["payload"], json.dumps(document["TRUSTED_CONTEXT"], ensure_ascii=False))
 
 

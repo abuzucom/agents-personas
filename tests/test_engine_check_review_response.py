@@ -4,6 +4,7 @@ The cases from the foucault validator carry over. New cases cover the
 engine-specific rules: a caller-supplied mode, persona-specific extra keys,
 and finding locations.
 """
+
 import importlib.util
 import json
 import subprocess
@@ -52,8 +53,7 @@ class VerdictContractTest(unittest.TestCase):
                 self.assertEqual(found, verdict)
 
     def test_accepts_a_verdict_reason_suffix(self):
-        response = _response("Scope: one file.").replace(
-            "VERDICT: APPROVE", "VERDICT: APPROVE - no findings")
+        response = _response("Scope: one file.").replace("VERDICT: APPROVE", "VERDICT: APPROVE - no findings")
         self.assertEqual(validator.validate_response(response)[0], "APPROVE")
 
     def test_rejects_an_unknown_verdict_token(self):
@@ -116,7 +116,7 @@ class ModeAndKeysTest(unittest.TestCase):
         self.assertEqual(payload["schema_version"], "1")
 
     def test_missing_findings_key_is_rejected(self):
-        response = "Scope.\nVERDICT: APPROVE\nVERDICT_JSON: {\"verdict\": \"APPROVE\"}\n"
+        response = 'Scope.\nVERDICT: APPROVE\nVERDICT_JSON: {"verdict": "APPROVE"}\n'
         with self.assertRaisesRegex(ResponseError, "findings"):
             validator.validate_response(response)
 
@@ -125,8 +125,7 @@ class FindingLocationTest(unittest.TestCase):
     """Every finding names a file and a positive line for annotations."""
 
     def test_valid_finding_passes(self):
-        verdict, payload = validator.validate_response(
-            _response("Scope.", "BLOCK", [_finding()]))
+        verdict, payload = validator.validate_response(_response("Scope.", "BLOCK", [_finding()]))
         self.assertEqual((verdict, len(payload["findings"])), ("BLOCK", 1))
 
     def test_finding_without_file_is_rejected(self):
@@ -150,14 +149,22 @@ class NarrationTest(unittest.TestCase):
     """First-person process narration fails. Impersonal statements pass."""
 
     def test_impersonal_statements_pass(self):
-        for statement in ("i.e. the diff adds a test.", "Trace: base to sink is parameterized.",
-                          "Inspect results: none.", "Inputs stay unchanged."):
+        for statement in (
+            "i.e. the diff adds a test.",
+            "Trace: base to sink is parameterized.",
+            "Inspect results: none.",
+            "Inputs stay unchanged.",
+        ):
             with self.subTest(statement=statement):
                 self.assertEqual(validator.validate_response(_response(statement))[0], "APPROVE")
 
     def test_first_person_narration_fails_with_line_number(self):
-        for statement in ("I need to inspect the helper.", "- We checked the caller.",
-                          "Let me trace the filename.", "Now I inspect the caller."):
+        for statement in (
+            "I need to inspect the helper.",
+            "- We checked the caller.",
+            "Let me trace the filename.",
+            "Now I inspect the caller.",
+        ):
             with self.subTest(statement=statement):
                 with self.assertRaisesRegex(ResponseError, "process narration appears on report line"):
                     validator.validate_response(_response(statement))
@@ -176,7 +183,10 @@ class CliTest(unittest.TestCase):
             path.write_bytes(text.encode("utf-8"))
             return subprocess.run(
                 [sys.executable, str(VALIDATOR_PATH), str(path), *arguments],
-                capture_output=True, text=True, check=False)
+                capture_output=True,
+                text=True,
+                check=False,
+            )
 
     def test_valid_response_prints_verdict(self):
         result = self.run_cli(_response("Scope.", "BLOCK", [_finding()]), "--mode", "PR")

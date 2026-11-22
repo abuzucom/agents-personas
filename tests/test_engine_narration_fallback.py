@@ -5,6 +5,7 @@ passes every other check, the chunk records NEEDS-HUMAN with that reply's
 report and findings. A person decides on the findings. Any other invalid
 reply after the retry still fails the run.
 """
+
 import json
 import os
 import unittest
@@ -70,7 +71,8 @@ class NarrationFallbackTest(unittest.TestCase):
     def test_persona_rejection_of_the_narrating_reply_fails_the_run(self):
         persona_dir = self.root / "reviewers" / "euler"
         (persona_dir / "review_hooks.py").write_text(
-            "def validate_reply(payload, response, envelope):\n    return ['persona rule']\n", encoding="utf-8")
+            "def validate_reply(payload, response, envelope):\n    return ['persona rule']\n", encoding="utf-8"
+        )
         self.script(_narrating("APPROVE"), _narrating("APPROVE"))
         with self.assertRaisesRegex(fixture.run_review.ReviewError, "persona rule"):
             fixture.run_review.run_mode(self.options())
@@ -80,7 +82,8 @@ class NarrationFallbackTest(unittest.TestCase):
         # fails a persona rule. The fallback must not reach the first reply.
         persona_dir = self.root / "reviewers" / "euler"
         (persona_dir / "review_hooks.py").write_text(
-            "def validate_reply(payload, response, envelope):\n    return ['persona rule']\n", encoding="utf-8")
+            "def validate_reply(payload, response, envelope):\n    return ['persona rule']\n", encoding="utf-8"
+        )
         self.script(_narrating("APPROVE"), fixture._reply("APPROVE"))
         with self.assertRaisesRegex(fixture.run_review.ReviewError, "invalid response after one retry: persona rule"):
             fixture.run_review.run_mode(self.options())
@@ -95,7 +98,8 @@ class ValidatorFlagTest(unittest.TestCase):
 
     def test_allow_narration_returns_the_verdict(self):
         verdict, payload = fixture.run_review.check_review_response.validate_response(
-            _narrating("APPROVE", [_finding()]), "PR", allow_narration=True)
+            _narrating("APPROVE", [_finding()]), "PR", allow_narration=True
+        )
         self.assertEqual((verdict, payload["findings"]), ("APPROVE", [_finding()]))
 
     def test_default_still_rejects_narration(self):

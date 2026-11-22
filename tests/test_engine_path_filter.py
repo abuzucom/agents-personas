@@ -1,4 +1,5 @@
 """Test engine/path_filter.py, the per-persona changed-file filter."""
+
 import importlib.util
 import json
 import os
@@ -76,8 +77,13 @@ class CliTest(unittest.TestCase):
             output_path = Path(directory) / "output.txt"
             files_path.write_text(json.dumps(files), encoding="utf-8")
             environment = {**os.environ, "PATH_PATTERNS": patterns, "GITHUB_OUTPUT": str(output_path)}
-            completed = subprocess.run([sys.executable, str(ENGINE_DIR / "path_filter.py"), str(files_path)],
-                                       capture_output=True, text=True, check=False, env=environment)
+            completed = subprocess.run(
+                [sys.executable, str(ENGINE_DIR / "path_filter.py"), str(files_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+                env=environment,
+            )
             written = output_path.read_text(encoding="utf-8") if output_path.exists() else ""
         return completed, written
 

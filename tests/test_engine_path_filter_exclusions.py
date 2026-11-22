@@ -5,6 +5,7 @@ needs a review when at least one changed file matches an include pattern,
 or any file when no include exists, and matches no exclusion. A pull request
 that touches only excluded files skips the review.
 """
+
 import importlib.util
 import unittest
 from pathlib import Path

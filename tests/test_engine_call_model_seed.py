@@ -4,6 +4,7 @@ Temperature 0 still lets a provider sample differently between runs. A
 fixed seed narrows that spread where the provider API accepts one. The
 Anthropic Messages API takes no seed, so its request carries none.
 """
+
 import importlib.util
 import json
 import unittest
@@ -24,8 +25,12 @@ call_model = _load()
 
 def _body(protocol: str) -> dict:
     """Return the JSON body of one request for the protocol."""
-    profile = {"protocol": protocol, "endpoint": call_model.ENDPOINTS_BY_PROTOCOL[protocol], "model": "m",
-               "name": protocol}
+    profile = {
+        "protocol": protocol,
+        "endpoint": call_model.ENDPOINTS_BY_PROTOCOL[protocol],
+        "model": "m",
+        "name": protocol,
+    }
     request = call_model._build_request(profile, "system", "case", "synthetic-key")
     return json.loads(request.data.decode("utf-8"))
 

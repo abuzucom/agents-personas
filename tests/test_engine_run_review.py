@@ -3,6 +3,7 @@
 The adapter is a real script in the caller workspace. engine/run_model_command.py
 runs it as an argument array. Only the model reply is scripted.
 """
+
 import importlib.util
 import json
 import os
@@ -16,9 +17,13 @@ ENGINE_DIR = Path(__file__).resolve().parent.parent / "engine"
 CAPACITY_EXIT_CODE = 3
 GIT_ENV = {
     **os.environ,
-    "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid",
-    "GIT_COMMITTER_NAME": "Test", "GIT_COMMITTER_EMAIL": "test@example.invalid",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_SYSTEM": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "Test",
+    "GIT_AUTHOR_EMAIL": "test@example.invalid",
+    "GIT_COMMITTER_NAME": "Test",
+    "GIT_COMMITTER_EMAIL": "test@example.invalid",
 }
 # The adapter pops one scripted step per call. A step is a reply string or an
 # exit code. It appends each system prompt to prompts.log for inspection.
@@ -57,8 +62,9 @@ def _reply(verdict: str, findings=None, mode: str = "PR") -> str:
 
 
 def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
-                          check=True, env=GIT_ENV).stdout.strip()
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], capture_output=True, text=True, check=True, env=GIT_ENV
+    ).stdout.strip()
 
 
 class RunReviewTest(unittest.TestCase):
@@ -71,8 +77,11 @@ class RunReviewTest(unittest.TestCase):
         persona_dir = self.root / "reviewers" / "euler"
         persona_dir.mkdir(parents=True)
         (persona_dir / "Q.md").write_text("Review code quality.\n", encoding="ascii")
-        manifest = {"persona": "euler", "function": "quality", "modes": {"quality": {
-            "prompt": "Q.md", "review": True, "default": True, "json_mode": "PR"}}}
+        manifest = {
+            "persona": "euler",
+            "function": "quality",
+            "modes": {"quality": {"prompt": "Q.md", "review": True, "default": True, "json_mode": "PR"}},
+        }
         (persona_dir / "reviewer.json").write_text(json.dumps(manifest), encoding="utf-8")
         self.repo = base_dir / "repo"
         self.repo.mkdir()
@@ -98,10 +107,20 @@ class RunReviewTest(unittest.TestCase):
         (self.adapter_dir / "steps.json").write_text(json.dumps(list(steps)), encoding="utf-8")
 
     def options(self, **changes):
-        values = {"root": self.root, "persona": "euler", "mode": "quality", "repo": self.repo,
-                  "base": self.base, "head": self.head, "pr_number": 3, "out_dir": self.out,
-                  "title": "Title", "body": "Body", "requested_caps": {},
-                  "model_call_command": "python adapter/fake.py"}
+        values = {
+            "root": self.root,
+            "persona": "euler",
+            "mode": "quality",
+            "repo": self.repo,
+            "base": self.base,
+            "head": self.head,
+            "pr_number": 3,
+            "out_dir": self.out,
+            "title": "Title",
+            "body": "Body",
+            "requested_caps": {},
+            "model_call_command": "python adapter/fake.py",
+        }
         values.update(changes)
         return run_review.RunOptions(**values)
 
@@ -113,8 +132,7 @@ class RunReviewTest(unittest.TestCase):
         result = run_review.run_mode(self.options())
         stored = json.loads((self.out / "result.json").read_text(encoding="utf-8"))
         self.assertEqual((result["verdict"], stored["verdict"]), ("APPROVE", "APPROVE"))
-        self.assertEqual((stored["persona"], stored["mode"], stored["head_sha"]),
-                         ("euler", "quality", self.head))
+        self.assertEqual((stored["persona"], stored["mode"], stored["head_sha"]), ("euler", "quality", self.head))
         self.assertEqual(stored["chunks"], 1)
 
     def test_block_reply_collects_findings(self):
@@ -176,10 +194,26 @@ class RunReviewTest(unittest.TestCase):
 
     def test_cli_exits_nonzero_without_a_verdict(self):
         self.script("no verdict", "no verdict")
-        command = [sys.executable, str(ENGINE_DIR / "run_review.py"), "--root", str(self.root),
-                   "--persona", "euler", "--mode", "quality", "--repo", str(self.repo),
-                   "--base", self.base, "--head", self.head, "--pr-number", "3",
-                   "--out-dir", str(self.out)]
+        command = [
+            sys.executable,
+            str(ENGINE_DIR / "run_review.py"),
+            "--root",
+            str(self.root),
+            "--persona",
+            "euler",
+            "--mode",
+            "quality",
+            "--repo",
+            str(self.repo),
+            "--base",
+            self.base,
+            "--head",
+            self.head,
+            "--pr-number",
+            "3",
+            "--out-dir",
+            str(self.out),
+        ]
         environment = {**os.environ, "MODEL_CALL_COMMAND": "python adapter/fake.py"}
         completed = subprocess.run(command, capture_output=True, text=True, check=False, env=environment)
         self.assertEqual(completed.returncode, 1)

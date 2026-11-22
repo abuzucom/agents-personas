@@ -1,4 +1,5 @@
 """Test reviewers/foucault/scripts/check_audit_policy.py, ported from foucault 9ec9681."""
+
 import importlib.util
 import subprocess
 import sys
@@ -51,8 +52,13 @@ class AuditPolicyTest(unittest.TestCase):
     def test_git_checks_out_the_prompt_with_lf_on_every_platform(self):
         # Windows checks out text with CRLF unless .gitattributes pins LF. The
         # checker rejects CRLF, so the attribute keeps the prompt valid there.
-        completed = subprocess.run(["git", "check-attr", "eol", "--", "reviewers/foucault/AUDIT.md"],
-                                   cwd=SCRIPT.parents[3], capture_output=True, text=True, check=True)
+        completed = subprocess.run(
+            ["git", "check-attr", "eol", "--", "reviewers/foucault/AUDIT.md"],
+            cwd=SCRIPT.parents[3],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
         self.assertEqual(completed.stdout.strip(), "reviewers/foucault/AUDIT.md: eol: lf")
 
     def test_script_checks_the_persona_prompt_by_default(self):

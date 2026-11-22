@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """The command gate recognizes the review engine scripts listed in hooks/workflow-scripts.txt."""
+
 import unittest
 
 from tests.test_command_execution_gate import _load_gate_module

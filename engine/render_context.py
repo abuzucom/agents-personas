@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Print one persona mode with context delivery for an agent prompt."""
+
 import argparse
 import sys
 from pathlib import Path
@@ -24,8 +25,7 @@ def render_context(root: Path, persona: str, mode: str) -> bytes:
     separator = reviewers.PROMPT_SEPARATOR.encode("ascii")
     content = separator.join(path.read_bytes() for path in reviewers.prompt_paths(persona_dir, entry["prompt"]))
     if len(content) > reviewers.MAX_CONTEXT_BYTES:
-        raise reviewers.ReviewerError(
-            f"prompt '{entry['prompt']}' exceeds {reviewers.MAX_CONTEXT_BYTES} bytes")
+        raise reviewers.ReviewerError(f"prompt '{entry['prompt']}' exceeds {reviewers.MAX_CONTEXT_BYTES} bytes")
     if not content.isascii():
         raise reviewers.ReviewerError(f"prompt '{entry['prompt']}' is not ASCII")
     return content
@@ -41,8 +41,7 @@ def main(argv: list[str]) -> int:
     try:
         context_bytes = render_context(Path(options.root), options.persona, options.mode)
     except (OSError, reviewers.ReviewerError) as error:
-        print(f"error: {error}. Choose a persona and a mode with context delivery.",
-              file=sys.stderr)
+        print(f"error: {error}. Choose a persona and a mode with context delivery.", file=sys.stderr)
         return 1
     # Text-mode standard output rewrites newlines on Windows. The binary
     # buffer keeps the rendered context identical on every platform.

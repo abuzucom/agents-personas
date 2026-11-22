@@ -1,4 +1,5 @@
 """Test the generay wrapper and the label-only generay self-review caller."""
+
 import unittest
 from pathlib import Path
 
@@ -9,9 +10,20 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 WRAPPER = WORKFLOWS / "generay-time-review.yml"
 SELF_CALLER = WORKFLOWS / "generay-time-review-pr.yml"
 ENGINE = WORKFLOWS / "review.yml"
-FORWARDED_INPUTS = {"personas_ref", "modes", "pr_number", "base_sha", "head_sha", "head_repo_url",
-                    "head_repo_full_name", "model_call_command", "pr_comment", "fail_on_block",
-                    "fork_review", "paths"}
+FORWARDED_INPUTS = {
+    "personas_ref",
+    "modes",
+    "pr_number",
+    "base_sha",
+    "head_sha",
+    "head_repo_url",
+    "head_repo_full_name",
+    "model_call_command",
+    "pr_comment",
+    "fail_on_block",
+    "fork_review",
+    "paths",
+}
 GENERAY_INPUTS = {"exclude_paths", "max_chunks"}
 REVIEW_PERMISSIONS = {"checks": "write", "contents": "read", "pull-requests": "write"}
 

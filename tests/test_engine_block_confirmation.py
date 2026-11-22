@@ -5,6 +5,7 @@ input. A chunk BLOCK therefore gets one confirmation run. The BLOCK stands
 only when the confirmation run blocks with a finding class from the first
 run. Otherwise the chunk records NEEDS-HUMAN for a person to decide.
 """
+
 import json
 import unittest
 
@@ -36,8 +37,10 @@ class BlockConfirmationTest(unittest.TestCase):
         result = fixture.run_review.run_mode(self.options())
         self.assertEqual(result["verdict"], "BLOCK")
         self.assertEqual(result["findings"], [_finding("M14"), _finding("M3"), _finding("M3", "other.py")])
-        self.assertEqual(self.stored()["chunk_results"][0]["report"],
-                         first + "\n" + fixture.run_review.CONFIRMATION_HEADING + "\n" + confirmation)
+        self.assertEqual(
+            self.stored()["chunk_results"][0]["report"],
+            first + "\n" + fixture.run_review.CONFIRMATION_HEADING + "\n" + confirmation,
+        )
         self.assertEqual(len(self.prompts()), 2)
 
     def test_new_class_from_the_confirmation_reaches_the_record(self):

@@ -4,6 +4,7 @@ The runner replaces `eval "$MODEL_CALL_COMMAND"` in the adorno and havel
 workflows. The adapter script lives in the caller workspace, which is the
 runner's working directory.
 """
+
 import os
 import subprocess
 import sys
@@ -47,8 +48,14 @@ class RunModelCommandTest(unittest.TestCase):
         }
         if "SystemRoot" in os.environ:
             environment["SystemRoot"] = os.environ["SystemRoot"]
-        return subprocess.run([sys.executable, str(RUNNER)], cwd=self.workspace,
-                              env=environment, capture_output=True, text=True, check=False)
+        return subprocess.run(
+            [sys.executable, str(RUNNER)],
+            cwd=self.workspace,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
     def test_valid_command_forwards_only_listed_variables(self):
         result = self.run_runner("python adapter/call.py")
@@ -56,8 +63,12 @@ class RunModelCommandTest(unittest.TestCase):
         self.assertEqual(result.stdout, "reply for case key=synthetic other=absent")
 
     def test_shell_syntax_is_rejected(self):
-        for command in ("python adapter/call.py; echo x", "python adapter/call.py | cat",
-                        "python $(echo adapter/call.py)", "python adapter/call.py > out"):
+        for command in (
+            "python adapter/call.py; echo x",
+            "python adapter/call.py | cat",
+            "python $(echo adapter/call.py)",
+            "python adapter/call.py > out",
+        ):
             with self.subTest(command=command):
                 result = self.run_runner(command)
                 self.assertEqual(result.returncode, 2)

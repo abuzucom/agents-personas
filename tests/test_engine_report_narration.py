@@ -4,6 +4,7 @@ A review states its coverage in two noun-only lines, Scope: and Unseen:.
 A line outside a code fence that opens with a review-process verb narrates
 the review and fails validation. The engine then retries the chunk once.
 """
+
 import importlib.util
 import json
 import re
@@ -11,8 +12,20 @@ import unittest
 from pathlib import Path
 
 ENGINE_DIR = Path(__file__).resolve().parent.parent / "engine"
-NARRATION_OPENERS = ("Reviewed", "Examined", "Inspected", "Traced", "Checked", "Analyzed", "Verified",
-                     "Looked", "Went", "Started", "Review covered", "The review")
+NARRATION_OPENERS = (
+    "Reviewed",
+    "Examined",
+    "Inspected",
+    "Traced",
+    "Checked",
+    "Analyzed",
+    "Verified",
+    "Looked",
+    "Went",
+    "Started",
+    "Review covered",
+    "The review",
+)
 LINE_PREFIXES = ("", "- ", "* ", "1. ", "  ")
 
 
@@ -62,8 +75,10 @@ class CoverageLineTest(unittest.TestCase):
     """The structured coverage lines pass the narration check."""
 
     def test_scope_and_unseen_lines_pass(self):
-        report = ("**Mode:** PR\nScope: 18 changed files, PR title, PR body.\n"
-                  "Unseen: unchanged callers, CI results.\n[No confirmed findings]")
+        report = (
+            "**Mode:** PR\nScope: 18 changed files, PR title, PR body.\n"
+            "Unseen: unchanged callers, CI results.\n[No confirmed findings]"
+        )
         self.assertEqual(validator.validate_response(_response(report))[0], "APPROVE")
 
 

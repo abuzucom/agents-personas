@@ -5,6 +5,7 @@ New cases cover usage reporting, provider selection by name, and the one
 retry on a transient status. The tests replace only the network call and
 the provider table. The adapter logic runs unchanged.
 """
+
 import contextlib
 import importlib.util
 import io
@@ -42,17 +43,22 @@ def _config(large: bool = True) -> dict:
     config = {
         "active_provider": "ollama",
         "providers": {
-            "ollama": {"protocol": "ollama", "endpoint": OLLAMA_ENDPOINT,
-                       "model": "review-model", "max_input_tokens": ACTIVE_BUDGET_TOKENS},
-            "anthropic": {"protocol": "anthropic", "endpoint": ANTHROPIC_ENDPOINT,
-                          "model": "claude-model"},
+            "ollama": {
+                "protocol": "ollama",
+                "endpoint": OLLAMA_ENDPOINT,
+                "model": "review-model",
+                "max_input_tokens": ACTIVE_BUDGET_TOKENS,
+            },
+            "anthropic": {"protocol": "anthropic", "endpoint": ANTHROPIC_ENDPOINT, "model": "claude-model"},
         },
     }
     if large:
         config["large_input_provider"] = "ollama-large"
         config["providers"]["ollama-large"] = {
-            "protocol": "ollama", "endpoint": OLLAMA_ENDPOINT,
-            "model": "large-model", "max_input_tokens": LARGE_BUDGET_TOKENS,
+            "protocol": "ollama",
+            "endpoint": OLLAMA_ENDPOINT,
+            "model": "large-model",
+            "max_input_tokens": LARGE_BUDGET_TOKENS,
         }
     return config
 
@@ -66,8 +72,11 @@ class _FakeResponse:
 
     def __init__(self, text: str, document: dict | None = None):
         self.headers = {}
-        body = document if document is not None else {
-            "message": {"content": text}, "prompt_eval_count": 11, "eval_count": 7}
+        body = (
+            document
+            if document is not None
+            else {"message": {"content": text}, "prompt_eval_count": 11, "eval_count": 7}
+        )
         self._raw = json.dumps(body).encode("utf-8")
 
     def read(self, _limit: int) -> bytes:
@@ -80,8 +89,7 @@ class _FakeResponse:
         return False
 
 
-def _call(responses: list, large: bool = True, models: list | None = None,
-          environment: dict | None = None):
+def _call(responses: list, large: bool = True, models: list | None = None, environment: dict | None = None):
     """Run call_model_with_usage against scripted provider results."""
     sent = models if models is not None else []
 
@@ -95,10 +103,12 @@ def _call(responses: list, large: bool = True, models: list | None = None,
 
     variables = {"MODEL_API_KEY": "synthetic"}
     variables.update(environment or {})
-    with patch.dict("os.environ", variables, clear=False), \
-            patch.object(call_model, "_load_config", return_value=_config(large=large)), \
-            patch.object(call_model, "open_https", fake_open_https), \
-            patch.object(call_model.time, "sleep"):
+    with (
+        patch.dict("os.environ", variables, clear=False),
+        patch.object(call_model, "_load_config", return_value=_config(large=large)),
+        patch.object(call_model, "open_https", fake_open_https),
+        patch.object(call_model.time, "sleep"),
+    ):
         return call_model.call_model_with_usage("p", "PR", "c")
 
 
@@ -128,11 +138,12 @@ class ProviderByNameTest(unittest.TestCase):
     """MODEL_PROVIDER selects a table entry by name."""
 
     def test_named_provider_replaces_the_active_one(self):
-        document = {"content": [{"type": "text", "text": "named reply"}],
-                    "usage": {"input_tokens": 5, "output_tokens": 2}}
+        document = {
+            "content": [{"type": "text", "text": "named reply"}],
+            "usage": {"input_tokens": 5, "output_tokens": 2},
+        }
         models: list = []
-        text, usage = _call([_FakeResponse("", document)], models=models,
-                            environment={"MODEL_PROVIDER": "anthropic"})
+        text, usage = _call([_FakeResponse("", document)], models=models, environment={"MODEL_PROVIDER": "anthropic"})
         self.assertEqual((text, models), ("named reply", ["claude-model"]))
         self.assertEqual(usage["provider"], "anthropic")
 
@@ -147,8 +158,7 @@ class UsageTest(unittest.TestCase):
     def test_ollama_usage_is_reported(self):
         text, usage = _call([_FakeResponse("reply")])
         self.assertEqual(text, "reply")
-        self.assertEqual(usage, {"provider": "ollama", "model": "review-model",
-                                 "input_tokens": 11, "output_tokens": 7})
+        self.assertEqual(usage, {"provider": "ollama", "model": "review-model", "input_tokens": 11, "output_tokens": 7})
 
     def test_missing_usage_fields_report_none(self):
         _text, usage = _call([_FakeResponse("", {"message": {"content": "reply"}})])
@@ -166,10 +176,12 @@ class UsageTest(unittest.TestCase):
                 "USAGE_FILE": str(root / "usage.json"),
                 "MODEL_API_KEY": "synthetic",
             }
-            with patch.dict("os.environ", environment), \
-                    patch.object(call_model, "_load_config", return_value=_config()), \
-                    patch.object(call_model, "open_https", lambda request, timeout: _FakeResponse("r")), \
-                    contextlib.redirect_stdout(io.StringIO()) as output:
+            with (
+                patch.dict("os.environ", environment),
+                patch.object(call_model, "_load_config", return_value=_config()),
+                patch.object(call_model, "open_https", lambda request, timeout: _FakeResponse("r")),
+                contextlib.redirect_stdout(io.StringIO()) as output,
+            ):
                 exit_code = call_model.main()
             usage = json.loads((root / "usage.json").read_text(encoding="utf-8"))
         self.assertEqual((exit_code, output.getvalue()), (0, "r"))
@@ -194,8 +206,7 @@ class HttpRejectionRoutingTest(unittest.TestCase):
 
     def test_overflow_body_retries_on_large_model(self):
         models: list = []
-        text, _usage = _call([_http_error(BAD_REQUEST, OVERFLOW_BODY), _FakeResponse("large")],
-                             models=models)
+        text, _usage = _call([_http_error(BAD_REQUEST, OVERFLOW_BODY), _FakeResponse("large")], models=models)
         self.assertEqual((text, models), ("large", ["review-model", "large-model"]))
 
     def test_unrelated_body_fails_without_reroute(self):

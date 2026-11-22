@@ -3,6 +3,7 @@
 The duplicate guard compares resolved paths. Spellings such as `A.md` and
 `./A.md` name the same file and must not load it twice.
 """
+
 import importlib.util
 import sys
 import tempfile

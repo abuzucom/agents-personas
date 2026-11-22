@@ -1,4 +1,5 @@
 """Test per-mode finding rules: schema validation and response enforcement."""
+
 import importlib.util
 import json
 import sys

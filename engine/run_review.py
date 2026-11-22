@@ -49,8 +49,18 @@ STAGES = ("all", "build", "review")
 FORCED_VERDICT_FIELDS = 2
 # Every persona hook runs in a child process with only these variables, plus
 # LC_* locale variables. A credential never reaches persona code.
-HOOK_ENVIRONMENT_NAMES = frozenset({"PATH", "HOME", "USERPROFILE", "LANG", "TMPDIR", "TEMP", "TMP",
-                                    "SYSTEMROOT", "PATHEXT", "COMSPEC"})
+HOOK_ENVIRONMENT_NAMES = frozenset({
+    "PATH",
+    "HOME",
+    "USERPROFILE",
+    "LANG",
+    "TMPDIR",
+    "TEMP",
+    "TMP",
+    "SYSTEMROOT",
+    "PATHEXT",
+    "COMSPEC",
+})
 HOOK_LOCALE_PREFIX = "LC_"
 # These point at the hook child's own empty temporary directory.
 HOOK_HOME_VARIABLES = ("HOME", "USERPROFILE", "TMPDIR", "TEMP", "TMP")
@@ -114,15 +124,29 @@ def adapter_command(options: RunOptions) -> tuple[list[str], dict]:
     return [sys.executable, str(ENGINE_DIR / "call_model.py")], {}
 
 
-def call_adapter(options: RunOptions, prompt_path: Path, case_path: Path,
-                 usage_path: Path) -> subprocess.CompletedProcess:
+def call_adapter(
+    options: RunOptions, prompt_path: Path, case_path: Path, usage_path: Path
+) -> subprocess.CompletedProcess:
     """Run the adapter once for one prompt and one envelope."""
     command, extra = adapter_command(options)
-    environment = {**os.environ, **extra, "AUDIT_PROMPT_FILE": str(prompt_path),
-                   "CASE_TEXT_FILE": str(case_path), "USAGE_FILE": str(usage_path)}
+    environment = {
+        **os.environ,
+        **extra,
+        "AUDIT_PROMPT_FILE": str(prompt_path),
+        "CASE_TEXT_FILE": str(case_path),
+        "USAGE_FILE": str(usage_path),
+    }
     try:
-        return subprocess.run(command, cwd=options.repo, env=environment, capture_output=True,
-                              text=True, encoding="utf-8", timeout=ADAPTER_TIMEOUT_SECONDS, check=False)
+        return subprocess.run(
+            command,
+            cwd=options.repo,
+            env=environment,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=ADAPTER_TIMEOUT_SECONDS,
+            check=False,
+        )
     except subprocess.TimeoutExpired as error:
         raise ReviewError(f"model command timed out after {ADAPTER_TIMEOUT_SECONDS} s") from error
 
@@ -138,12 +162,16 @@ def read_usage(usage_path: Path) -> dict:
 
 def hook_environment() -> dict[str, str]:
     """Return the allowlisted environment for a persona hook child process."""
-    return {key: value for key, value in os.environ.items()
-            if key.upper() in HOOK_ENVIRONMENT_NAMES or key.upper().startswith(HOOK_LOCALE_PREFIX)}
+    return {
+        key: value
+        for key, value in os.environ.items()
+        if key.upper() in HOOK_ENVIRONMENT_NAMES or key.upper().startswith(HOOK_LOCALE_PREFIX)
+    }
 
 
-def call_hook(persona_dir: Path | None, name: str, arguments: list,
-              writable: list[Path] | None = None) -> tuple[bool, object]:
+def call_hook(
+    persona_dir: Path | None, name: str, arguments: list, writable: list[Path] | None = None
+) -> tuple[bool, object]:
     """Run one persona hook in a child process with the allowlisted environment.
 
     Return whether the persona defines the hook and its JSON result. The
@@ -151,8 +179,14 @@ def call_hook(persona_dir: Path | None, name: str, arguments: list,
     """
     if persona_dir is None or not (Path(persona_dir) / persona_hooks.REVIEW_HOOKS_NAME).exists():
         return False, None
-    command = [sandbox.interpreter(), str((ENGINE_DIR / "run_hook.py").resolve()), "--persona-dir",
-               str(Path(persona_dir).resolve()), "--hook", name]
+    command = [
+        sandbox.interpreter(),
+        str((ENGINE_DIR / "run_hook.py").resolve()),
+        "--persona-dir",
+        str(Path(persona_dir).resolve()),
+        "--hook",
+        name,
+    ]
     # The child starts in a fresh empty directory. That directory is also its
     # home and temp directory. On Linux bubblewrap removes the network and every
     # runner path except the engine, the persona, and the writable paths.
@@ -163,9 +197,17 @@ def call_hook(persona_dir: Path | None, name: str, arguments: list,
         except sandbox.SandboxUnavailable as error:
             raise ReviewError(str(error)) from error
         try:
-            completed = subprocess.run(command, input=json.dumps(arguments), env=environment, cwd=workdir,
-                                       capture_output=True, text=True, encoding="utf-8",
-                                       timeout=HOOK_TIMEOUT_SECONDS, check=False)
+            completed = subprocess.run(
+                command,
+                input=json.dumps(arguments),
+                env=environment,
+                cwd=workdir,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=HOOK_TIMEOUT_SECONDS,
+                check=False,
+            )
         except subprocess.TimeoutExpired as error:
             raise ReviewError(f"persona hook {name} timed out after {HOOK_TIMEOUT_SECONDS} s") from error
     if completed.returncode:
@@ -177,12 +219,19 @@ def call_hook(persona_dir: Path | None, name: str, arguments: list,
     return True, output["result"]
 
 
-def validate_reply(response: str, case_path: Path, json_mode: str | None, finding_rules: dict | None,
-                   persona_dir: Path | None = None, allow_narration: bool = False,
-                   require_coverage: bool = False) -> tuple[str, dict]:
+def validate_reply(
+    response: str,
+    case_path: Path,
+    json_mode: str | None,
+    finding_rules: dict | None,
+    persona_dir: Path | None = None,
+    allow_narration: bool = False,
+    require_coverage: bool = False,
+) -> tuple[str, dict]:
     """Return the verdict and payload of a reply that passes the engine and persona checks."""
-    verdict, payload = check_review_response.validate_response(response, json_mode, finding_rules,
-                                                               allow_narration, require_coverage)
+    verdict, payload = check_review_response.validate_response(
+        response, json_mode, finding_rules, allow_narration, require_coverage
+    )
     sent = json.loads(case_path.read_text(encoding="utf-8"))
     present, problems = call_hook(persona_dir, "validate_reply", [payload, response, sent])
     if not present:
@@ -194,10 +243,16 @@ def validate_reply(response: str, case_path: Path, json_mode: str | None, findin
     return verdict, payload
 
 
-def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
-                 json_mode: str | None, finding_rules: dict | None = None,
-                 persona_dir: Path | None = None, run_name: str = "",
-                 require_coverage: bool = False) -> ChunkResult:
+def review_chunk(
+    options: RunOptions,
+    system_prompt: str,
+    case_path: Path,
+    json_mode: str | None,
+    finding_rules: dict | None = None,
+    persona_dir: Path | None = None,
+    run_name: str = "",
+    require_coverage: bool = False,
+) -> ChunkResult:
     """Review one envelope with at most one retry after an invalid reply."""
     work = case_path.parent
     stem = f"{case_path.stem}.{run_name}" if run_name else case_path.stem
@@ -216,8 +271,9 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
             diagnostics = review_output.clean_text(completed.stderr.strip(), MAX_PROBLEM_CHARS)
             raise ReviewError(f"model command failed with exit code {completed.returncode}: {diagnostics}")
         try:
-            verdict, payload = validate_reply(completed.stdout, case_path, json_mode, finding_rules, persona_dir,
-                                              require_coverage=require_coverage)
+            verdict, payload = validate_reply(
+                completed.stdout, case_path, json_mode, finding_rules, persona_dir, require_coverage=require_coverage
+            )
         except check_review_response.ResponseError as error:
             problem = str(error)[:MAX_PROBLEM_CHARS]
             note = "\n\n" + RETRY_NOTE.format(problem=problem) + "\n"
@@ -230,8 +286,14 @@ def review_chunk(options: RunOptions, system_prompt: str, case_path: Path,
     raise ReviewError(f"invalid response after one retry: {problem}")
 
 
-def narration_fallback(narrated: tuple[str, Path], case_path: Path, json_mode: str | None,
-                       finding_rules: dict | None, persona_dir: Path | None, problem: str) -> ChunkResult:
+def narration_fallback(
+    narrated: tuple[str, Path],
+    case_path: Path,
+    json_mode: str | None,
+    finding_rules: dict | None,
+    persona_dir: Path | None,
+    problem: str,
+) -> ChunkResult:
     """Return NEEDS-HUMAN with the findings of a retry that failed only on narration or coverage.
 
     The reply passed every other engine and persona check. A person decides
@@ -239,12 +301,18 @@ def narration_fallback(narrated: tuple[str, Path], case_path: Path, json_mode: s
     """
     response, usage_path = narrated
     try:
-        _verdict, payload = validate_reply(response, case_path, json_mode, finding_rules, persona_dir,
-                                           allow_narration=True)
+        _verdict, payload = validate_reply(
+            response, case_path, json_mode, finding_rules, persona_dir, allow_narration=True
+        )
     except check_review_response.ResponseError as error:
         raise ReviewError(f"invalid response after one retry: {problem}; {error}") from error
-    return ChunkResult("NEEDS-HUMAN", payload["findings"], response, read_usage(usage_path),
-                       f"process narration after one retry: {problem}")
+    return ChunkResult(
+        "NEEDS-HUMAN",
+        payload["findings"],
+        response,
+        read_usage(usage_path),
+        f"process narration after one retry: {problem}",
+    )
 
 
 def finding_classes(findings: list) -> set:
@@ -254,6 +322,7 @@ def finding_classes(findings: list) -> set:
 
 def merge_findings(first: list, second: list) -> list:
     """Return the first findings plus each second finding with a new class, file, and line."""
+
     def identity(item) -> tuple:
         return (item.get("class"), item.get("file"), item.get("line")) if isinstance(item, dict) else (repr(item),)
 
@@ -275,13 +344,15 @@ def confirm_block(first: ChunkResult, confirmation: ChunkResult) -> ChunkResult:
     repeated = finding_classes(first.findings) & finding_classes(confirmation.findings)
     if confirmation.verdict == "BLOCK" and repeated:
         return ChunkResult("BLOCK", findings, report, usage, first.reason)
-    reason = (f"BLOCK not confirmed: the confirmation run returned {confirmation.verdict} "
-              "without a repeated finding class")
+    reason = (
+        f"BLOCK not confirmed: the confirmation run returned {confirmation.verdict} without a repeated finding class"
+    )
     return ChunkResult("NEEDS-HUMAN", findings, report, usage, reason)
 
 
-def review_confirmed_chunk(options: RunOptions, system_prompt: str, case_path: Path, entry: dict,
-                           persona_dir: Path | None) -> ChunkResult:
+def review_confirmed_chunk(
+    options: RunOptions, system_prompt: str, case_path: Path, entry: dict, persona_dir: Path | None
+) -> ChunkResult:
     """Review one envelope and confirm a BLOCK with one more run."""
     arguments = (options, system_prompt, case_path, entry.get("json_mode"), entry.get("finding_rules"), persona_dir)
     coverage = bool(entry.get("require_coverage"))
@@ -311,21 +382,32 @@ class ChildHooks:
 
         build_pr_case.collect_case_context checks the shape of the result.
         """
-        present, result = call_hook(self.persona_dir, "case_context", [str(head_dir), changed, patches, options],
-                                    writable=[Path(head_dir)])
+        present, result = call_hook(
+            self.persona_dir, "case_context", [str(head_dir), changed, patches, options], writable=[Path(head_dir)]
+        )
         return result if present else {"context": {}, "unreviewed": []}
 
 
 def build_case(options: RunOptions, caps: dict, hooks=None, persona_options: dict | None = None) -> dict:
     """Build the envelopes and return the case manifest."""
     case_dir = options.out_dir / "case"
-    build_pr_case.build(build_pr_case.BuildOptions(
-        repo=options.repo, base=options.base, head=options.head, out_dir=case_dir,
-        persona=options.persona, mode=options.mode, title=options.title, body=options.body,
-        pr_number=options.pr_number, max_chunks=caps["max_chunks"],
-        max_envelope_bytes=caps["max_envelope_bytes"], hooks=hooks,
-        persona_options=persona_options or {},
-    ))
+    build_pr_case.build(
+        build_pr_case.BuildOptions(
+            repo=options.repo,
+            base=options.base,
+            head=options.head,
+            out_dir=case_dir,
+            persona=options.persona,
+            mode=options.mode,
+            title=options.title,
+            body=options.body,
+            pr_number=options.pr_number,
+            max_chunks=caps["max_chunks"],
+            max_envelope_bytes=caps["max_envelope_bytes"],
+            hooks=hooks,
+            persona_options=persona_options or {},
+        )
+    )
     return json.loads((case_dir / "manifest.json").read_text(encoding="utf-8"))
 
 
@@ -336,8 +418,12 @@ def read_built_case(options: RunOptions, caps: dict, persona_options: dict) -> d
         raise ReviewError(f"no built case at {manifest_path}. run the build stage first")
     case = json.loads(manifest_path.read_text(encoding="utf-8"))
     expected = {
-        "persona": options.persona, "mode": options.mode, "base_sha": options.base, "head_sha": options.head,
-        "pr_number": options.pr_number, "max_chunks": caps["max_chunks"],
+        "persona": options.persona,
+        "mode": options.mode,
+        "base_sha": options.base,
+        "head_sha": options.head,
+        "pr_number": options.pr_number,
+        "max_chunks": caps["max_chunks"],
         "max_envelope_bytes": caps["max_envelope_bytes"],
         "persona_options_sha256": build_pr_case.options_digest(persona_options),
     }
@@ -347,12 +433,10 @@ def read_built_case(options: RunOptions, caps: dict, persona_options: dict) -> d
     return case
 
 
-def apply_forced_verdict(verdict: str, reasons: list[str], options: RunOptions,
-                         persona_dir: Path | None = None) -> str:
+def apply_forced_verdict(verdict: str, reasons: list[str], options: RunOptions, persona_dir: Path | None = None) -> str:
     """Return the run verdict after a persona forced_verdict hook."""
     context_path = options.out_dir / "case" / build_pr_case.CASE_CONTEXT_NAME
-    present, forced = call_hook(persona_dir, "forced_verdict",
-                                       [json.loads(context_path.read_text(encoding="utf-8"))])
+    present, forced = call_hook(persona_dir, "forced_verdict", [json.loads(context_path.read_text(encoding="utf-8"))])
     if not present or not forced:
         return verdict
     if not isinstance(forced, (list, tuple)) or len(forced) != FORCED_VERDICT_FIELDS:
@@ -386,26 +470,38 @@ def run_mode(options: RunOptions) -> dict:
     prompt_text = reviewers.load_prompt(persona_dir, entry["prompt"])
     system_prompt = envelope.with_fence_rule(prompt_text)
     case_dir = options.out_dir / "case" / "envelopes"
-    results = [review_confirmed_chunk(options, system_prompt, case_dir / chunk["envelope"], entry, persona_dir)
-               for chunk in case["chunks"]]
+    results = [
+        review_confirmed_chunk(options, system_prompt, case_dir / chunk["envelope"], entry, persona_dir)
+        for chunk in case["chunks"]
+    ]
     verdict, reasons = review_output.combine_verdicts([item.verdict for item in results], case["unreviewed"])
     verdict = apply_forced_verdict(verdict, reasons, options, persona_dir)
     result = {
-        "persona": options.persona, "mode": options.mode, "base_sha": options.base, "head_sha": options.head,
-        "verdict": verdict, "reasons": reasons + [item.reason for item in results if item.reason],
+        "persona": options.persona,
+        "mode": options.mode,
+        "base_sha": options.base,
+        "head_sha": options.head,
+        "verdict": verdict,
+        "reasons": reasons + [item.reason for item in results if item.reason],
         "chunk_results": [
-            {"name": Path(chunk["envelope"]).stem, "verdict": item.verdict, "report": item.report,
-             "reason": item.reason}
+            {
+                "name": Path(chunk["envelope"]).stem,
+                "verdict": item.verdict,
+                "report": item.report,
+                "reason": item.reason,
+            }
             for chunk, item in zip(case["chunks"], results, strict=True)
         ],
         "findings": [finding for item in results for finding in item.findings],
-        "changed_files": case["changed_files"], "unreviewed": case["unreviewed"],
-        "chunks": len(case["chunks"]), "clamped": caps["clamped"], "usage": sum_usage(results),
+        "changed_files": case["changed_files"],
+        "unreviewed": case["unreviewed"],
+        "chunks": len(case["chunks"]),
+        "clamped": caps["clamped"],
+        "usage": sum_usage(results),
         "duration_seconds": round(time.monotonic() - started, 1),
         "reports": [item.report for item in results if item.report],
     }
-    (options.out_dir / "result.json").write_text(json.dumps(result, indent=2) + "\n",
-                                                encoding="utf-8", newline="\n")
+    (options.out_dir / "result.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8", newline="\n")
     return result
 
 
@@ -436,8 +532,9 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--max-chunks", type=int)
     parser.add_argument("--max-envelope-bytes", type=int)
-    parser.add_argument("--stage", choices=STAGES, default="all",
-                        help="build writes the case only. review reads a built case")
+    parser.add_argument(
+        "--stage", choices=STAGES, default="all", help="build writes the case only. review reads a built case"
+    )
     return parser.parse_args(argv)
 
 
@@ -445,15 +542,26 @@ def main(argv: list[str]) -> int:
     """Run one mode from the command line and the workflow environment."""
     protect_environment()
     args = parse_arguments(argv)
-    requested = {name: value for name, value in (("max_chunks", args.max_chunks),
-                                                 ("max_envelope_bytes", args.max_envelope_bytes))
-                 if value is not None}
+    requested = {
+        name: value
+        for name, value in (("max_chunks", args.max_chunks), ("max_envelope_bytes", args.max_envelope_bytes))
+        if value is not None
+    }
     options = RunOptions(
-        root=args.root, persona=args.persona, mode=args.mode, repo=args.repo, base=args.base,
-        head=args.head, pr_number=args.pr_number, out_dir=args.out_dir,
-        title=os.environ.get("PR_TITLE", ""), body=os.environ.get("PR_BODY", ""),
-        requested_caps=requested, model_call_command=os.environ.get("MODEL_CALL_COMMAND", ""),
-        stage=args.stage, persona_options=os.environ.get("PERSONA_OPTIONS", ""),
+        root=args.root,
+        persona=args.persona,
+        mode=args.mode,
+        repo=args.repo,
+        base=args.base,
+        head=args.head,
+        pr_number=args.pr_number,
+        out_dir=args.out_dir,
+        title=os.environ.get("PR_TITLE", ""),
+        body=os.environ.get("PR_BODY", ""),
+        requested_caps=requested,
+        model_call_command=os.environ.get("MODEL_CALL_COMMAND", ""),
+        stage=args.stage,
+        persona_options=os.environ.get("PERSONA_OPTIONS", ""),
     )
     try:
         result = run_mode(options)
