@@ -14,9 +14,14 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.15.0] (2026-11-22)
+## [0.15.1] (2026-11-22)
 
 ### Added
+- List the persona eval runner and the persona checkers in
+  `hooks/workflow-scripts.txt`. A structure eval and every persona checker
+  run without a prompt. A model eval routes to consent and accepts only the
+  engine adapter `engine.call_model:call_model`. The active human approved
+  the protected edit under Rule 22.
 - Add `make lint-code` and the `Code Lint` workflow. ruff, mypy, and
   yamllint check the engine, the personas, the matching tests, and the
   workflows this repository owns. `requirements-dev.txt` pins ruff 0.17.4, mypy
