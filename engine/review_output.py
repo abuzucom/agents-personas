@@ -18,6 +18,8 @@ MAX_ANNOTATION_MESSAGE_CHARS = 1000
 # GitHub caps a comment body at 65,536 characters. The margin covers the header.
 MAX_COMMENT_CHARS = 60_000
 TRUNCATION_NOTE = "\n\n[Report truncated by the review engine.]"
+# A run heading holds an engine label and verdict. The cap bounds a tampered result.json.
+RUN_LABEL_CHARS = 40
 CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 SEVERITY_LEVELS = {"CRITICAL": "failure", "HIGH": "failure", "MEDIUM": "warning"}
 FLAG_VALUES = {"true": True, "false": False}
@@ -152,14 +154,38 @@ def chunk_sections(result: dict) -> list[str]:
     sections = []
     for chunk in chunks:
         lines = [f"### Chunk {chunk['name']}: {chunk['verdict']}", ""]
-        report = chunk.get("report", "").strip()
-        if report:
-            fence = fence_for(report)
-            lines += [fence, report, fence]
+        runs = chunk.get("runs") or []
+        if len(runs) > 1:
+            lines += run_sections(runs)
         else:
-            lines.append(chunk.get("reason") or "No report.")
+            lines += fenced_report(chunk.get("report", ""), chunk.get("reason", ""))
         sections.append("\n".join(lines))
     return sections
+
+
+def fenced_report(report: str, reason: str) -> list[str]:
+    """Return a fenced report, or the reason when the report is empty."""
+    text = report.strip()
+    if not text:
+        return [reason or "No report."]
+    fence = fence_for(text)
+    return [fence, text, fence]
+
+
+def run_sections(runs: list[dict]) -> list[str]:
+    """Return one heading and fenced report per model run of a chunk.
+
+    A BLOCK confirmation holds two runs with two verdict lines. A separate
+    heading and fence per run keeps one run's verdict from reading as the
+    other's.
+    """
+    lines: list[str] = []
+    for run in runs:
+        label = clean_text(run.get("label", ""), RUN_LABEL_CHARS)
+        verdict = clean_text(run.get("verdict", ""), RUN_LABEL_CHARS)
+        lines += [f"#### {label}: {verdict}", ""]
+        lines += fenced_report(run.get("report", ""), "") + [""]
+    return lines[:-1]
 
 
 def comment_body(result: dict, run_url: str = "") -> str:

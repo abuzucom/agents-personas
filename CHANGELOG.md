@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.15.2] (2026-11-22)
+## [0.16.0] (2026-11-22)
 
 ### Added
 - List the persona eval runner and the persona checkers in
@@ -29,6 +29,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   from `abuzucom/euler`.
 
 ### Changed
+- Show each run of a BLOCK confirmation under its own comment heading.
+  `Run 1` and `Run 2 (confirmation)` each carry the run verdict and a
+  separate fenced report. One fence with two verdict lines read as a
+  single contradictory review. A `chunk_results` entry with a reported
+  confirmation gains a `runs` list of label, verdict, and report in
+  `result.json`. The combined `report` string keeps its form. Every other
+  chunk entry and comment keeps its shape.
 - Send provider calls through `http.client`. Any scheme but HTTPS fails
   before a connection opens. HTTPS_PROXY, NO_PROXY, and proxy credentials
   keep the urllib behavior. The active human approved moving the two
