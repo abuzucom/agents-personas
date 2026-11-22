@@ -1,3 +1,4 @@
+---
 name: euler-quality-review-pr
 
 # Self-review: euler reviews this repository's pull requests after the
@@ -5,7 +6,7 @@ name: euler-quality-review-pr
 # and engine of the default branch, so a pull request cannot change the
 # prompt, the prescan, or the adapter that receives the provider key.
 
-on:
+"on":
   workflow_run:
     workflows: [Convention Sync Check]
     types: [completed]
@@ -27,8 +28,10 @@ jobs:
   euler:
     if: >-
       (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request') ||
-      (github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name == 'euler-scan-requested') ||
-      (github.event_name == 'pull_request_target' && github.event.action == 'unlabeled' && github.event.label.name == 'stop-requested')
+      (github.event_name == 'pull_request_target' && github.event.action == 'labeled' &&
+      github.event.label.name == 'euler-scan-requested') ||
+      (github.event_name == 'pull_request_target' && github.event.action == 'unlabeled' &&
+      github.event.label.name == 'stop-requested')
     permissions:
       checks: write
       contents: read

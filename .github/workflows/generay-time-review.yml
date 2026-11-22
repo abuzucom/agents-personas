@@ -1,3 +1,4 @@
+---
 name: generay-time-review
 
 # generay wrapper over the engine workflow. It fixes the persona. The modes
@@ -14,7 +15,7 @@ name: generay-time-review
 # The check run is named "generay / time". Pass only the provider key. The
 # wrapper requires the key, as the generay source workflow did.
 
-on:
+"on":
   workflow_call:
     inputs:
       personas_ref:
@@ -72,7 +73,9 @@ on:
         type: boolean
         default: false
       paths:
-        description: "Optional newline-separated globs. The review runs only when a changed file matches. A leading ! excludes matching files."
+        description: >-
+          Optional newline-separated globs. The review runs only when a changed file matches. A leading !
+          excludes matching files.
         required: false
         type: string
         default: ""

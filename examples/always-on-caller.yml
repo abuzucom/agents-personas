@@ -1,3 +1,4 @@
+---
 # Always-on caller for an adopting repository: .github/workflows/persona-review.yml
 #
 # foucault and euler review every pull request after CI finishes. Mark the
@@ -12,7 +13,7 @@
 
 name: persona-review
 
-on:
+"on":
   workflow_run:
     workflows: [CI]
     types: [completed]
@@ -31,7 +32,9 @@ jobs:
       checks: write
       contents: read
       pull-requests: write
-    uses: abuzucom/agents-personas/.github/workflows/foucault-security-review.yml@0000000000000000000000000000000000000000
+    # A double-quoted scalar joins the escaped line break without a space.
+    uses: "abuzucom/agents-personas/.github/workflows/foucault-security-review.yml@\
+      0000000000000000000000000000000000000000"
     with:
       personas_ref: "0000000000000000000000000000000000000000"
     secrets:

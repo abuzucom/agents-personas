@@ -1,3 +1,4 @@
+---
 # Label caller for an adopting repository: .github/workflows/persona-review-labels.yml
 #
 # A maintainer adds a <persona>-scan-requested label to request a review.
@@ -17,7 +18,7 @@
 
 name: persona-review-labels
 
-on:
+"on":
   pull_request_target:
     types: [labeled, synchronize, unlabeled]
 

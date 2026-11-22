@@ -1,3 +1,4 @@
+---
 name: Hook Sandbox Check
 
 # Proves on every pull request that bubblewrap starts persona hooks on the
@@ -5,9 +6,9 @@ name: Hook Sandbox Check
 # sandbox break would otherwise surface only after merge. The job holds no
 # secret and runs as the non-root runner user.
 
-on:
+"on":
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
