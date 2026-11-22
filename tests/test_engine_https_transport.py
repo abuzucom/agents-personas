@@ -103,6 +103,16 @@ class OpenHttpsTest(unittest.TestCase):
         self.open({"HTTPS_PROXY": "http://proxy.example.test:3128", "NO_PROXY": "api.example.test"})
         self.assertEqual(_FakeConnection.created[0].host, "api.example.test")
 
+    def test_port_specific_no_proxy_entry_connects_directly(self):
+        environment = {"HTTPS_PROXY": "http://proxy.example.test:3128", "NO_PROXY": "api.example.test:8443"}
+        self.open(environment, _request("https://api.example.test:8443/v1/chat"))
+        connection = _FakeConnection.created[0]
+        self.assertEqual((connection.host, connection.port, connection.tunnel), ("api.example.test", 8443, None))
+
+    def test_proxy_user_without_a_password_sends_no_authorization(self):
+        self.open({"HTTPS_PROXY": "http://user@proxy.example.test:3128"})
+        self.assertIsNone(_FakeConnection.created[0].tunnel[2])
+
     def test_redirect_status_raises_http_error_without_following(self):
         redirect = _FakeHTTPResponse(302, b"moved")
         with patch.object(_FakeConnection, "getresponse", lambda self: redirect):

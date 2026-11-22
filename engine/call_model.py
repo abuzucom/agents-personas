@@ -173,28 +173,36 @@ class HTTPSResponse:
         self._connection.close()
 
 
-def _proxy_tunnel(host: str) -> tuple[str, int | None, dict[str, str]] | None:
+def _proxy_tunnel(host: str, url_port: int | None) -> tuple[str, int | None, dict[str, str]] | None:
     """Return the HTTPS_PROXY host, port, and CONNECT headers, or None for a direct call.
 
     urllib honored HTTPS_PROXY and NO_PROXY. This transport keeps both. A
-    proxy URL with credentials adds a Basic proxy authorization header.
+    URL that names a port checks NO_PROXY with host:port, as urllib did. A
+    proxy URL with a user and a password adds a Basic proxy authorization
+    header.
     """
     proxy = getproxies().get("https")
-    if not proxy or proxy_bypass(host):
+    bypass_host = host if url_port is None else f"{host}:{url_port}"
+    if not proxy or proxy_bypass(bypass_host):
         return None
     parts = urlsplit(proxy if "://" in proxy else f"http://{proxy}")
     if not parts.hostname:
         raise ProviderError("HTTPS_PROXY names no host. Set it to http://<host>:<port>.")
     headers = {}
-    if parts.username:
-        credentials = f"{unquote(parts.username)}:{unquote(parts.password or '')}"
+    if parts.username and parts.password:
+        credentials = f"{unquote(parts.username)}:{unquote(parts.password)}"
         headers["Proxy-Authorization"] = "Basic " + base64.b64encode(credentials.encode()).decode("ascii")
     return parts.hostname, parts.port, headers
 
 
-def _connect(host: str, port: int, timeout: float) -> http.client.HTTPSConnection:
-    """Return a TLS connection to host, through the HTTPS proxy when one applies."""
-    tunnel = _proxy_tunnel(host)
+def _connect(host: str, url_port: int | None, timeout: float) -> http.client.HTTPSConnection:
+    """Return a TLS connection to host, through the HTTPS proxy when one applies.
+
+    The CONNECT request travels in plain text to the proxy. TLS to host
+    starts inside the tunnel.
+    """
+    port = url_port or HTTPS_DEFAULT_PORT
+    tunnel = _proxy_tunnel(host, url_port)
     if tunnel is None:
         return http.client.HTTPSConnection(host, port, timeout=timeout)
     proxy_host, proxy_port, proxy_headers = tunnel
@@ -214,7 +222,7 @@ def open_https(request: ProviderRequest, timeout: float) -> HTTPSResponse:
     host = parts.hostname
     if parts.scheme != "https" or not host:
         raise ProviderError("provider requests use HTTPS only")
-    connection = _connect(host, parts.port or HTTPS_DEFAULT_PORT, timeout)
+    connection = _connect(host, parts.port, timeout)
     target = parts.path or "/"
     if parts.query:
         target = f"{target}?{parts.query}"
