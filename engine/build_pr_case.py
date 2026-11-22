@@ -24,12 +24,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-try:
-    import envelope
-    import persona_hooks
-    import reviewers
-except ImportError:
-    from engine import envelope, persona_hooks, reviewers
+# The engine directory joins the import path, so these imports resolve
+# both when a script runs directly and when a test loads it from a file.
+_ENGINE_DIR = str(Path(__file__).resolve().parent)
+if _ENGINE_DIR not in sys.path:
+    sys.path.insert(0, _ENGINE_DIR)
+
+import envelope  # resolved through the path set above
+import persona_hooks  # resolved through the path set above
+import reviewers  # resolved through the path set above
 
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 # git ls-tree -l prints mode, type, object, and size before the path.
@@ -257,8 +260,11 @@ def list_head_blobs(repo: Path, head: str, max_entries: int = MAX_HEAD_TREE_ENTR
     environment = {**os.environ, "GIT_LITERAL_PATHSPECS": "1"}
     blobs, pending, entries, read = [], b"", 0, 0
     with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=environment) as process:
+        stdout = process.stdout
+        if stdout is None:
+            raise RuntimeError("git ls-tree opened no output pipe. Rerun the build.")
         try:
-            for chunk in iter(lambda: process.stdout.read(LISTING_READ_BYTES), b""):
+            for chunk in iter(lambda: stdout.read(LISTING_READ_BYTES), b""):
                 read += len(chunk)
                 if read > max_listing_bytes:
                     raise HeadTreeTooLarge(f"the head tree listing exceeds {max_listing_bytes} bytes")
@@ -304,7 +310,9 @@ def read_blobs(repo: Path, object_ids: list[str]) -> list[bytes]:
 
 def _read_batches(blobs: list[tuple[str, str, int]], batch_bytes: int) -> list[list[tuple[str, str, int]]]:
     """Group blobs so one cat-file call holds at most batch_bytes, or one blob."""
-    batches, current, size = [], [], 0
+    batches: list[list[tuple[str, str, int]]] = []
+    current: list[tuple[str, str, int]] = []
+    size = 0
     for blob in blobs:
         if current and size + blob[2] > batch_bytes:
             batches.append(current)

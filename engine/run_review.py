@@ -27,22 +27,26 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-try:
-    import build_pr_case
-    import check_review_response
-    import envelope
-    import persona_hooks
-    import review_output
-    import sandbox
-    import reviewers
-except ImportError:
-    from engine import (build_pr_case, check_review_response, envelope, persona_hooks, review_output, reviewers,
-                        sandbox)
+# The engine directory joins the import path, so these imports resolve
+# both when a script runs directly and when a test loads it from a file.
+_ENGINE_DIR = str(Path(__file__).resolve().parent)
+if _ENGINE_DIR not in sys.path:
+    sys.path.insert(0, _ENGINE_DIR)
+
+import build_pr_case  # resolved through the path set above
+import check_review_response  # resolved through the path set above
+import envelope  # resolved through the path set above
+import persona_hooks  # resolved through the path set above
+import review_output  # resolved through the path set above
+import reviewers  # resolved through the path set above
+import sandbox  # resolved through the path set above
 
 ENGINE_DIR = Path(__file__).resolve().parent
 # call_model.py exits with this code when no configured model can hold the input.
 CAPACITY_EXIT_CODE = 3
 STAGES = ("all", "build", "review")
+# A forced_verdict hook returns [verdict, reason].
+FORCED_VERDICT_FIELDS = 2
 # Every persona hook runs in a child process with only these variables, plus
 # LC_* locale variables. A credential never reaches persona code.
 HOOK_ENVIRONMENT_NAMES = frozenset({"PATH", "HOME", "USERPROFILE", "LANG", "TMPDIR", "TEMP", "TMP",
@@ -181,9 +185,11 @@ def validate_reply(response: str, case_path: Path, json_mode: str | None, findin
                                                                allow_narration, require_coverage)
     sent = json.loads(case_path.read_text(encoding="utf-8"))
     present, problems = call_hook(persona_dir, "validate_reply", [payload, response, sent])
-    if present and not isinstance(problems, list):
+    if not present:
+        return verdict, payload
+    if not isinstance(problems, list):
         raise ReviewError("persona hook validate_reply returned no list")
-    if present and problems:
+    if problems:
         raise check_review_response.ResponseError("; ".join(str(item) for item in problems))
     return verdict, payload
 
@@ -287,9 +293,9 @@ def review_confirmed_chunk(options: RunOptions, system_prompt: str, case_path: P
 
 def sum_usage(results: list[ChunkResult]) -> dict:
     """Return summed token counts, or None where no chunk reported one."""
-    totals = {}
+    totals: dict[str, int | None] = {}
     for key in ("input_tokens", "output_tokens"):
-        values = [item.usage.get(key) for item in results if isinstance(item.usage.get(key), int)]
+        values = [item.usage[key] for item in results if isinstance(item.usage.get(key), int)]
         totals[key] = sum(values) if values else None
     return totals
 
@@ -300,8 +306,11 @@ class ChildHooks:
     def __init__(self, persona_dir: Path):
         self.persona_dir = Path(persona_dir)
 
-    def case_context(self, head_dir: Path, changed: list[str], patches: dict, options: dict) -> dict:
-        """Return the persona context, or an empty result when the persona defines none."""
+    def case_context(self, head_dir: Path, changed: list[str], patches: dict, options: dict) -> object:
+        """Return the persona context, or an empty result when the persona defines none.
+
+        build_pr_case.collect_case_context checks the shape of the result.
+        """
         present, result = call_hook(self.persona_dir, "case_context", [str(head_dir), changed, patches, options],
                                     writable=[Path(head_dir)])
         return result if present else {"context": {}, "unreviewed": []}
@@ -346,6 +355,8 @@ def apply_forced_verdict(verdict: str, reasons: list[str], options: RunOptions,
                                        [json.loads(context_path.read_text(encoding="utf-8"))])
     if not present or not forced:
         return verdict
+    if not isinstance(forced, (list, tuple)) or len(forced) != FORCED_VERDICT_FIELDS:
+        raise ReviewError("forced_verdict returned no [verdict, reason] pair")
     forced_verdict, reason = forced
     if forced_verdict not in review_output.VERDICT_RANK:
         raise ReviewError(f"forced_verdict returned the unknown verdict {forced_verdict!r}")
