@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.15.1] (2026-11-22)
+## [0.15.2] (2026-11-22)
 
 ### Added
 - List the persona eval runner and the persona checkers in
@@ -42,6 +42,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   workflow parses to the same values.
 
 ### Fixed
+- Require every euler finding to cite a file and line inside the review
+  target, as generay does. A pull request line falls inside a hunk of the
+  file patch. A local line falls inside the file. The line must be a
+  positive integer. The active human approved the expected-value update in
+  the existing `tests/test_euler_quality_reply.py`.
 - A forced_verdict hook result without two fields raises ReviewError. A
   persona hook file without a module loader raises ValueError.
 
