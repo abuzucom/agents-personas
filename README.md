@@ -16,6 +16,10 @@ Pull request reviewer personas on one shared review engine.
 - The review workflow reuses a failing check run for the same head and
   input set. A passing result always reruns. A push, a title or body edit,
   or a changed option starts a new review.
+- `make lint-code` runs ruff, mypy, and yamllint. Install the hash-pinned
+  tools first with `python -m pip install --require-hashes -r
+  requirements-dev.txt`. The `Code Lint` workflow runs the same target on
+  every pull request.
 - Persona hooks require bubblewrap at `/usr/bin/bwrap` by default. A run
   fails closed without it. On a host without bubblewrap, set
   `PERSONAS_REQUIRE_SANDBOX=0` for a local run. The hook then runs as a

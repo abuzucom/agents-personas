@@ -14,6 +14,32 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] (2026-11-22)
+
+### Added
+- Add `make lint-code` and the `Code Lint` workflow. ruff, mypy, and
+  yamllint check the engine, the personas, the matching tests, and the
+  workflows this repository owns. `requirements-dev.txt` pins ruff 0.17.4, mypy
+  2.4.1, and yamllint 1.38.0 by hash. The ruff and yamllint configs come
+  from `abuzucom/euler`.
+
+### Changed
+- Send provider calls through `http.client`. Any scheme but HTTPS fails
+  before a connection opens. HTTPS_PROXY, NO_PROXY, and proxy credentials
+  keep the urllib behavior. The active human approved moving the two
+  `urlopen` patches in the existing `tests/test_engine_call_model.py`.
+- Each engine script adds its own directory to the import path in place
+  of the fallback import pair.
+- Apply ruff format to the engine, the personas, and the matching tests.
+  The active human approved formatting the existing test files. The active
+  human also approved five mechanical lint edits in those files.
+- Wrap the long lines of the workflows this repository owns. Every
+  workflow parses to the same values.
+
+### Fixed
+- A forced_verdict hook result without two fields raises ReviewError. A
+  persona hook file without a module loader raises ValueError.
+
 ## [0.14.1] (2026-11-21)
 
 ### Added

@@ -82,6 +82,10 @@ The template revision is `909b93702273befaec9227ee892fe1a2261a4a41`.
   failed twice on that race. `tests/test_digest_fixture_maintenance.py`
   covers the settings. The active human approved the test edit under Rule 3.
 - `Makefile` names this repository's prose files in `PROSE_FILES`.
+- `Makefile` adds the `lint-code` target. The target runs ruff, mypy, and
+  yamllint from `requirements-dev.txt` over the engine, the personas, the
+  matching tests, and the workflows this repository owns. `make lint` stays
+  standard-library only.
 - `scripts/check_agent_prose_gate.py` names the same prose files in
   `TARGET_FILES`. `tests/test_check_agent_prose_gate.py` requires that list
   to match `sync-check.yml`.
