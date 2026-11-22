@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.19"],
+  "expect_json": true,
+  "notes": "At the mobile breakpoint the sidebar, the filter panel, and the secondary navigation all switch to display:none with no drawer, no more menu, and no alternative path visible. Section 2.19 fires on content hidden at a breakpoint without an equivalent access path. Filtering is a core task for this interface; docs/checks/2.19 ranks hidden content with no alternative on a task path HIGH.",
+  "fixture_notes": "All stylesheet selectors are synthetic and freshly invented for this fixture. No real codebase data present."
+}

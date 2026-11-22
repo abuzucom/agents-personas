@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.23"],
+  "expect_json": true,
+  "notes": "Every surface and text color in the component is a hardcoded hex literal that bypasses the theme CSS custom properties. Section 2.23 fires on hardcoded color blocking the theme layer. The panel renders white on white in dark mode because the text stays near-white and the background stays near-white; docs/checks/2.23 ranks contrast collapse introduced only in one theme HIGH because WCAG 1.4.3 applies per theme.",
+  "fixture_notes": "All copy and color values are synthetic and freshly invented for this fixture. No real theme data present."
+}

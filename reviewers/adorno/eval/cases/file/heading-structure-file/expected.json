@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.1"],
+  "expect_json": true,
+  "notes": "Section titles are bold styled divs and the one real heading after the h1 jumps to h4, so the page heading outline carries no document structure. Section 2.1 fires on heading levels chosen for font size and section titles with no heading semantics. The barrier is unambiguous: a screen-reader user navigating by headings gets no map of the settings sections, but the content remains reachable by reading order, so per section 1.7 this degrades the experience for an affected group and is MEDIUM.",
+  "fixture_notes": "All section and copy text is synthetic and freshly invented; no real user data."
+}

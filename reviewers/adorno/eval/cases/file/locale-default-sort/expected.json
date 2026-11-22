@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.22"],
+  "expect_json": true,
+  "notes": "The table sorts names with default Array.sort codepoint order instead of Intl.Collator, so accented and non-Latin scripts sort incorrectly. Section 2.22 fires on sorted lists in raw codepoint order. Ordering is wrong for users with accented names; docs/checks/2.22 ranks codepoint sorting on secondary review surfaces MEDIUM because the list remains scannable and usable despite incorrect order.",
+  "fixture_notes": "All names are synthetic and freshly invented for this fixture. No real person data present."
+}

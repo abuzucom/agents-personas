@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.20"],
+  "expect_json": true,
+  "notes": "Eighteen toggles and inputs render as a flat, unlabeled sequence with no fieldset, no section heading, and no grouping by channel or purpose. Section 2.20 fires on ungrouped related controls. Assistive technology announces each toggle without its context; docs/checks/2.20 ranks missing group semantics on task-path form controls HIGH.",
+  "fixture_notes": "All setting labels are synthetic and freshly invented for this fixture. No real product data present."
+}

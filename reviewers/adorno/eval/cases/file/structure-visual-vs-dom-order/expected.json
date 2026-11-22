@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.20"],
+  "expect_json": true,
+  "notes": "The grid uses the CSS order property to rearrange three interactive cards so the visual sequence (Enterprise, Team, Starter) contradicts the DOM sequence (Enterprise, Starter, Team). Section 2.20 fires on DOM order diverging from visual order for interactive content. Keyboard focus order follows the DOM while sighted pointer order follows the visual layout; docs/checks/2.20 ranks order-property rearrangement of interactive content HIGH per WCAG 1.3.2.",
+  "fixture_notes": "All plan names and copy are synthetic and freshly invented for this fixture. No real product data present."
+}

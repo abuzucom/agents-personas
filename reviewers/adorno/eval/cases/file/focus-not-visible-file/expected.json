@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.2"],
+  "expect_json": true,
+  "notes": "The stylesheet removes the focus outline on every link and button and defines no replacement focus style. Section 2.2 fires on removed or invisible focus indication. Tab stops still exist because the elements are native, so this is not the section 5 keyboard-inaccessibility blocker; per section 1.7 it is a WCAG failure (focus visible) with a serious but workaround-compatible barrier, making HIGH correct. The barrier is unambiguous: a sighted keyboard user cannot see where focus lands.",
+  "fixture_notes": "All link and control text is synthetic and freshly invented; no real user data."
+}

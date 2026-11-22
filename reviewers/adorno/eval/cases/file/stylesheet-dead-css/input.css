@@ -1,0 +1,21 @@
+.old-nav {
+  background: #f3f4f6;
+  padding: 12px 20px;
+}
+
+.legacy-banner {
+  color: #fef08a;
+  background: #78350f;
+  text-align: center;
+}
+
+.v1-card {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.legacy-footer-links {
+  display: flex;
+  gap: 16px;
+}

@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.12"],
+  "expect_json": true,
+  "notes": "The decline option is worded 'No thanks, I hate saving money', a statement the user does not believe, framed to shame them into accepting the discount. Section 2.12 fires directly on confirmshaming. The dialog is labeled, closable, and keyboard-operable, and the user retains a real exit, so no task is blocked and no section 5 blocker applies; per section 1.7 manipulative copy is a defect by design that degrades the experience without excluding a user class, making MEDIUM correct. The barrier is unambiguous.",
+  "fixture_notes": "All brand and offer copy is synthetic and freshly invented; no real user data."
+}

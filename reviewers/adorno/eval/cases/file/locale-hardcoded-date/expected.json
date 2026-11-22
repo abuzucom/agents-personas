@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.22"],
+  "expect_json": true,
+  "notes": "The utility builds date strings with manual concatenation instead of Intl.DateTimeFormat, producing MM/DD/YYYY and DD/MM/YYYY literals with no locale awareness. Section 2.22 fires on hardcoded date formats. Users in other locales misread day and month; docs/checks/2.22 ranks hardcoded dates on scheduling and billing-adjacent paths HIGH because the user acts on the wrong date.",
+  "fixture_notes": "All function logic is synthetic and freshly invented for this fixture. No real data present."
+}

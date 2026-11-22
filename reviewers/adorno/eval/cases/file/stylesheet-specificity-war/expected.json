@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.21"],
+  "expect_json": true,
+  "notes": "The stylesheet escalates with a four-level descendant chain, an ID selector, and repeated !important declarations while inline styles in the templates override both. Section 2.21 fires on specificity wars. Rendering remains technically deterministic; docs/checks/2.21 ranks specificity wars, unscoped globals, and methodology mixing MEDIUM because new rules break old surfaces unpredictably without active breakage now.",
+  "fixture_notes": "All selectors and navigation paths are synthetic and freshly invented for this fixture. No real codebase data present."
+}

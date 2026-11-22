@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.23"],
+  "expect_json": true,
+  "notes": "Theme resolves inside useEffect after first paint, so a React hydration cycle renders the default light theme before the stored preference applies. Section 2.23 fires on theme flash on load. A bright flash lands on photosensitive users and the interface snaps between themes; docs/checks/2.23 ranks load-time flash HIGH when it hits a core shell on every reload.",
+  "fixture_notes": "All theme values and component names are synthetic and freshly invented for this fixture. No real product data present."
+}

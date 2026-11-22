@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Account settings</title>
+  </head>
+  <body>
+    <main>
+      <h1>Account settings</h1>
+      <div
+        class="save-btn"
+        onclick="saveSettings()"
+      >
+        Save changes
+      </div>
+    </main>
+    <script>
+      function saveSettings() {
+        fetch('/api/settings', { method: 'POST' });
+      }
+    </script>
+  </body>
+</html>

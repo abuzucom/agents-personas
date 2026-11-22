@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.18"],
+  "expect_json": true,
+  "notes": "The decline terminal state shows only an error message with no retry button, no alternate payment method, and no link back through checkout. Section 2.18 fires on a dead-end error page in a core commerce flow. The flow cannot be resumed from this state; docs/checks/2.18 ranks failure surfaces on task paths that strand the user without guidance as HIGH.",
+  "fixture_notes": "All payment copy is synthetic and freshly invented for this fixture. No real data present."
+}

@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.17"],
+  "expect_json": true,
+  "notes": "The dialog confirms destructive intent but never names the workspace or the irreversible outcome. The prompt reads 'Are you sure?' with unlabeled OK and Cancel options. The destructive OK carries default focus, so a keyboard user confirms by pressing Enter reflexively. Section 2.17 fires on confirmation theater and ambiguous weighting on a task-path destructive control. The action is recoverable only if a restore path exists elsewhere; none is shown. HIGH is correct per the 2.17 severity posture for confirmation theater on task paths.",
+  "fixture_notes": "All workspace references are synthetic and freshly invented for this fixture. No real data present."
+}

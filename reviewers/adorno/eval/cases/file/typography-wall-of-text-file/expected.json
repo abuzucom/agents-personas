@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.16"],
+  "expect_json": true,
+  "notes": "The section renders one unbroken 250-word block with no headings, no lists, no paragraph breaks, and no line-height control. Section 2.16 fires on the long single-block page pattern and missing line-height. The prose remains physically legible, so no task path is blocked; docs/checks/2.16 ranks density and missing structural chunking MEDIUM when a workaround exists.",
+  "fixture_notes": "All help text is synthetic and freshly invented for this fixture. No real product or policy data present."
+}

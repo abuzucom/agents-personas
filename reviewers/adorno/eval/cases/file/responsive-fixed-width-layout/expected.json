@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.19"],
+  "expect_json": true,
+  "notes": "The dashboard locks its main region and inner grid at 1280px with flexShrink 0 and no breakpoint behavior at any viewport width. Section 2.19 fires on layout that does not respond to viewport size. The dashboard remains readable with horizontal scroll; docs/checks/2.19 ranks fixed-width layout with no breakpoint adaptation MEDIUM when content remains accessible.",
+  "fixture_notes": "All metric values and labels are synthetic and freshly invented for this fixture. No real business data present."
+}

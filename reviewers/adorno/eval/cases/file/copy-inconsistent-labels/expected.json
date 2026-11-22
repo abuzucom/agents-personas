@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: LOW",
+  "expected_classes": ["2.21"],
+  "expect_json": true,
+  "notes": "Three sibling components name the same primary submit action Save, Submit, and Store with no shared term or copy convention. Section 2.21 fires on inconsistent terms across surfaces. The action remains discoverable and functional on each surface; docs/checks/2.21 ranks inconsistent naming that does not block translation or produce contradictory meaning LOW.",
+  "fixture_notes": "All button labels are synthetic and freshly invented for this fixture. No real product copy present."
+}

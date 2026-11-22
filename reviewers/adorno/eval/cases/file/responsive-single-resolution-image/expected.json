@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.19"],
+  "expect_json": true,
+  "notes": "The product component ships a single 2400px image to every viewport with no srcset and no sizes declaration. Section 2.19 fires on the wrong asset for the device. Narrow-viewport users download a desktop-sized file with no alternative; docs/checks/2.19 ranks wrong-asset delivery MEDIUM because layout and load suffer but the content remains reachable.",
+  "fixture_notes": "All product copy is synthetic and freshly invented for this fixture. No real product data present."
+}
