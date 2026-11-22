@@ -64,9 +64,7 @@ def find_violations(path: Path) -> list[str]:
             continue
         if line.startswith(ALLOWED_LONG_PREFIXES):
             continue
-        violations.append(
-            f"line {line_number} exceeds {MAX_PROSE_WIDTH} characters"
-        )
+        violations.append(f"line {line_number} exceeds {MAX_PROSE_WIDTH} characters")
     return violations
 
 

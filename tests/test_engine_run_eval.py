@@ -1,4 +1,5 @@
 """Test engine/run_eval.py: case structure, live grading, and persona extensions."""
+
 import importlib.util
 import io
 import json
@@ -26,16 +27,21 @@ validator = _load("check_review_response")
 run_eval = _load("run_eval")
 
 REVIEW_MODE = {"prompt": "PROMPT.md", "review": True, "default": True, "json_mode": "PR"}
-FILE_MODE = {"prompt": "PROMPT.md", "local": True, "json_mode": "File", "verdict_line": "RISK",
-             "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]}
-EXTENSION = '''
+FILE_MODE = {
+    "prompt": "PROMPT.md",
+    "local": True,
+    "json_mode": "File",
+    "verdict_line": "RISK",
+    "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"],
+}
+EXTENSION = """
 def validate_expected(mode, expected):
     return ["needs ticket"] if "ticket" not in expected else []
 
 
 def grade_response(case, response):
     return [("ticket", case["expected"]["ticket"] in response, "ticket named")]
-'''
+"""
 
 
 class PersonaFixture:
@@ -46,8 +52,7 @@ class PersonaFixture:
         self.persona_dir = self.root / "reviewers" / "sample"
         self.persona_dir.mkdir(parents=True)
         (self.persona_dir / "PROMPT.md").write_text("prompt\n", encoding="ascii")
-        manifest = {"persona": "sample", "function": "review",
-                    "modes": {"review": REVIEW_MODE, "file": FILE_MODE}}
+        manifest = {"persona": "sample", "function": "review", "modes": {"review": REVIEW_MODE, "file": FILE_MODE}}
         (self.persona_dir / "reviewer.json").write_text(json.dumps(manifest), encoding="utf-8")
         self.manifest = manifest
 
@@ -82,8 +87,7 @@ class StructureTest(unittest.TestCase):
             fixture.add_case("file", "high-file", _expected("RISK: HIGH", "File"), ("input.py",))
             cases, findings = fixture.collect()
         self.assertEqual(findings, [])
-        self.assertEqual([(case["mode"], case["prompt_mode"]) for case in cases],
-                         [("review", "PR"), ("file", "File")])
+        self.assertEqual([(case["mode"], case["prompt_mode"]) for case in cases], [("review", "PR"), ("file", "File")])
         self.assertTrue(all(Path(case["dir"]).name == case["name"] for case in cases))
 
     def test_every_local_verdict_spelling_is_accepted(self):
@@ -160,8 +164,8 @@ class ExtensionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             fixture = PersonaFixture(directory)
             fixture.add_extension(
-                'def validate_case(case):\n'
-                '    return [] if "diff.patch" in case["files"] else ["needs diff.patch"]\n')
+                'def validate_case(case):\n    return [] if "diff.patch" in case["files"] else ["needs diff.patch"]\n'
+            )
             fixture.add_case("review", "patch-pr", _expected("BLOCK"))
             fixture.add_case("review", "python-pr", _expected("BLOCK"), inputs=("input.py",))
             cases, findings = fixture.collect()
@@ -232,11 +236,15 @@ class GradingTest(unittest.TestCase):
 
     def test_grade_response_adds_status_and_json_checks(self):
         case = {"expected": _expected("NEEDS-HUMAN", expect_json=True, expected_review_status="NEEDS-HUMAN")}
-        response = ('REVIEW STATUS: NEEDS-HUMAN\nVERDICT: NEEDS-HUMAN\n'
-                    'VERDICT_JSON: {"mode": "PR", "verdict": "NEEDS-HUMAN", "findings": []}\n')
+        response = (
+            "REVIEW STATUS: NEEDS-HUMAN\nVERDICT: NEEDS-HUMAN\n"
+            'VERDICT_JSON: {"mode": "PR", "verdict": "NEEDS-HUMAN", "findings": []}\n'
+        )
         grades = run_eval.grade_response(case, response, REVIEW_MODE)
-        self.assertEqual([(label, passed) for label, passed, _ in grades],
-                         [("verdict", True), ("REVIEW STATUS", True), ("VERDICT_JSON", True)])
+        self.assertEqual(
+            [(label, passed) for label, passed, _ in grades],
+            [("verdict", True), ("REVIEW STATUS", True), ("VERDICT_JSON", True)],
+        )
 
 
 class LiveRunTest(unittest.TestCase):
@@ -270,8 +278,9 @@ class LiveRunTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             fixture = PersonaFixture(directory)
             fixture.add_extension(
-                'def build_model_input(case, system_prompt):\n'
-                '    return "plain" if case["name"] == "plain-pr" else None\n')
+                "def build_model_input(case, system_prompt):\n"
+                '    return "plain" if case["name"] == "plain-pr" else None\n'
+            )
             fixture.add_case("review", "plain-pr", _expected("BLOCK"))
             fixture.add_case("review", "default-pr", _expected("BLOCK"))
             cases, _ = fixture.collect()
@@ -314,8 +323,12 @@ class RepositoryCasesTest(unittest.TestCase):
                 self.assertEqual(findings, [])
 
     def test_cli_rejects_an_unknown_persona(self):
-        completed = subprocess.run([sys.executable, str(ENGINE_DIR / "run_eval.py"), "--persona", "absent"],
-                                   capture_output=True, text=True, check=False)
+        completed = subprocess.run(
+            [sys.executable, str(ENGINE_DIR / "run_eval.py"), "--persona", "absent"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         self.assertEqual(completed.returncode, 1)
         self.assertIn("unknown persona", completed.stderr)
 

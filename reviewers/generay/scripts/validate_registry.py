@@ -77,8 +77,9 @@ def check_scalar(value: Any, schema: dict[str, Any], where: str) -> list[str]:
     return errors
 
 
-def check_object(value: dict[str, Any], schema: dict[str, Any], root: dict[str, Any], where: str,
-                 depth: int = 0) -> list[str]:
+def check_object(
+    value: dict[str, Any], schema: dict[str, Any], root: dict[str, Any], where: str, depth: int = 0
+) -> list[str]:
     """Return errors for required, unknown, and nested properties."""
     properties = schema.get("properties", {})
     errors = [f"{where}: missing {name}" for name in schema.get("required", []) if name not in value]
@@ -90,8 +91,7 @@ def check_object(value: dict[str, Any], schema: dict[str, Any], root: dict[str, 
     return errors
 
 
-def validate(value: Any, schema: dict[str, Any], root: dict[str, Any], where: str = "$",
-             depth: int = 0) -> list[str]:
+def validate(value: Any, schema: dict[str, Any], root: dict[str, Any], where: str = "$", depth: int = 0) -> list[str]:
     """Return every error for value against schema."""
     if depth > MAX_NESTING_DEPTH:
         return [f"{where}: nesting exceeds {MAX_NESTING_DEPTH} levels"]

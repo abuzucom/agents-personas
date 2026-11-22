@@ -5,6 +5,7 @@ with the same key reuses that check run and calls no model. The key covers
 every input that changes the review, so a changed input never reuses a
 stale verdict.
 """
+
 import importlib.util
 import os
 import subprocess
@@ -15,9 +16,18 @@ from pathlib import Path
 
 ENGINE_DIR = Path(__file__).resolve().parent.parent / "engine"
 FIELDS = {
-    "PERSONA": "euler", "MODE": "quality", "HEAD_SHA": "a" * 40, "BASE_SHA": "b" * 40,
-    "PERSONAS_REF": "c" * 40, "PR_TITLE": "Title", "PR_BODY": "Body text", "PERSONA_OPTIONS": "",
-    "MAX_CHUNKS": "", "MAX_ENVELOPE_BYTES": "", "MODEL_CALL_COMMAND": "", "FAIL_ON_BLOCK": "true",
+    "PERSONA": "euler",
+    "MODE": "quality",
+    "HEAD_SHA": "a" * 40,
+    "BASE_SHA": "b" * 40,
+    "PERSONAS_REF": "c" * 40,
+    "PR_TITLE": "Title",
+    "PR_BODY": "Body text",
+    "PERSONA_OPTIONS": "",
+    "MAX_CHUNKS": "",
+    "MAX_ENVELOPE_BYTES": "",
+    "MODEL_CALL_COMMAND": "",
+    "FAIL_ON_BLOCK": "true",
 }
 
 
@@ -79,15 +89,25 @@ class CliTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "output.txt"
             environment = {**os.environ, **FIELDS, "GITHUB_OUTPUT": str(output)}
-            completed = subprocess.run([sys.executable, str(ENGINE_DIR / "review_key.py")], env=environment,
-                                       capture_output=True, text=True, check=False)
+            completed = subprocess.run(
+                [sys.executable, str(ENGINE_DIR / "review_key.py")],
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertEqual(output.read_text(encoding="utf-8"), f"key={review_key.review_key(FIELDS)}\n")
 
     def test_cli_without_a_field_fails(self):
         environment = {key: value for key, value in os.environ.items() if key not in FIELDS}
-        completed = subprocess.run([sys.executable, str(ENGINE_DIR / "review_key.py")], env=environment,
-                                   capture_output=True, text=True, check=False)
+        completed = subprocess.run(
+            [sys.executable, str(ENGINE_DIR / "review_key.py")],
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         self.assertEqual(completed.returncode, 1)
         self.assertIn("PERSONA", completed.stderr)
 

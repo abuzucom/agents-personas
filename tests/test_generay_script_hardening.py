@@ -6,6 +6,7 @@
   the review target. A PR line must fall inside a hunk of the file patch.
   A local line must fall inside the file.
 """
+
 import contextlib
 import io
 import json
@@ -23,8 +24,7 @@ import validate_registry as registry  # resolved through the path set above
 
 CHECKS = time_reply.load_checks()
 PATCH = "--- a/app.py\n+++ b/app.py\n@@ -10,3 +10,4 @@ def handler():\n ctx\n+new\n ctx\n ctx\n"
-NESTED_SCHEMA = {"$defs": {"node": {"type": "array", "items": {"$ref": "#/$defs/node"}}},
-                 "$ref": "#/$defs/node"}
+NESTED_SCHEMA = {"$defs": {"node": {"type": "array", "items": {"$ref": "#/$defs/node"}}}, "$ref": "#/$defs/node"}
 
 
 def _nested_list(depth: int) -> list:
@@ -36,21 +36,33 @@ def _nested_list(depth: int) -> list:
 
 def _finding(**changes) -> dict:
     check = CHECKS["C9.1"]
-    finding = {"severity": "LOW", "check": "C9.1", "method": check.method, "file": "app.py", "line": 11,
-               "title": "naive now", "confidence": "certain"}
+    finding = {
+        "severity": "LOW",
+        "check": "C9.1",
+        "method": check.method,
+        "file": "app.py",
+        "line": 11,
+        "title": "naive now",
+        "confidence": "certain",
+    }
     finding.update(changes)
     return finding
 
 
 def _engine_context() -> time_reply.ReviewContext:
-    envelope = {"TRUSTED_CONTEXT": {"persona": "generay"},
-                "REVIEW_TARGET": {"files": {"app.py": PATCH}, "prescan": [], "unreviewed": []}}
+    envelope = {
+        "TRUSTED_CONTEXT": {"persona": "generay"},
+        "REVIEW_TARGET": {"files": {"app.py": PATCH}, "prescan": [], "unreviewed": []},
+    }
     return time_reply.context_from_envelope(envelope, [])
 
 
 def _local_context() -> time_reply.ReviewContext:
-    envelope = {"mode": "File", "TRUSTED_CONTEXT": {"prescan": []},
-                "REVIEW_TARGET": {"files": {"input.py": "one\ntwo\nthree\n"}}}
+    envelope = {
+        "mode": "File",
+        "TRUSTED_CONTEXT": {"prescan": []},
+        "REVIEW_TARGET": {"files": {"input.py": "one\ntwo\nthree\n"}},
+    }
     return time_reply.context_from_envelope(envelope, [])
 
 
@@ -102,22 +114,21 @@ class FindingLocationTest(unittest.TestCase):
     def test_pr_line_outside_every_hunk_fails(self):
         for line in (9, 14, 500):
             with self.subTest(line=line):
-                self.assertIn(f"finding line {line} is outside the review target for app.py",
-                              self.problems(_engine_context(), line=line))
+                self.assertIn(
+                    f"finding line {line} is outside the review target for app.py",
+                    self.problems(_engine_context(), line=line),
+                )
 
     def test_line_must_be_a_positive_integer(self):
         for line in (0, -3, True, "11"):
             with self.subTest(line=line):
-                self.assertIn("finding line must be a positive integer",
-                              self.problems(_engine_context(), line=line))
+                self.assertIn("finding line must be a positive integer", self.problems(_engine_context(), line=line))
 
     def test_generay_pr_envelope_checks_hunk_lines(self):
-        envelope = {"mode": "PR", "TRUSTED_CONTEXT": {"prescan": []},
-                    "REVIEW_TARGET": {"files": {"app.py": PATCH}}}
+        envelope = {"mode": "PR", "TRUSTED_CONTEXT": {"prescan": []}, "REVIEW_TARGET": {"files": {"app.py": PATCH}}}
         context = time_reply.context_from_envelope(envelope, [])
         self.assertEqual(self.problems(context, line=11), [])
-        self.assertIn("finding line 999 is outside the review target for app.py",
-                      self.problems(context, line=999))
+        self.assertIn("finding line 999 is outside the review target for app.py", self.problems(context, line=999))
 
     def test_unhashable_file_is_a_problem_not_a_crash(self):
         for file in (["app.py"], {"path": "app.py"}):
@@ -133,8 +144,10 @@ class FindingLocationTest(unittest.TestCase):
 
     def test_local_line_must_fall_inside_the_file(self):
         self.assertEqual(self.problems(_local_context(), file="input.py", line=3), [])
-        self.assertIn("finding line 4 is outside the review target for input.py",
-                      self.problems(_local_context(), file="input.py", line=4))
+        self.assertIn(
+            "finding line 4 is outside the review target for input.py",
+            self.problems(_local_context(), file="input.py", line=4),
+        )
 
 
 if __name__ == "__main__":

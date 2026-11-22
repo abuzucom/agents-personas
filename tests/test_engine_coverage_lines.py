@@ -5,6 +5,7 @@ mode line with nothing after the mode value, a Scope: line, and an Unseen:
 line. A missing or malformed line fails like process narration. The engine
 retries once, then records NEEDS-HUMAN with the findings of the retry.
 """
+
 import json
 import unittest
 from pathlib import Path
@@ -26,11 +27,15 @@ class CoverageCheckTest(unittest.TestCase):
     """validate_response checks the three opening lines when asked."""
 
     def test_bold_and_plain_mode_lines_pass(self):
-        for opening in (COVERED, "Mode: PR\nScope: app.py.\nUnseen: callers.\n",
-                        "**Mode:** PR\n\nScope: app.py.\n\nUnseen: none.\n"):
+        for opening in (
+            COVERED,
+            "Mode: PR\nScope: app.py.\nUnseen: callers.\n",
+            "**Mode:** PR\n\nScope: app.py.\n\nUnseen: none.\n",
+        ):
             with self.subTest(opening=opening):
-                self.assertEqual(validator.validate_response(_reply(opening), "PR", require_coverage=True)[0],
-                                 "APPROVE")
+                self.assertEqual(
+                    validator.validate_response(_reply(opening), "PR", require_coverage=True)[0], "APPROVE"
+                )
 
     def test_malformed_openings_fail_as_coverage_errors(self):
         openings = {
@@ -58,8 +63,7 @@ class CoverageCheckTest(unittest.TestCase):
         self.assertEqual(validator.validate_response(_reply(""), "PR")[0], "APPROVE")
 
     def test_allow_narration_also_skips_the_coverage_check(self):
-        verdict, _payload = validator.validate_response(_reply(""), "PR", require_coverage=True,
-                                                        allow_narration=True)
+        verdict, _payload = validator.validate_response(_reply(""), "PR", require_coverage=True, allow_narration=True)
         self.assertEqual(verdict, "APPROVE")
 
 

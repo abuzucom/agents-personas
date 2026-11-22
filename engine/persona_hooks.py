@@ -60,8 +60,9 @@ def _check_items(key: object, items: object, changed: set[str]) -> None:
     """Reject a context entry that is not a list of items on changed files."""
     if not isinstance(key, str) or not key:
         raise ValueError("case_context keys must be non-empty strings")
-    if not isinstance(items, list) or not all(isinstance(item, dict) and isinstance(item.get("file"), str)
-                                              for item in items):
+    if not isinstance(items, list) or not all(
+        isinstance(item, dict) and isinstance(item.get("file"), str) for item in items
+    ):
         raise ValueError(f"case_context '{key}' must be a list of objects with a file")
     outside = sorted({item["file"] for item in items} - changed)
     if outside:
@@ -78,8 +79,9 @@ def check_context_result(result: object, changed: list[str]) -> dict:
     changed_set = set(changed)
     for key, items in context.items():
         _check_items(key, items, changed_set)
-    if not isinstance(unreviewed, list) or not all(isinstance(path, str) and path in changed_set
-                                                   for path in unreviewed):
+    if not isinstance(unreviewed, list) or not all(
+        isinstance(path, str) and path in changed_set for path in unreviewed
+    ):
         raise ValueError("case_context unreviewed must list changed files")
     return result
 

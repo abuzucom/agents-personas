@@ -3,6 +3,7 @@
 The end-to-end tests run engine/run_review.py with the committed euler
 persona against a real git repository and a scripted adapter.
 """
+
 import importlib.util
 import json
 import os
@@ -16,9 +17,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ENGINE_DIR = REPO_ROOT / "engine"
 GIT_ENV = {
     **os.environ,
-    "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
-    "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@example.invalid",
-    "GIT_COMMITTER_NAME": "Test", "GIT_COMMITTER_EMAIL": "test@example.invalid",
+    "GIT_CONFIG_GLOBAL": os.devnull,
+    "GIT_CONFIG_SYSTEM": os.devnull,
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_AUTHOR_NAME": "Test",
+    "GIT_AUTHOR_EMAIL": "test@example.invalid",
+    "GIT_COMMITTER_NAME": "Test",
+    "GIT_COMMITTER_EMAIL": "test@example.invalid",
 }
 ADAPTER_SOURCE = """import json, sys
 from pathlib import Path
@@ -48,8 +53,9 @@ hooks = persona_hooks.load_review_hooks(REPO_ROOT / "reviewers" / "euler")
 
 
 def _git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
-                          check=True, env=GIT_ENV).stdout.strip()
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], capture_output=True, text=True, check=True, env=GIT_ENV
+    ).stdout.strip()
 
 
 def _patch(text: str) -> str:
@@ -58,11 +64,18 @@ def _patch(text: str) -> str:
 
 
 def _reply(verdict: str, prescan=(), findings=()) -> str:
-    payload = {"schema_version": "1", "mode": "PR", "verdict": verdict, "findings": list(findings),
-               "prescan": list(prescan)}
+    payload = {
+        "schema_version": "1",
+        "mode": "PR",
+        "verdict": verdict,
+        "findings": list(findings),
+        "prescan": list(prescan),
+    }
     # The euler quality mode requires the coverage lines. The active human approved this opening.
-    return (f"Mode: PR\nScope: app.py.\nUnseen: callers.\nFindings above.\n\nVERDICT: {verdict} - summary\n"
-            f"VERDICT_JSON: {json.dumps(payload)}\n")
+    return (
+        f"Mode: PR\nScope: app.py.\nUnseen: callers.\nFindings above.\n\nVERDICT: {verdict} - summary\n"
+        f"VERDICT_JSON: {json.dumps(payload)}\n"
+    )
 
 
 class TrustedContextTest(unittest.TestCase):
@@ -88,8 +101,9 @@ class TrustedContextTest(unittest.TestCase):
         self.assertEqual(result["unreviewed"], [])
 
     def test_exclude_paths_drops_matching_files(self):
-        result = self.context({"src/app.py": _patch(EMPTY_CATCH), "src/util.py": _patch(MUTABLE_DEFAULT)},
-                              exclude="src/app.py")
+        result = self.context(
+            {"src/app.py": _patch(EMPTY_CATCH), "src/util.py": _patch(MUTABLE_DEFAULT)}, exclude="src/app.py"
+        )
         files = {item["file"] for item in result["context"]["prescan"]}
         self.assertNotIn("src/app.py", files)
         self.assertIn("src/util.py", files)
@@ -110,9 +124,19 @@ class ReplyHookTest(unittest.TestCase):
 
     def sent(self, prescan=(), unreviewed=()) -> dict:
         metadata = {"chunk": "1/1", "changed_file_count": 1, "unreviewed_count": len(unreviewed)}
-        return json.loads(envelope.build_envelope("euler", "quality", {"app.py": "+x\n"}, "T", "B", metadata,
-                                                  context={"prescan": list(prescan)}, changed_files=["app.py"],
-                                                  unreviewed=list(unreviewed)))
+        return json.loads(
+            envelope.build_envelope(
+                "euler",
+                "quality",
+                {"app.py": "+x\n"},
+                "T",
+                "B",
+                metadata,
+                context={"prescan": list(prescan)},
+                changed_files=["app.py"],
+                unreviewed=list(unreviewed),
+            )
+        )
 
     def test_resolved_prescan_passes(self):
         sent = self.sent([{"id": "P1", "file": "app.py", "line": 1}])
@@ -128,8 +152,14 @@ class ReplyHookTest(unittest.TestCase):
         self.assertIn("unreviewed files forbid APPROVE", problems)
 
     def test_finding_outside_the_chunk_files_is_a_problem(self):
-        finding = {"severity": "LOW", "class": "Q13", "file": "other.py", "line": 2, "title": "t",
-                   "confidence": "certain"}
+        finding = {
+            "severity": "LOW",
+            "class": "Q13",
+            "file": "other.py",
+            "line": 2,
+            "title": "t",
+            "confidence": "certain",
+        }
         problems = hooks.validate_reply({}, _reply("APPROVE", findings=[finding]), self.sent())
         self.assertIn("finding cites other.py outside the changed files", problems)
 
@@ -138,8 +168,12 @@ class ForcedVerdictTest(unittest.TestCase):
     """A blocking prescan candidate forces BLOCK. The reason names classes only."""
 
     def test_blocking_candidate_forces_block(self):
-        forced = hooks.forced_verdict({"prescan": [{"file": "a/b.py", "class": "M1", "blocking": True},
-                                                   {"file": "c.py", "class": "Q13", "blocking": False}]})
+        forced = hooks.forced_verdict({
+            "prescan": [
+                {"file": "a/b.py", "class": "M1", "blocking": True},
+                {"file": "c.py", "class": "Q13", "blocking": False},
+            ]
+        })
         self.assertEqual(forced, ("BLOCK", "blocking prescan finding in class M1"))
 
     def test_no_blocking_candidate_forces_nothing(self):
@@ -176,10 +210,20 @@ class EngineRunTest(unittest.TestCase):
         self.out = base_dir / "out"
 
     def options(self, **changes):
-        values = {"root": REPO_ROOT, "persona": "euler", "mode": "quality", "repo": self.repo,
-                  "base": self.base, "head": self.head, "pr_number": 3, "out_dir": self.out,
-                  "title": "Title", "body": "Body", "requested_caps": {},
-                  "model_call_command": "python adapter/fake.py"}
+        values = {
+            "root": REPO_ROOT,
+            "persona": "euler",
+            "mode": "quality",
+            "repo": self.repo,
+            "base": self.base,
+            "head": self.head,
+            "pr_number": 3,
+            "out_dir": self.out,
+            "title": "Title",
+            "body": "Body",
+            "requested_caps": {},
+            "model_call_command": "python adapter/fake.py",
+        }
         values.update(changes)
         return run_review.RunOptions(**values)
 

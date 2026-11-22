@@ -1,4 +1,5 @@
 """Test persona options: manifest declarations and caller values."""
+
 import importlib.util
 import json
 import sys
@@ -24,8 +25,12 @@ OPTIONS = {
     "strict": {"type": "boolean", "default": False},
     "depth": {"type": "integer", "default": 3},
 }
-MANIFEST = {"persona": "euler", "function": "quality", "options": OPTIONS,
-            "modes": {"quality": {"prompt": "QUALITY.md", "review": True, "default": True}}}
+MANIFEST = {
+    "persona": "euler",
+    "function": "quality",
+    "options": OPTIONS,
+    "modes": {"quality": {"prompt": "QUALITY.md", "review": True, "default": True}},
+}
 
 
 def _findings(options: object) -> list:
@@ -68,8 +73,7 @@ class ResolveOptionsTest(unittest.TestCase):
     """A caller value replaces a default. The engine rejects anything undeclared."""
 
     def test_empty_request_returns_the_defaults(self):
-        self.assertEqual(reviewers.resolve_options(MANIFEST, ""),
-                         {"exclude_paths": "", "strict": False, "depth": 3})
+        self.assertEqual(reviewers.resolve_options(MANIFEST, ""), {"exclude_paths": "", "strict": False, "depth": 3})
 
     def test_request_overrides_a_default(self):
         resolved = reviewers.resolve_options(MANIFEST, '{"exclude_paths": "tests/**", "depth": 5}')

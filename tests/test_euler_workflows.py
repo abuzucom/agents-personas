@@ -1,4 +1,5 @@
 """Test the euler wrapper and the euler self-review caller."""
+
 import unittest
 from pathlib import Path
 
@@ -9,9 +10,20 @@ WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 WRAPPER = WORKFLOWS / "euler-quality-review.yml"
 SELF_CALLER = WORKFLOWS / "euler-quality-review-pr.yml"
 ENGINE = WORKFLOWS / "review.yml"
-FORWARDED_INPUTS = {"personas_ref", "modes", "pr_number", "base_sha", "head_sha", "head_repo_url",
-                    "head_repo_full_name", "model_call_command", "pr_comment", "fail_on_block",
-                    "fork_review", "paths"}
+FORWARDED_INPUTS = {
+    "personas_ref",
+    "modes",
+    "pr_number",
+    "base_sha",
+    "head_sha",
+    "head_repo_url",
+    "head_repo_full_name",
+    "model_call_command",
+    "pr_comment",
+    "fail_on_block",
+    "fork_review",
+    "paths",
+}
 EULER_INPUTS = {"exclude_paths", "max_chunks"}
 REVIEW_PERMISSIONS = {"checks": "write", "contents": "read", "pull-requests": "write"}
 
@@ -39,8 +51,9 @@ class WrapperTest(unittest.TestCase):
         for name in FORWARDED_INPUTS:
             with self.subTest(input=name):
                 self.assertEqual(self.call["inputs"][name]["type"], engine_inputs[name]["type"])
-                self.assertEqual(self.call["inputs"][name].get("required", False),
-                                 engine_inputs[name].get("required", False))
+                self.assertEqual(
+                    self.call["inputs"][name].get("required", False), engine_inputs[name].get("required", False)
+                )
 
     def test_euler_inputs_keep_the_source_types_and_defaults(self):
         inputs = self.call["inputs"]

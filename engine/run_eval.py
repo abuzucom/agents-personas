@@ -108,8 +108,7 @@ def load_extension(persona_dir: Path):
     if str(ENGINE_DIR) not in sys.path:
         sys.path.insert(0, str(ENGINE_DIR))
     try:
-        return persona_hooks.load_module(Path(persona_dir) / EXTENSION_PATH,
-                                         f"extra_checks_{Path(persona_dir).name}")
+        return persona_hooks.load_module(Path(persona_dir) / EXTENSION_PATH, f"extra_checks_{Path(persona_dir).name}")
     except ValueError as error:
         raise EvalError(f"{EXTENSION_PATH} must be a regular file") from error
 
@@ -123,8 +122,7 @@ def _expected_findings(label: str, expected: object, mode_name: str, mode: dict)
     """Return the shared structure findings of one expected.json."""
     if not isinstance(expected, dict):
         return [f"{label}: {EXPECTED_NAME} must hold a JSON object"]
-    findings = [f"{label}: {EXPECTED_NAME} lacks '{key}'"
-                for key in REQUIRED_EXPECTED_KEYS if key not in expected]
+    findings = [f"{label}: {EXPECTED_NAME} lacks '{key}'" for key in REQUIRED_EXPECTED_KEYS if key not in expected]
     verdict = expected.get("expected_verdict")
     if "expected_verdict" in expected and verdict not in accepted_verdict_forms(mode):
         findings.append(f"{label}: expected_verdict '{verdict}' does not fit mode '{mode_name}'")
@@ -144,8 +142,7 @@ def load_case(case_dir: Path, mode_name: str, mode: dict, extension=None) -> tup
     except (OSError, UnicodeDecodeError, ValueError) as error:
         return None, [f"{label}: {EXPECTED_NAME} is not readable UTF-8 JSON ({error})"]
     findings = _expected_findings(label, expected, mode_name, mode)
-    inputs = sorted(path for path in case_dir.iterdir()
-                    if path.is_file() and path.name not in NON_INPUT_NAMES)
+    inputs = sorted(path for path in case_dir.iterdir() if path.is_file() and path.name not in NON_INPUT_NAMES)
     if not inputs:
         findings.append(f"{label}: holds no input file")
     if extension is not None and hasattr(extension, "validate_expected") and isinstance(expected, dict):
@@ -179,8 +176,9 @@ def selected_modes(manifest: dict, requested: str | None) -> list[str]:
     return [requested]
 
 
-def collect_cases(persona_dir: Path, manifest: dict, mode: str | None = None,
-                  only: str | None = None, extension=None) -> tuple[list[dict], list[str]]:
+def collect_cases(
+    persona_dir: Path, manifest: dict, mode: str | None = None, only: str | None = None, extension=None
+) -> tuple[list[dict], list[str]]:
     """Return every valid case and every structure finding of one persona."""
     cases, findings = [], []
     for mode_name in selected_modes(manifest, mode):
@@ -209,8 +207,11 @@ def default_model_input(case: dict, system_prompt: str) -> str:
     target = case["context"] + "\n\n" + case["case_text"]
     envelope = {
         "mode": case["prompt_mode"],
-        "TRUSTED_HOOK_CONTEXT": {"read_only": True, "sha256": sha256_text(case["hook_context"]),
-                                 "text": case["hook_context"]},
+        "TRUSTED_HOOK_CONTEXT": {
+            "read_only": True,
+            "sha256": sha256_text(case["hook_context"]),
+            "text": case["hook_context"],
+        },
         "REVIEW_TARGET": {"sha256": sha256_text(target), "text": target},
         "policy_sha256": sha256_text(system_prompt),
     }
@@ -231,7 +232,7 @@ def verdict_matches(expected_verdict: str, response: str, mode: dict) -> tuple[b
     actual = lines[-1].strip()
     # The reason after " - " never decides the grade. Otherwise an expected
     # BLOCK would match "VERDICT: APPROVE - no BLOCK conditions observed".
-    verdict = actual[len(prefix):].split(REASON_SEPARATOR, 1)[0].strip()
+    verdict = actual[len(prefix) :].split(REASON_SEPARATOR, 1)[0].strip()
     accepted = {verdict, f"{label}: {verdict}", label, prefix}
     return expected_verdict in accepted, actual
 
@@ -243,7 +244,7 @@ def final_verdict(response: str, mode: dict) -> str:
     lines = [line for line in response.splitlines() if line.startswith(prefix)]
     if not lines:
         return MISSING_VERDICT
-    return lines[-1].strip()[len(prefix):].split(REASON_SEPARATOR, 1)[0].strip()
+    return lines[-1].strip()[len(prefix) :].split(REASON_SEPARATOR, 1)[0].strip()
 
 
 def agreement_lines(verdicts_by_case: dict[str, list[str]]) -> list[str]:
@@ -270,7 +271,7 @@ def json_companion(response: str) -> tuple[dict | None, str]:
     if not lines:
         return None, "no VERDICT_JSON: line found"
     try:
-        payload = json.loads(lines[-1][len(VERDICT_JSON_PREFIX):].lstrip())
+        payload = json.loads(lines[-1][len(VERDICT_JSON_PREFIX) :].lstrip())
     except ValueError as error:
         return None, f"VERDICT_JSON did not parse: {error}"
     if not isinstance(payload, dict):
@@ -309,8 +310,9 @@ def resolve_model_call(spec: str) -> ModelCall:
     return function
 
 
-def run_live(persona_dir: Path, manifest: dict, cases: list[dict], model_call: ModelCall,
-             extension=None, repeat: int = 1) -> int:
+def run_live(
+    persona_dir: Path, manifest: dict, cases: list[dict], model_call: ModelCall, extension=None, repeat: int = 1
+) -> int:
     """Send every case to the model repeat times, print each grade, and return the failure count."""
     custom_input = getattr(extension, "build_model_input", None)
     failures = checks = 0
@@ -343,8 +345,12 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--case", help="run only the named case")
     parser.add_argument("--model-call", help="module:function called as call(system_prompt, mode, case_text)")
     parser.add_argument("--root", type=Path, default=REPO_ROOT, help="repository root")
-    parser.add_argument("--repeat", type=repeat_count, default=1,
-                        help=f"send every case this many times, 1 to {MAX_REPEAT}, and report verdict agreement")
+    parser.add_argument(
+        "--repeat",
+        type=repeat_count,
+        default=1,
+        help=f"send every case this many times, 1 to {MAX_REPEAT}, and report verdict agreement",
+    )
     return parser.parse_args(argv)
 
 

@@ -6,6 +6,7 @@ base..head shows the newer base commits in reverse, as if the pull request
 undid them. GitHub's pull request diff starts at the merge base. The case
 must match it.
 """
+
 import unittest
 
 from tests import test_engine_build_pr_case as fixture

@@ -3,6 +3,7 @@
 The engine holds no persona-specific branch. Every persona difference lives
 in its manifest, so this module is the single reader of that schema.
 """
+
 import json
 import string
 from pathlib import Path
@@ -38,8 +39,19 @@ CAP_CEILINGS = {"max_chunks": 50, "max_envelope_bytes": ENVELOPE_BYTE_CEILING}
 CAP_DEFAULTS = {"max_chunks": 20, "max_envelope_bytes": ENVELOPE_BYTE_CEILING}
 # json_mode names the VERDICT_JSON mode value a persona prompt emits, for
 # example "PR" in the foucault contract. Without it the engine skips the check.
-MODE_KEYS = frozenset({"prompt", "review", "context", "local", "default", "json_mode", "finding_rules",
-                       "verdict_line", "verdicts", "require_coverage", *CAP_CEILINGS})
+MODE_KEYS = frozenset({
+    "prompt",
+    "review",
+    "context",
+    "local",
+    "default",
+    "json_mode",
+    "finding_rules",
+    "verdict_line",
+    "verdicts",
+    "require_coverage",
+    *CAP_CEILINGS,
+})
 # A local mode runs only on a workstation through engine/run_eval.py. Its
 # prompt answers on its own verdict line, for example "RISK: HIGH". A review
 # mode answers on the engine VERDICT line, which the CI validator gates on.
@@ -86,10 +98,7 @@ def list_personas(root: Path) -> list[str]:
     directory = reviewers_root(root)
     if not directory.is_dir():
         return []
-    return sorted(
-        path.name for path in directory.iterdir()
-        if path.is_dir() and not path.name.startswith("_")
-    )
+    return sorted(path.name for path in directory.iterdir() if path.is_dir() and not path.name.startswith("_"))
 
 
 def read_manifest(persona_dir: Path) -> dict:
@@ -100,8 +109,7 @@ def read_manifest(persona_dir: Path) -> dict:
     try:
         document = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, ValueError) as error:
-        raise ReviewerError(
-            f"{persona_dir.name}: {MANIFEST_NAME} is not valid JSON ({error})") from error
+        raise ReviewerError(f"{persona_dir.name}: {MANIFEST_NAME} is not valid JSON ({error})") from error
     if not isinstance(document, dict):
         raise ReviewerError(f"{persona_dir.name}: {MANIFEST_NAME} must hold a JSON object")
     return document
@@ -142,8 +150,7 @@ def load_prompt(persona_dir: Path, prompt: object) -> str:
 
 def _is_string_list(value: object) -> TypeGuard[list[str]]:
     """Return whether a value is a non-empty list of non-empty strings."""
-    return (isinstance(value, list) and bool(value)
-            and all(isinstance(item, str) and item for item in value))
+    return isinstance(value, list) and bool(value) and all(isinstance(item, str) and item for item in value)
 
 
 def finding_rule_findings(rules: object) -> list[str]:
@@ -155,8 +162,11 @@ def finding_rule_findings(rules: object) -> list[str]:
         if not _is_string_list(rules["keys"]):
             findings.append("finding_rules: 'keys' must be a list of strings")
         else:
-            findings += [f"finding_rules: 'keys' must include '{key}'"
-                         for key in REQUIRED_FINDING_KEYS if key not in rules["keys"]]
+            findings += [
+                f"finding_rules: 'keys' must include '{key}'"
+                for key in REQUIRED_FINDING_KEYS
+                if key not in rules["keys"]
+            ]
     if "severities" in rules and not _is_string_list(rules["severities"]):
         findings.append("finding_rules: 'severities' must be a list of strings")
     prefix = rules.get("class_prefix")
@@ -202,8 +212,7 @@ def _unknown_keys(document: dict, allowed: frozenset, label: str) -> list[str]:
 
 def _is_printable_ascii(value: object) -> bool:
     """Return whether a value is a short printable ASCII string."""
-    return (isinstance(value, str) and value.isascii() and value.isprintable()
-            and 0 < len(value) <= MAX_NAME_LENGTH)
+    return isinstance(value, str) and value.isascii() and value.isprintable() and 0 < len(value) <= MAX_NAME_LENGTH
 
 
 def _verdict_key_findings(label: str, mode: dict) -> list[str]:
@@ -254,8 +263,9 @@ def _mode_findings(persona_dir: Path, name: str, mode: object) -> list[str]:
     except ReviewerError as error:
         return findings + [f"{label}: {error}"]
     base = Path(persona_dir).resolve()
-    findings += [f"{label}: prompt '{path.relative_to(base).as_posix()}' is missing"
-                 for path in paths if not path.is_file()]
+    findings += [
+        f"{label}: prompt '{path.relative_to(base).as_posix()}' is missing" for path in paths if not path.is_file()
+    ]
     return findings
 
 
@@ -275,8 +285,12 @@ def _identity_findings(persona_dir: Path, document: dict) -> list[str]:
 
 def is_option_name(name: object) -> bool:
     """Return whether an option name is lowercase snake case."""
-    return (isinstance(name, str) and 0 < len(name) <= MAX_NAME_LENGTH and name[0].isalpha()
-            and all(character in OPTION_NAME_CHARACTERS for character in name))
+    return (
+        isinstance(name, str)
+        and 0 < len(name) <= MAX_NAME_LENGTH
+        and name[0].isalpha()
+        and all(character in OPTION_NAME_CHARACTERS for character in name)
+    )
 
 
 def _option_value_problem(name: str, kind: str, value: object) -> str | None:
@@ -289,8 +303,9 @@ def _option_value_problem(name: str, kind: str, value: object) -> str | None:
     if expected is not str or not isinstance(value, str):
         return None
     # Newlines and tabs stay legal. A YAML block scalar carries a glob list that way.
-    allowed = all(character in OPTION_WHITESPACE or (character.isascii() and character.isprintable())
-                  for character in value)
+    allowed = all(
+        character in OPTION_WHITESPACE or (character.isascii() and character.isprintable()) for character in value
+    )
     if not allowed:
         return f"option '{name}' must be printable ASCII"
     if len(value) > MAX_OPTION_CHARS:
@@ -361,8 +376,7 @@ def validate_persona(persona_dir: Path) -> list[str]:
         return findings + [f"{persona_dir.name}: declares no modes"]
     for name, mode in modes.items():
         findings += _mode_findings(persona_dir, name, mode)
-    defaults = [name for name, mode in modes.items()
-                if isinstance(mode, dict) and mode.get("default") is True]
+    defaults = [name for name, mode in modes.items() if isinstance(mode, dict) and mode.get("default") is True]
     if len(defaults) != 1:
         findings.append(f"{persona_dir.name}: needs exactly one default mode, found {len(defaults)}")
     return findings

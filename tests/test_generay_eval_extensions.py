@@ -1,4 +1,5 @@
 """Test reviewers/generay/eval/extra_checks.py, the generay eval extension."""
+
 import importlib.util
 import json
 import tempfile
@@ -20,16 +21,27 @@ extension = _load()
 
 
 def _expected(**changes) -> dict:
-    expected = {"mode": "File", "expected_verdict": "RISK: HIGH", "expected_checks": ["C9.1"],
-                "expected_prescan": [], "expect_json": True, "notes": "n"}
+    expected = {
+        "mode": "File",
+        "expected_verdict": "RISK: HIGH",
+        "expected_checks": ["C9.1"],
+        "expected_prescan": [],
+        "expect_json": True,
+        "notes": "n",
+    }
     expected.update(changes)
     return expected
 
 
 def _reply(checks=(), escalations=()) -> str:
-    payload = {"schema_version": "1", "mode": "File", "verdict": "HIGH",
-               "findings": [{"check": item} for item in checks],
-               "escalations": [{"check": item, "decision": "d"} for item in escalations], "prescan": []}
+    payload = {
+        "schema_version": "1",
+        "mode": "File",
+        "verdict": "HIGH",
+        "findings": [{"check": item} for item in checks],
+        "escalations": [{"check": item, "decision": "d"} for item in escalations],
+        "prescan": [],
+    }
     return f"RISK: HIGH\nVERDICT_JSON: {json.dumps(payload)}\n"
 
 
@@ -62,8 +74,13 @@ class ValidateCaseTest(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         case_dir = Path(temp.name)
         (case_dir / "input.py").write_text(text, encoding="utf-8")
-        return {"name": "c", "dir": str(case_dir), "mode": "file", "files": ["input.py"],
-                "expected": _expected(expected_prescan=expected_prescan)}
+        return {
+            "name": "c",
+            "dir": str(case_dir),
+            "mode": "file",
+            "files": ["input.py"],
+            "expected": _expected(expected_prescan=expected_prescan),
+        }
 
     def test_matching_prescan_passes(self):
         # A module-level now() also hits C18.3, module-scope now.

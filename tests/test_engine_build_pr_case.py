@@ -2,6 +2,7 @@
 
 The builder reads the diff from git objects and never checks out the head.
 """
+
 import importlib.util
 import json
 import os
@@ -42,8 +43,7 @@ GIT_ENV = {
 
 
 def _git(repo: Path, *args: str) -> str:
-    result = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
-                            check=True, env=GIT_ENV)
+    result = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=True, env=GIT_ENV)
     return result.stdout.strip()
 
 
@@ -73,17 +73,27 @@ class RepositoryFixture(unittest.TestCase):
 
     def build(self, **overrides):
         values = {
-            "repo": self.repo, "base": self.base, "head": self.head, "out_dir": self.out,
-            "persona": "euler", "mode": "quality", "title": "Title", "body": "Body",
-            "pr_number": 9, "max_chunks": 20, "max_envelope_bytes": 200_000,
+            "repo": self.repo,
+            "base": self.base,
+            "head": self.head,
+            "out_dir": self.out,
+            "persona": "euler",
+            "mode": "quality",
+            "title": "Title",
+            "body": "Body",
+            "pr_number": 9,
+            "max_chunks": 20,
+            "max_envelope_bytes": 200_000,
         }
         values.update(overrides)
         builder.build(builder.BuildOptions(**values))
         return json.loads((self.out / "manifest.json").read_text(encoding="utf-8"))
 
     def envelopes(self, manifest):
-        return [json.loads((self.out / "envelopes" / chunk["envelope"]).read_text(encoding="utf-8"))
-                for chunk in manifest["chunks"]]
+        return [
+            json.loads((self.out / "envelopes" / chunk["envelope"]).read_text(encoding="utf-8"))
+            for chunk in manifest["chunks"]
+        ]
 
 
 class BuildPrCaseTest(RepositoryFixture):
@@ -99,20 +109,36 @@ class BuildPrCaseTest(RepositoryFixture):
         self.assertIn("image.bin", self.build()["unreviewed"])
 
     def test_small_budget_splits_into_chunks(self):
-        skeleton = len(envelope.build_envelope(
-            "euler", "quality", {}, "Title", "Body",
-            builder.chunk_metadata_bound(self.base, self.head, 9, 20, PATHS),
-            changed_files=PATHS, unreviewed=PATHS).encode("utf-8"))
+        skeleton = len(
+            envelope.build_envelope(
+                "euler",
+                "quality",
+                {},
+                "Title",
+                "Body",
+                builder.chunk_metadata_bound(self.base, self.head, 9, 20, PATHS),
+                changed_files=PATHS,
+                unreviewed=PATHS,
+            ).encode("utf-8")
+        )
         manifest = self.build(max_envelope_bytes=skeleton + 600)
         self.assertGreater(len(manifest["chunks"]), 1)
         for document in self.envelopes(manifest):
             self.assertEqual(document["TRUSTED_CONTEXT"]["mode"], "quality")
 
     def test_chunks_past_the_limit_become_unreviewed(self):
-        skeleton = len(envelope.build_envelope(
-            "euler", "quality", {}, "Title", "Body",
-            builder.chunk_metadata_bound(self.base, self.head, 9, 1, PATHS),
-            changed_files=PATHS, unreviewed=PATHS).encode("utf-8"))
+        skeleton = len(
+            envelope.build_envelope(
+                "euler",
+                "quality",
+                {},
+                "Title",
+                "Body",
+                builder.chunk_metadata_bound(self.base, self.head, 9, 1, PATHS),
+                changed_files=PATHS,
+                unreviewed=PATHS,
+            ).encode("utf-8")
+        )
         manifest = self.build(max_chunks=1, max_envelope_bytes=skeleton + 600)
         self.assertEqual(len(manifest["chunks"]), 1)
         self.assertTrue(any(path.startswith("file") for path in manifest["unreviewed"]))
@@ -151,12 +177,29 @@ class CliTest(RepositoryFixture):
         persona_dir = root / "reviewers" / "euler"
         persona_dir.mkdir(parents=True, exist_ok=True)
         (persona_dir / "Q.md").write_text("prompt\n", encoding="ascii")
-        manifest = {"persona": "euler", "function": "quality", "modes": {
-            "quality": {"prompt": "Q.md", "review": True, "default": True, "max_chunks": 2}}}
+        manifest = {
+            "persona": "euler",
+            "function": "quality",
+            "modes": {"quality": {"prompt": "Q.md", "review": True, "default": True, "max_chunks": 2}},
+        }
         (persona_dir / "reviewer.json").write_text(json.dumps(manifest), encoding="utf-8")
-        command = [sys.executable, str(ENGINE_DIR / "build_pr_case.py"), "--root", str(root),
-                   "--repo", str(self.repo), "--base", self.base, "--head", self.head,
-                   "--pr-number", "9", "--out-dir", str(self.out), *extra]
+        command = [
+            sys.executable,
+            str(ENGINE_DIR / "build_pr_case.py"),
+            "--root",
+            str(root),
+            "--repo",
+            str(self.repo),
+            "--base",
+            self.base,
+            "--head",
+            self.head,
+            "--pr-number",
+            "9",
+            "--out-dir",
+            str(self.out),
+            *extra,
+        ]
         return subprocess.run(command, capture_output=True, text=True, check=False)
 
     def test_high_request_is_clamped_with_notice(self):
@@ -188,8 +231,7 @@ class PureHelpersTest(unittest.TestCase):
         self.assertEqual(builder.limit_chunks([["a"], ["b", "c"]], 1), ([["a"]], ["b", "c"]))
 
     def test_split_raw_and_patches_keeps_paths_with_spaces(self):
-        output = (b":100644 100644 a b M\0my file.py\0\0"
-                  b"diff --git a/my file.py b/my file.py\n+x\n")
+        output = b":100644 100644 a b M\0my file.py\0\0diff --git a/my file.py b/my file.py\n+x\n"
         paths, patches = builder.split_raw_and_patches(output)
         self.assertEqual(paths, [b"my file.py"])
         self.assertTrue(patches[0].startswith(b"diff --git"))

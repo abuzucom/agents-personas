@@ -1,4 +1,5 @@
 """Test local modes: manifest keys for modes that run only on a workstation."""
+
 import importlib.util
 import json
 import sys
@@ -21,7 +22,10 @@ reviewers = _load("reviewers")
 
 REVIEW_MODE = {"prompt": "AUDIT.md", "review": True, "default": True, "json_mode": "PR"}
 FILE_MODE = {
-    "prompt": "AUDIT.md", "local": True, "json_mode": "File", "verdict_line": "RISK",
+    "prompt": "AUDIT.md",
+    "local": True,
+    "json_mode": "File",
+    "verdict_line": "RISK",
     "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"],
 }
 
@@ -31,8 +35,11 @@ def _findings(local_mode: dict) -> list:
         persona_dir = Path(directory) / "reviewers" / "foucault"
         persona_dir.mkdir(parents=True)
         (persona_dir / "AUDIT.md").write_text("prompt\n", encoding="ascii")
-        manifest = {"persona": "foucault", "function": "security",
-                    "modes": {"security": REVIEW_MODE, "file": local_mode}}
+        manifest = {
+            "persona": "foucault",
+            "function": "security",
+            "modes": {"security": REVIEW_MODE, "file": local_mode},
+        }
         (persona_dir / "reviewer.json").write_text(json.dumps(manifest), encoding="utf-8")
         return reviewers.validate_persona(persona_dir)
 

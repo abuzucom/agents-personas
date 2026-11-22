@@ -175,8 +175,13 @@ class LineEndingAttributeTest(unittest.TestCase):
     """Windows checks out text with CRLF unless .gitattributes pins LF. The checker rejects CRLF."""
 
     def test_git_checks_out_the_prompt_with_lf_on_every_platform(self) -> None:
-        completed = subprocess.run(["git", "check-attr", "eol", "--", "reviewers/euler/QUALITY.md"],
-                                   cwd=REPO_ROOT.parent.parent, capture_output=True, text=True, check=True)
+        completed = subprocess.run(
+            ["git", "check-attr", "eol", "--", "reviewers/euler/QUALITY.md"],
+            cwd=REPO_ROOT.parent.parent,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
         self.assertEqual(completed.stdout.strip(), "reviewers/euler/QUALITY.md: eol: lf")
 
 

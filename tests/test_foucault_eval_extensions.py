@@ -1,4 +1,5 @@
 """Test reviewers/foucault/eval/extra_checks.py through engine/run_eval.py."""
+
 import copy
 import importlib.util
 import json
@@ -41,8 +42,9 @@ class CorpusTest(unittest.TestCase):
     """The imported corpus keeps all 68 cases, sorted by mode."""
 
     def test_case_counts_per_mode(self):
-        counts = {mode: len([path for path in (CASES_DIR / mode).iterdir() if path.is_dir()])
-                  for mode in MANIFEST["modes"]}
+        counts = {
+            mode: len([path for path in (CASES_DIR / mode).iterdir() if path.is_dir()]) for mode in MANIFEST["modes"]
+        }
         self.assertEqual(counts, {"security": 21, "file": 45, "piece": 1, "wholesale": 1})
 
     def test_case_tree_has_no_findings(self):
@@ -58,8 +60,9 @@ class StructureExtensionTest(unittest.TestCase):
 
     def test_review_status_other_than_needs_human_is_reported(self):
         expected = {"expected_review_status": "COMPLETE"}
-        self.assertEqual(extension.validate_expected("security", expected),
-                         ["expected_review_status must be NEEDS-HUMAN"])
+        self.assertEqual(
+            extension.validate_expected("security", expected), ["expected_review_status must be NEEDS-HUMAN"]
+        )
 
     def test_report_contract_needs_the_security_mode(self):
         findings = extension.validate_expected("file", self.contract_case())
@@ -68,11 +71,11 @@ class StructureExtensionTest(unittest.TestCase):
     def test_report_contract_shape_and_flags(self):
         expected = self.contract_case()
         expected["report_contract"]["forbid_process_narration"] = False
-        self.assertIn("report_contract must forbid process narration",
-                      extension.validate_expected("security", expected))
+        self.assertIn(
+            "report_contract must forbid process narration", extension.validate_expected("security", expected)
+        )
         expected["report_contract"]["extra"] = True
-        self.assertEqual(extension.validate_expected("security", expected),
-                         ["report_contract has an invalid shape"])
+        self.assertEqual(extension.validate_expected("security", expected), ["report_contract has an invalid shape"])
 
     def test_required_finding_class_and_line(self):
         expected = self.contract_case()
@@ -86,8 +89,12 @@ class InputExtensionTest(unittest.TestCase):
     """omit_provenance sends the bare target. Other cases use the engine envelope."""
 
     def test_omit_provenance_case_sends_bare_text(self):
-        cases = [case for mode in MANIFEST["modes"] for case in run_eval.collect_cases(
-            PERSONA_DIR, MANIFEST, mode=mode, extension=extension)[0] if case["expected"].get("omit_provenance")]
+        cases = [
+            case
+            for mode in MANIFEST["modes"]
+            for case in run_eval.collect_cases(PERSONA_DIR, MANIFEST, mode=mode, extension=extension)[0]
+            if case["expected"].get("omit_provenance")
+        ]
         self.assertEqual(len(cases), 1)
         envelope = json.loads(extension.build_model_input(cases[0], "prompt"))
         self.assertEqual(set(envelope), {"mode", "text"})

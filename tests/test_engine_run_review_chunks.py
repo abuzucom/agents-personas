@@ -3,6 +3,7 @@
 The comment shows one verdict heading per chunk. The runner records each
 chunk verdict, report, and reason in result.json for that layout.
 """
+
 import json
 import unittest
 
@@ -31,8 +32,9 @@ class ChunkResultsTest(unittest.TestCase):
         reply = fixture._reply("APPROVE")
         self.script(reply)
         fixture.run_review.run_mode(self.options())
-        self.assertEqual(self.stored()["chunk_results"],
-                         [{"name": "001", "verdict": "APPROVE", "report": reply, "reason": ""}])
+        self.assertEqual(
+            self.stored()["chunk_results"], [{"name": "001", "verdict": "APPROVE", "report": reply, "reason": ""}]
+        )
 
     def test_capacity_chunk_carries_its_reason(self):
         self.script(CAPACITY_EXIT_CODE)

@@ -50,8 +50,9 @@ def is_excluded(path: str, exclude: list[str]) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in exclude)
 
 
-def keep_finding(item: quality_checks.Finding, changed: set[str], added: dict[str, list[int]],
-                 exclude: list[str]) -> bool:
+def keep_finding(
+    item: quality_checks.Finding, changed: set[str], added: dict[str, list[int]], exclude: list[str]
+) -> bool:
     """Return True for findings in changed, non-excluded files on added lines."""
     if item.path not in changed or is_excluded(item.path, exclude):
         return False
@@ -76,8 +77,9 @@ def remove_parser_limit_files(tree: Path, paths: list[str]) -> list[str]:
     return [path.relative_to(tree).as_posix() for path in failing]
 
 
-def build_prescan(tree: Path, changed: list[str], patches: dict[str, str],
-                  exclude: list[str]) -> tuple[list[dict], list[str]]:
+def build_prescan(
+    tree: Path, changed: list[str], patches: dict[str, str], exclude: list[str]
+) -> tuple[list[dict], list[str]]:
     """Return prescan candidates with global IDs and the scanned files that exhaust the parsers."""
     tree = Path(tree)
     added = {path: parse_added_lines(patch) for path, patch in patches.items()}
@@ -90,8 +92,14 @@ def build_prescan(tree: Path, changed: list[str], patches: dict[str, str],
     unparsed += [path for path in parse_failures if path not in unparsed]
     kept = [item for item in findings if keep_finding(item, set(changed), added, exclude)]
     prescan = [
-        {"id": f"P{index}", "file": item.path, "line": item.line, "class": item.class_id,
-         "message": item.message, "blocking": item.blocking}
+        {
+            "id": f"P{index}",
+            "file": item.path,
+            "line": item.line,
+            "class": item.class_id,
+            "message": item.message,
+            "blocking": item.blocking,
+        }
         for index, item in enumerate(kept, 1)
     ]
     return prescan, unparsed

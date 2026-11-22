@@ -28,7 +28,8 @@ import time_report  # resolved through the path set above
 REVIEW_MODE = "time"
 POLICY_NAMES = ("TIME.md", "SYNC.md")
 KNOWN_CHECKS = frozenset(
-    check_id for name in POLICY_NAMES
+    check_id
+    for name in POLICY_NAMES
     for check_id in check_doc_policy.parse_checks((PERSONA_DIR / name).read_text(encoding="ascii"))
 )
 RESERVED_FILES = frozenset({"expected.json", "context.md"})
@@ -69,14 +70,16 @@ def validate_expected(mode: str, expected: dict) -> list[str]:
 def case_files(case: dict) -> dict[str, str]:
     """Return the review files of one case keyed by file name."""
     case_dir = Path(case["dir"])
-    return {path.name: path.read_text(encoding="utf-8") for path in sorted(case_dir.iterdir())
-            if path.is_file() and path.name not in RESERVED_FILES}
+    return {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted(case_dir.iterdir())
+        if path.is_file() and path.name not in RESERVED_FILES
+    }
 
 
 def scanned_names(case: dict) -> list[str]:
     """Return fixture names the scanners read: input.<ext> files and named configuration files."""
-    return [name for name in case["files"]
-            if name.startswith("input.") or name in time_checks.common.CONFIG_NAMES]
+    return [name for name in case["files"] if name.startswith("input.") or name in time_checks.common.CONFIG_NAMES]
 
 
 def prescan_for(case: dict) -> list[dict]:
@@ -108,8 +111,9 @@ def build_model_input(case: dict, system_prompt: str) -> str:
     elapsed = case["expected"].get("active_work_elapsed_seconds")
     if elapsed is not None:
         metadata["active_work_elapsed_seconds"] = elapsed
-    return time_envelope.build_envelope(case["prompt_mode"], case_files(case), case["context"],
-                                        prescan_for(case), metadata)
+    return time_envelope.build_envelope(
+        case["prompt_mode"], case_files(case), case["context"], prescan_for(case), metadata
+    )
 
 
 def grade_response(case: dict, response: str) -> list[tuple[str, bool, str]]:

@@ -75,14 +75,15 @@ def main() -> int:
     """Run the validated adapter and forward its output or sanitized diagnostics."""
     try:
         arguments = parse_command(os.environ.get("MODEL_CALL_COMMAND", ""), Path.cwd())
-        adapter_environment = {
-            name: value for name, value in os.environ.items() if name in FORWARDED_ENVIRONMENT
-        }
-        result = subprocess.run(arguments, check=False, shell=False, capture_output=True,
-                                text=True, env=adapter_environment)
+        adapter_environment = {name: value for name, value in os.environ.items() if name in FORWARDED_ENVIRONMENT}
+        result = subprocess.run(
+            arguments, check=False, shell=False, capture_output=True, text=True, env=adapter_environment
+        )
     except (OSError, ValueError) as error:
-        print(f"model command rejected: {error}. Set model_call_command to "
-              "'python <workspace-relative script>.py'.", file=sys.stderr)
+        print(
+            f"model command rejected: {error}. Set model_call_command to 'python <workspace-relative script>.py'.",
+            file=sys.stderr,
+        )
         return REJECTED_EXIT_CODE
     if result.returncode:
         print("model command failed. Read the adapter diagnostics below.", file=sys.stderr)

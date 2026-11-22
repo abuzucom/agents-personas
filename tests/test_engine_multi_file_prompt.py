@@ -4,6 +4,7 @@ A mode's prompt may name one file or a list of files. The engine validates
 each path, then joins the files in list order for the review, the eval, and
 context rendering. generay's time mode loads TIME.md and SYNC.md this way.
 """
+
 import importlib.util
 import json
 import sys
@@ -66,9 +67,14 @@ class ManifestPromptListTest(unittest.TestCase):
         (self.persona / "B.md").write_bytes(b"b\n")
 
     def write(self, prompt) -> None:
-        manifest = {"persona": "sample", "function": "review", "modes": {
-            "review": {"prompt": prompt, "review": True, "default": True},
-            "notes": {"prompt": prompt, "context": True}}}
+        manifest = {
+            "persona": "sample",
+            "function": "review",
+            "modes": {
+                "review": {"prompt": prompt, "review": True, "default": True},
+                "notes": {"prompt": prompt, "context": True},
+            },
+        }
         (self.persona / "reviewer.json").write_text(json.dumps(manifest), encoding="utf-8")
 
     def test_prompt_list_validates(self):

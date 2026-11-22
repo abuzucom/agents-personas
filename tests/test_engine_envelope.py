@@ -1,4 +1,5 @@
 """Test the fenced review envelope in engine/envelope.py."""
+
 import importlib.util
 import json
 import sys
@@ -21,8 +22,13 @@ envelope = _load("envelope")
 
 def _build(title="Fix parser", body="Body text.", files=None, metadata=None) -> dict:
     text = envelope.build_envelope(
-        "generay", "time", files if files is not None else {"src/app.py": "+x = 1\n"},
-        title, body, metadata or {"pr_number": 7})
+        "generay",
+        "time",
+        files if files is not None else {"src/app.py": "+x = 1\n"},
+        title,
+        body,
+        metadata or {"pr_number": 7},
+    )
     return json.loads(text)
 
 

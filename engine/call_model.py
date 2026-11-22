@@ -354,10 +354,7 @@ def select_profile(estimated_tokens: int) -> dict[str, Any]:
     large = _large_profile()
     if large is not None and _fits(large, estimated_tokens):
         return large
-    raise InputTooLargeError(
-        f"review input of about {estimated_tokens} tokens exceeds every "
-        "configured model budget"
-    )
+    raise InputTooLargeError(f"review input of about {estimated_tokens} tokens exceeds every configured model budget")
 
 
 def _headers(protocol: str, api_key: str) -> dict[str, str]:
@@ -379,8 +376,7 @@ def _message_payload(system_prompt: str, case_text: str) -> list[dict[str, str]]
     ]
 
 
-def _build_request(profile: dict[str, Any], system_prompt: str,
-                   case_text: str, api_key: str) -> ProviderRequest:
+def _build_request(profile: dict[str, Any], system_prompt: str, case_text: str, api_key: str) -> ProviderRequest:
     protocol = profile["protocol"]
     model = profile["model"]
     max_tokens = profile.get("max_output_tokens", 8192)
@@ -478,9 +474,7 @@ def _extract_text(protocol: str, result: dict[str, Any]) -> str:
         text_parts = [
             part["text"]
             for part in parts
-            if isinstance(part, dict)
-            and not part.get("thought")
-            and isinstance(part.get("text"), str)
+            if isinstance(part, dict) and not part.get("thought") and isinstance(part.get("text"), str)
         ]
         text = "".join(text_parts) if text_parts else None
     if not isinstance(text, str) or not text.strip():
@@ -565,8 +559,7 @@ def extract_usage(profile: dict[str, Any], result: dict[str, Any]) -> dict[str, 
     }
 
 
-def _send(profile: dict[str, Any], system_prompt: str, case_text: str,
-          api_key: str) -> tuple[str, dict[str, Any]]:
+def _send(profile: dict[str, Any], system_prompt: str, case_text: str, api_key: str) -> tuple[str, dict[str, Any]]:
     """Return one profile's text and usage, retrying once on a transient status."""
     request = _build_request(profile, system_prompt, case_text, api_key)
     for attempt in range(2):
@@ -578,8 +571,9 @@ def _send(profile: dict[str, Any], system_prompt: str, case_text: str,
     raise ProviderError("provider request failed after one retry")
 
 
-def _send_large(profile: dict[str, Any], system_prompt: str, case_text: str,
-                api_key: str) -> tuple[str, dict[str, Any]]:
+def _send_large(
+    profile: dict[str, Any], system_prompt: str, case_text: str, api_key: str
+) -> tuple[str, dict[str, Any]]:
     """Return the large profile's response or report a capacity failure.
 
     No larger model exists. A context rejection here means the review
@@ -588,9 +582,7 @@ def _send_large(profile: dict[str, Any], system_prompt: str, case_text: str,
     try:
         return _send(profile, system_prompt, case_text, api_key)
     except ContextOverflowError as error:
-        raise InputTooLargeError(
-            "review input exceeds the large-input model context"
-        ) from error
+        raise InputTooLargeError("review input exceeds the large-input model context") from error
 
 
 def call_model(system_prompt: str, mode: str, case_text: str) -> str:
@@ -599,8 +591,7 @@ def call_model(system_prompt: str, mode: str, case_text: str) -> str:
     return text
 
 
-def call_model_with_usage(system_prompt: str, mode: str,
-                          case_text: str) -> tuple[str, dict[str, Any]]:
+def call_model_with_usage(system_prompt: str, mode: str, case_text: str) -> tuple[str, dict[str, Any]]:
     """Return the provider response and its token usage for one request."""
     del mode
     policy_prompt = system_prompt
@@ -625,9 +616,7 @@ def call_model_with_usage(system_prompt: str, mode: str,
         # rejection gets one attempt on the large-input model. Without one,
         # the review exceeds every configured model.
         if large is None or not _fits(large, estimated_tokens):
-            raise InputTooLargeError(
-                "review input exceeds every configured model context"
-            ) from error
+            raise InputTooLargeError("review input exceeds every configured model context") from error
     return _send_large(large, system_prompt, case_text, api_key)
 
 
@@ -655,8 +644,7 @@ def main() -> int:
         print(f"model call skipped: {error}", file=sys.stderr)
         return CAPACITY_EXIT_CODE
     except ProviderError as error:
-        print(f"model call failed: {error}. Check the provider table and MODEL_API_KEY.",
-              file=sys.stderr)
+        print(f"model call failed: {error}. Check the provider table and MODEL_API_KEY.", file=sys.stderr)
         return 1
     print(response, end="")
     return 0

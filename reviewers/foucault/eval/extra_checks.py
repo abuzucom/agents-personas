@@ -17,8 +17,7 @@ import check_review_response
 REVIEW_MODE = "security"
 VALID_JSON_MODES = frozenset({"PR", "File", "Piece", "Wholesale"})
 VERDICT_JSON_KEYS = frozenset({"mode", "verdict", "findings"})
-REPORT_CONTRACT_KEYS = frozenset({"forbid_process_narration", "require_prior_finding_status",
-                                  "required_finding"})
+REPORT_CONTRACT_KEYS = frozenset({"forbid_process_narration", "require_prior_finding_status", "required_finding"})
 REQUIRED_FINDING_KEYS = frozenset({"class", "file", "line"})
 # A re-review report states the status of each earlier finding.
 PRIOR_FINDING_STATUS_PATTERN = re.compile(
@@ -84,11 +83,10 @@ def _json_shape_grade(response: str) -> tuple[str, bool, str]:
     """Grade the exact key set and mode of the last VERDICT_JSON line."""
     lines = [line for line in response.splitlines() if line.startswith(check_review_response.VERDICT_JSON_PREFIX)]
     try:
-        payload = json.loads(lines[-1][len(check_review_response.VERDICT_JSON_PREFIX):].lstrip()) if lines else None
+        payload = json.loads(lines[-1][len(check_review_response.VERDICT_JSON_PREFIX) :].lstrip()) if lines else None
     except ValueError:
         payload = None
-    passed = (isinstance(payload, dict) and set(payload) == VERDICT_JSON_KEYS
-              and payload["mode"] in VALID_JSON_MODES)
+    passed = isinstance(payload, dict) and set(payload) == VERDICT_JSON_KEYS and payload["mode"] in VALID_JSON_MODES
     return "VERDICT_JSON shape", passed, "keys mode, verdict, findings with a foucault mode"
 
 
@@ -102,8 +100,9 @@ def _report_contract_grade(expected: dict, response: str) -> tuple[str, bool, st
     failures = []
     if not PRIOR_FINDING_STATUS_PATTERN.search(response):
         failures.append("prior finding status is absent")
-    if not any(all(finding.get(key) == required[key] for key in REQUIRED_FINDING_KEYS)
-               for finding in payload["findings"]):
+    if not any(
+        all(finding.get(key) == required[key] for key in REQUIRED_FINDING_KEYS) for finding in payload["findings"]
+    ):
         failures.append("required finding evidence is absent")
     return "report contract", not failures, "; ".join(failures) or "report contract passed"
 

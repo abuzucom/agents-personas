@@ -89,8 +89,19 @@ def _python_paths() -> list[Path]:
 
 def sandbox_command(command: list[str], workdir: Path, read_only: list[Path], writable: list[Path]) -> list[str]:
     """Return the bubblewrap argument array that runs command in the sandbox."""
-    arguments = [bwrap_path() or "bwrap", "--unshare-all", "--die-with-parent", "--new-session",
-                 *_system_arguments(), "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"]
+    arguments = [
+        bwrap_path() or "bwrap",
+        "--unshare-all",
+        "--die-with-parent",
+        "--new-session",
+        *_system_arguments(),
+        "--proc",
+        "/proc",
+        "--dev",
+        "/dev",
+        "--tmpfs",
+        "/tmp",
+    ]
     for path in [*_python_paths(), *read_only]:
         resolved = str(Path(path).resolve())
         arguments += ["--ro-bind", resolved, resolved]
@@ -116,8 +127,9 @@ def wrap(command: list[str], workdir: Path, read_only: list[Path], writable: lis
     if bwrap_path() is not None:
         return sandbox_command(command, workdir, read_only, writable)
     if required != "0":
-        raise SandboxUnavailable(f"no trusted bubblewrap at {BWRAP_PATH}, and the hook sandbox is required. "
-                                 "Install bubblewrap, or set PERSONAS_REQUIRE_SANDBOX=0 for a local run.")
-    warnings.warn("bubblewrap is unavailable. The persona hook runs without a sandbox.", RuntimeWarning,
-                  stacklevel=2)
+        raise SandboxUnavailable(
+            f"no trusted bubblewrap at {BWRAP_PATH}, and the hook sandbox is required. "
+            "Install bubblewrap, or set PERSONAS_REQUIRE_SANDBOX=0 for a local run."
+        )
+    warnings.warn("bubblewrap is unavailable. The persona hook runs without a sandbox.", RuntimeWarning, stacklevel=2)
     return command

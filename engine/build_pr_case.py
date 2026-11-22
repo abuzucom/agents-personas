@@ -93,8 +93,9 @@ def run_git(repo: Path, *args: str, stdin: bytes | None = None) -> bytes:
     if executable is None:
         raise RuntimeError("git not found on PATH. Install git before the build.")
     environment = {**os.environ, "GIT_LITERAL_PATHSPECS": "1"}
-    result = subprocess.run([executable, "-C", str(repo), *args], input=stdin, capture_output=True,
-                            check=False, env=environment)
+    result = subprocess.run(
+        [executable, "-C", str(repo), *args], input=stdin, capture_output=True, check=False, env=environment
+    )
     if result.returncode != 0:
         detail = result.stderr.decode("utf-8", errors="replace").strip()
         raise RuntimeError(f"git {args[0]} failed: {detail}. Fetch both revisions before the build.")
@@ -147,9 +148,9 @@ def split_raw_and_patches(output: bytes) -> tuple[list[bytes], list[bytes]]:
     while output.startswith(b":", offset):
         meta_end = output.index(b"\0", offset)
         path_end = output.index(b"\0", meta_end + 1)
-        paths.append(output[meta_end + 1:path_end])
+        paths.append(output[meta_end + 1 : path_end])
         offset = path_end + 1
-    section = output[offset + 1:] if output.startswith(b"\0", offset) else output[offset:]
+    section = output[offset + 1 :] if output.startswith(b"\0", offset) else output[offset:]
     if not section:
         return paths, []
     pieces = section.split(PATCH_SEPARATOR)
@@ -160,8 +161,7 @@ def split_raw_and_patches(output: bytes) -> tuple[list[bytes], list[bytes]]:
 
 def read_diff(options: BuildOptions) -> tuple[list[str], set[str], dict[str, str], list[str]]:
     """Return changed paths, binary paths, per-file text patches, and undecodable paths."""
-    output = run_git(options.repo, "diff", "-z", "--raw", "-p", "--no-renames", "--no-color",
-                     diff_range(options))
+    output = run_git(options.repo, "diff", "-z", "--raw", "-p", "--no-renames", "--no-color", diff_range(options))
     try:
         raw_paths, raw_patches = split_raw_and_patches(output)
     except ValueError as error:
@@ -171,7 +171,8 @@ def read_diff(options: BuildOptions) -> tuple[list[str], set[str], dict[str, str
     by_path = dict(zip(raw_paths, raw_patches, strict=False))
     patches = {
         path: by_path.get(path.encode("utf-8"), b"").decode("utf-8", errors="replace")
-        for path in paths if path not in binary
+        for path in paths
+        if path not in binary
     }
     return paths + undecodable, binary, patches, undecodable
 
@@ -192,8 +193,9 @@ def escaped_size(text: str) -> int:
     return len(json.dumps(text, ensure_ascii=False).encode("utf-8")) - JSON_QUOTE_BYTES
 
 
-def pack_chunks(patches: dict[str, str], budget: int,
-                measure: Callable[[str], int] = len) -> tuple[list[list[str]], list[str]]:
+def pack_chunks(
+    patches: dict[str, str], budget: int, measure: Callable[[str], int] = len
+) -> tuple[list[list[str]], list[str]]:
     """Group files into chunks under the budget. Return chunks and oversized files."""
     chunks: list[list[str]] = []
     oversized = []
@@ -216,14 +218,26 @@ def pack_chunks(patches: dict[str, str], budget: int,
 
 def chunk_metadata(options: BuildOptions, chunk: str, changed: list[str], unreviewed: list[str]) -> dict:
     """Return the trusted metadata for one envelope. The path lists ride in REVIEW_TARGET."""
-    return {"pr_number": options.pr_number, "base_sha": options.base, "head_sha": options.head,
-            "chunk": chunk, "changed_file_count": len(changed), "unreviewed_count": len(unreviewed)}
+    return {
+        "pr_number": options.pr_number,
+        "base_sha": options.base,
+        "head_sha": options.head,
+        "chunk": chunk,
+        "changed_file_count": len(changed),
+        "unreviewed_count": len(unreviewed),
+    }
 
 
 def chunk_metadata_bound(base: str, head: str, pr_number: int, max_chunks: int, paths: list[str]) -> dict:
     """Return metadata at its largest size: the widest chunk label and every path unreviewed."""
-    return {"pr_number": pr_number, "base_sha": base, "head_sha": head,
-            "chunk": f"{max_chunks}/{max_chunks}", "changed_file_count": len(paths), "unreviewed_count": len(paths)}
+    return {
+        "pr_number": pr_number,
+        "base_sha": base,
+        "head_sha": head,
+        "chunk": f"{max_chunks}/{max_chunks}",
+        "changed_file_count": len(paths),
+        "unreviewed_count": len(paths),
+    }
 
 
 class HeadTreeTooLarge(RuntimeError):
@@ -246,8 +260,9 @@ def _parse_tree_record(record: bytes) -> tuple[str, str, int] | None:
     return fields[2].decode("ascii"), path, int(fields[3])
 
 
-def list_head_blobs(repo: Path, head: str, max_entries: int = MAX_HEAD_TREE_ENTRIES,
-                    max_listing_bytes: int = MAX_HEAD_LISTING_BYTES) -> list[tuple[str, str, int]]:
+def list_head_blobs(
+    repo: Path, head: str, max_entries: int = MAX_HEAD_TREE_ENTRIES, max_listing_bytes: int = MAX_HEAD_LISTING_BYTES
+) -> list[tuple[str, str, int]]:
     """Return object ID, path, and size for the regular files in the head tree.
 
     The listing streams through a pipe. A tree past either cap stops the read
@@ -324,8 +339,14 @@ def _read_batches(blobs: list[tuple[str, str, int]], batch_bytes: int) -> list[l
     return batches
 
 
-def extract_head(repo: Path, head: str, target: Path, max_blob_bytes: int = MAX_HEAD_BLOB_BYTES,
-                 max_tree_bytes: int = MAX_HEAD_TREE_BYTES, batch_bytes: int = HEAD_READ_BATCH_BYTES) -> list[str]:
+def extract_head(
+    repo: Path,
+    head: str,
+    target: Path,
+    max_blob_bytes: int = MAX_HEAD_BLOB_BYTES,
+    max_tree_bytes: int = MAX_HEAD_TREE_BYTES,
+    batch_bytes: int = HEAD_READ_BATCH_BYTES,
+) -> list[str]:
     """Write the head tree's regular files into target and return the skipped oversized paths.
 
     git archive would apply the head commit's export-ignore and export-subst
@@ -346,8 +367,7 @@ def extract_head(repo: Path, head: str, target: Path, max_blob_bytes: int = MAX_
         if not destination.is_relative_to(root):
             raise RuntimeError(f"head tree path {path!r} escapes the extraction directory. Review it by hand.")
     for batch in _read_batches(kept, batch_bytes):
-        for (_, path, _), body in zip(batch, read_blobs(repo, [object_id for object_id, _, _ in batch]),
-                                      strict=True):
+        for (_, path, _), body in zip(batch, read_blobs(repo, [object_id for object_id, _, _ in batch]), strict=True):
             destinations[path].parent.mkdir(parents=True, exist_ok=True)
             destinations[path].write_bytes(body)
     return skipped
@@ -381,15 +401,24 @@ def chunk_budget(options: BuildOptions, changed: list[str], context: dict | None
     The skeleton holds every path, the largest metadata, and empty patches.
     Each chunk envelope holds a subset of that content plus its patches.
     """
-    metadata = chunk_metadata_bound(options.base, options.head, options.pr_number,
-                                    options.max_chunks, changed)
-    skeleton = envelope.build_envelope(options.persona, options.mode, dict.fromkeys(changed, ""),
-                                       options.title, options.body, metadata, context=context,
-                                       changed_files=changed, unreviewed=changed)
+    metadata = chunk_metadata_bound(options.base, options.head, options.pr_number, options.max_chunks, changed)
+    skeleton = envelope.build_envelope(
+        options.persona,
+        options.mode,
+        dict.fromkeys(changed, ""),
+        options.title,
+        options.body,
+        metadata,
+        context=context,
+        changed_files=changed,
+        unreviewed=changed,
+    )
     budget = options.max_envelope_bytes - len(skeleton.encode("utf-8"))
     if budget < 1:
-        raise ValueError(f"the pull request text and file list fill the {options.max_envelope_bytes}-byte "
-                         "envelope budget. Shorten the pull request body or split the pull request.")
+        raise ValueError(
+            f"the pull request text and file list fill the {options.max_envelope_bytes}-byte "
+            "envelope budget. Shorten the pull request body or split the pull request."
+        )
     return budget
 
 
@@ -438,32 +467,52 @@ def build(options: BuildOptions) -> None:
     manifest_chunks = []
     for index, files in enumerate(chunks, 1):
         metadata = chunk_metadata(options, f"{index}/{len(chunks)}", changed, unreviewed)
-        text = envelope.build_envelope(options.persona, options.mode,
-                                       {path: patches[path] for path in files},
-                                       options.title, options.body, metadata,
-                                       context=persona_hooks.chunk_context(hook_context["context"], files),
-                                       changed_files=changed, unreviewed=unreviewed)
+        text = envelope.build_envelope(
+            options.persona,
+            options.mode,
+            {path: patches[path] for path in files},
+            options.title,
+            options.body,
+            metadata,
+            context=persona_hooks.chunk_context(hook_context["context"], files),
+            changed_files=changed,
+            unreviewed=unreviewed,
+        )
         if len(text.encode("utf-8")) > options.max_envelope_bytes:
-            raise RuntimeError(f"envelope {index} exceeds {options.max_envelope_bytes} bytes. "
-                               "Lower max_envelope_bytes and rerun.")
+            raise RuntimeError(
+                f"envelope {index} exceeds {options.max_envelope_bytes} bytes. Lower max_envelope_bytes and rerun."
+            )
         name = f"{index:03d}.json"
         write_text_lf(envelopes_dir / name, text)
         manifest_chunks.append({"envelope": name, "files": files})
     write_json(options.out_dir / CASE_CONTEXT_NAME, hook_context["context"])
-    write_json(options.out_dir / "manifest.json", {
-        "persona": options.persona, "mode": options.mode, "pr_number": options.pr_number,
-        "max_chunks": options.max_chunks, "max_envelope_bytes": options.max_envelope_bytes,
-        "persona_options_sha256": options_digest(options.persona_options),
-        "base_sha": options.base, "head_sha": options.head, "changed_files": changed,
-        "unreviewed": unreviewed, "chunks": manifest_chunks,
-    })
+    write_json(
+        options.out_dir / "manifest.json",
+        {
+            "persona": options.persona,
+            "mode": options.mode,
+            "pr_number": options.pr_number,
+            "max_chunks": options.max_chunks,
+            "max_envelope_bytes": options.max_envelope_bytes,
+            "persona_options_sha256": options_digest(options.persona_options),
+            "base_sha": options.base,
+            "head_sha": options.head,
+            "changed_files": changed,
+            "unreviewed": unreviewed,
+            "chunks": manifest_chunks,
+        },
+    )
 
 
 def parse_arguments(argv: list[str]) -> argparse.Namespace:
     """Return parsed command line options."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent,
-                        help="agents-personas checkout that holds reviewers/")
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=Path(__file__).resolve().parent.parent,
+        help="agents-personas checkout that holds reviewers/",
+    )
     parser.add_argument("--persona", required=True)
     parser.add_argument("--mode", required=True)
     parser.add_argument("--repo", type=Path, default=Path.cwd())
@@ -479,21 +528,32 @@ def parse_arguments(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     """Build envelopes from command line options and environment pull request text."""
     args = parse_arguments(argv)
-    requested = {name: value for name, value in (("max_chunks", args.max_chunks),
-                                                 ("max_envelope_bytes", args.max_envelope_bytes))
-                 if value is not None}
+    requested = {
+        name: value
+        for name, value in (("max_chunks", args.max_chunks), ("max_envelope_bytes", args.max_envelope_bytes))
+        if value is not None
+    }
     try:
         _persona_dir, manifest = reviewers.load_persona(args.root, args.persona)
         reviewers.resolve_review_modes(manifest, args.mode)
         caps = reviewers.resolve_caps(manifest["modes"][args.mode], requested)
         for name in caps["clamped"]:
             sys.stderr.write(f"notice: requested {name} exceeds the mode cap. The mode cap applies.\n")
-        build(BuildOptions(
-            repo=args.repo, base=args.base, head=args.head, out_dir=args.out_dir,
-            persona=args.persona, mode=args.mode, title=os.environ.get("PR_TITLE", ""),
-            body=os.environ.get("PR_BODY", ""), pr_number=args.pr_number,
-            max_chunks=caps["max_chunks"], max_envelope_bytes=caps["max_envelope_bytes"],
-        ))
+        build(
+            BuildOptions(
+                repo=args.repo,
+                base=args.base,
+                head=args.head,
+                out_dir=args.out_dir,
+                persona=args.persona,
+                mode=args.mode,
+                title=os.environ.get("PR_TITLE", ""),
+                body=os.environ.get("PR_BODY", ""),
+                pr_number=args.pr_number,
+                max_chunks=caps["max_chunks"],
+                max_envelope_bytes=caps["max_envelope_bytes"],
+            )
+        )
     except (ValueError, RuntimeError) as error:
         sys.stderr.write(f"error: {error}\n")
         return 1

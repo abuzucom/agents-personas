@@ -5,6 +5,7 @@ trusted system prompt for that profile only. Every request also ends the
 user message with a short trusted reminder after the review envelope.
 Models weight the last instruction they read most.
 """
+
 import importlib.util
 import json
 import unittest
@@ -25,8 +26,13 @@ NOTE = "- Model note: start the second report line with Scope:."
 
 
 def _profile(protocol: str, **extra) -> dict:
-    return {"protocol": protocol, "endpoint": call_model.ENDPOINTS_BY_PROTOCOL[protocol], "model": "m",
-            "name": protocol, **extra}
+    return {
+        "protocol": protocol,
+        "endpoint": call_model.ENDPOINTS_BY_PROTOCOL[protocol],
+        "model": "m",
+        "name": protocol,
+        **extra,
+    }
 
 
 def _texts(protocol: str, **extra) -> tuple[str, str]:

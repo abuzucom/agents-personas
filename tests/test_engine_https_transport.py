@@ -5,6 +5,7 @@ HTTPS, tunnels through HTTPS_PROXY the way urllib did, skips the proxy for
 NO_PROXY hosts, and raises urllib HTTPError for a 4xx or 5xx status so the
 retry and overflow rules keep working.
 """
+
 import importlib.util
 import sys
 import unittest

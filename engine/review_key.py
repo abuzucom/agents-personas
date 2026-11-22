@@ -22,8 +22,20 @@ import sys
 from pathlib import Path
 
 KEY_VERSION = "review-v1"
-KEY_FIELDS = ("PERSONA", "MODE", "HEAD_SHA", "BASE_SHA", "PERSONAS_REF", "PR_TITLE", "PR_BODY",
-              "PERSONA_OPTIONS", "MAX_CHUNKS", "MAX_ENVELOPE_BYTES", "MODEL_CALL_COMMAND", "FAIL_ON_BLOCK")
+KEY_FIELDS = (
+    "PERSONA",
+    "MODE",
+    "HEAD_SHA",
+    "BASE_SHA",
+    "PERSONAS_REF",
+    "PR_TITLE",
+    "PR_BODY",
+    "PERSONA_OPTIONS",
+    "MAX_CHUNKS",
+    "MAX_ENVELOPE_BYTES",
+    "MODEL_CALL_COMMAND",
+    "FAIL_ON_BLOCK",
+)
 
 
 class ReviewKeyError(ValueError):

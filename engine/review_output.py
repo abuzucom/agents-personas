@@ -5,7 +5,6 @@ The workflow publishes the rendered JSON as written. Every decision about the
 conclusion, the header line, and the caps lives here, where tests reach it.
 """
 
-
 import argparse
 import json
 import re
@@ -91,10 +90,13 @@ def annotations(findings: list[dict], changed_files: list[str]) -> list[dict]:
             continue
         line = finding["line"]
         items.append({
-            "path": finding["file"], "start_line": line, "end_line": line,
+            "path": finding["file"],
+            "start_line": line,
+            "end_line": line,
             "annotation_level": SEVERITY_LEVELS.get(str(finding.get("severity")), "notice"),
-            "message": clean_text(finding.get("title") or finding.get("message") or "finding",
-                                  MAX_ANNOTATION_MESSAGE_CHARS),
+            "message": clean_text(
+                finding.get("title") or finding.get("message") or "finding", MAX_ANNOTATION_MESSAGE_CHARS
+            ),
         })
     return items
 
@@ -143,8 +145,10 @@ def chunk_sections(result: dict) -> list[str]:
     """Return one heading and fenced report per chunk."""
     chunks = result.get("chunk_results")
     if chunks is None:
-        chunks = [{"name": f"{index:03d}", "verdict": result["verdict"], "report": report, "reason": ""}
-                  for index, report in enumerate(result.get("reports", []), 1)]
+        chunks = [
+            {"name": f"{index:03d}", "verdict": result["verdict"], "report": report, "reason": ""}
+            for index, report in enumerate(result.get("reports", []), 1)
+        ]
     sections = []
     for chunk in chunks:
         lines = [f"### Chunk {chunk['name']}: {chunk['verdict']}", ""]
@@ -170,7 +174,7 @@ def comment_body(result: dict, run_url: str = "") -> str:
     body = "\n".join(lines) + "\n\n" + "\n\n".join(chunk_sections(result))
     if len(body) <= MAX_COMMENT_CHARS:
         return body
-    return body[:MAX_COMMENT_CHARS - len(TRUNCATION_NOTE)] + TRUNCATION_NOTE
+    return body[: MAX_COMMENT_CHARS - len(TRUNCATION_NOTE)] + TRUNCATION_NOTE
 
 
 def render(result: dict, fail_on_block: bool, run_url: str = "") -> dict:

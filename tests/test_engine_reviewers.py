@@ -1,4 +1,5 @@
 """Test the persona manifest schema, its checker, and context rendering."""
+
 import importlib.util
 import json
 import subprocess
@@ -145,8 +146,7 @@ class ReviewModeResolutionTest(unittest.TestCase):
         self.assertEqual(reviewers.resolve_review_modes(GENERAY, ""), ["time"])
 
     def test_listed_modes_keep_request_order_without_duplicates(self):
-        self.assertEqual(
-            reviewers.resolve_review_modes(GENERAY, "sync, time,sync"), ["sync", "time"])
+        self.assertEqual(reviewers.resolve_review_modes(GENERAY, "sync, time,sync"), ["sync", "time"])
 
     def test_unknown_mode_is_rejected(self):
         with self.assertRaisesRegex(reviewers.ReviewerError, "unknown mode 'audit'"):
@@ -165,7 +165,10 @@ class CheckReviewersCliTest(unittest.TestCase):
     def run_checker(self, root: Path):
         return subprocess.run(
             [sys.executable, str(ENGINE_DIR / "check_reviewers.py"), "--root", str(root)],
-            capture_output=True, text=True, check=False)
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
     def test_valid_tree_passes(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -207,9 +210,20 @@ class RenderContextCliTest(unittest.TestCase):
 
     def render(self, persona: str, mode: str):
         return subprocess.run(
-            [sys.executable, str(ENGINE_DIR / "render_context.py"), "--root", str(self.root),
-             "--persona", persona, "--mode", mode],
-            capture_output=True, text=True, check=False)
+            [
+                sys.executable,
+                str(ENGINE_DIR / "render_context.py"),
+                "--root",
+                str(self.root),
+                "--persona",
+                persona,
+                "--mode",
+                mode,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
     def test_context_mode_prints_its_prompt(self):
         result = self.render("generay", "sync")

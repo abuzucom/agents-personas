@@ -5,6 +5,7 @@ that return the most common verdict for each case. It also counts the cases
 with unanimous runs. A low share marks a case where the model verdict
 varies between identical runs.
 """
+
 import io
 import itertools
 import tempfile
@@ -42,8 +43,7 @@ class RepeatTest(unittest.TestCase):
             persona.add_case("review", "block-pr", fixture._expected("BLOCK"))
             cases, _ = persona.collect(mode="review")
             with redirect_stdout(io.StringIO()) as output:
-                failures = run_eval.run_live(persona.persona_dir, persona.manifest, cases, call_model,
-                                             repeat=repeat)
+                failures = run_eval.run_live(persona.persona_dir, persona.manifest, cases, call_model, repeat=repeat)
         return failures, output.getvalue(), len(calls)
 
     def test_each_case_runs_n_times(self):
