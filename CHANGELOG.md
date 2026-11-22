@@ -14,9 +14,19 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.15.1] (2026-11-22)
+## [0.16.0] (2026-11-22)
 
 ### Added
+- Add the adorno persona under `reviewers/adorno`. It comes from
+  `abuzucom/adorno` at `97a2c84`. `PROVENANCE.md` maps every file. Every
+  mode loads the prebuilt `bundles/ui-full.md`. A test rebuilds the bundle
+  and requires a byte-for-byte match. The `ui` mode reviews pull requests.
+  The `file`, `piece`, `wholesale`, and `design-spec` modes run locally.
+- Add `.github/workflows/adorno-ui-review.yml` with an optional
+  `MODEL_API_KEY`. `docs/migration.md` maps the old `ui-review.yml` inputs.
+- Add `.github/workflows/adorno-ui-review-pr.yml`. This repository reviews
+  with adorno only under the `adorno-scan-requested` label.
+- Extend `make lint-code` to the adorno persona and its tests.
 - List the persona eval runner and the persona checkers in
   `hooks/workflow-scripts.txt`. A structure eval and every persona checker
   run without a prompt. A model eval routes to consent and accepts only the
