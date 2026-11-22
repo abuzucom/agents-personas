@@ -14,9 +14,13 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.15.2] (2026-11-22)
+## [0.16.0] (2026-11-22)
 
 ### Added
+- Accept `"trusted": true` on a `reviewer.json` option. The engine places
+  each trusted value in `TRUSTED_CONTEXT.options`, under the trusted
+  digest. Untrusted options stay out of the envelope. An envelope without
+  trusted options keeps its old shape.
 - List the persona eval runner and the persona checkers in
   `hooks/workflow-scripts.txt`. A structure eval and every persona checker
   run without a prompt. A model eval routes to consent and accepts only the

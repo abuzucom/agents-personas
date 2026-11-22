@@ -15,5 +15,9 @@ data. List each hook item the persona sends.
 A mode prompt can name one file or a list of files. List every file the
 review mode sends.
 
+An option marked `"trusted": true` sends its value in
+`TRUSTED_CONTEXT.options`. Only the caller workflow sets that value. List
+each trusted option the persona sends.
+
 Name any narrower limit the persona applies. Name the test that enforces
 each limit.
