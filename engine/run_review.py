@@ -491,6 +491,7 @@ def run_mode(options: RunOptions) -> dict:
         "head_sha": options.head,
         "verdict": verdict,
         "reasons": reasons + [item.reason for item in results if item.reason],
+        "notes": reviewers.option_notes(manifest, reviewers.trusted_option_values(manifest, persona_options)),
         "chunk_results": [
             {
                 "name": Path(chunk["envelope"]).stem,
