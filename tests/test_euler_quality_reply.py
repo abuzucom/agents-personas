@@ -174,13 +174,15 @@ class EngineLayoutTest(unittest.TestCase):
     def test_context_reads_the_engine_layout(self) -> None:
         envelope = self.engine_envelope(["big.bin"], [{"id": "P1", "file": "app.py"}])
         context = checker.context_from_envelope(envelope, checker.unreviewed_from_envelope(envelope))
-        self.assertEqual(context, checker.ReviewContext("PR", {"app.py"}, {"P1"}, ["big.bin"]))
+        # The fixture "+x\n" holds no hunk header, so app.py has no citable line.
+        self.assertEqual(context, checker.ReviewContext("PR", {"app.py"}, {"P1"}, ["big.bin"], {"app.py": ()}))
 
     def test_context_still_reads_the_euler_layout(self) -> None:
         metadata = {"chunk": "1/1", "unreviewed": ["big.bin"]}
         envelope = json.loads(review_envelope.build_envelope("PR", {"app.py": "+x\n"}, "", [{"id": "P1"}], metadata))
         context = checker.context_from_envelope(envelope, checker.unreviewed_from_envelope(envelope))
-        self.assertEqual(context, checker.ReviewContext("PR", {"app.py"}, {"P1"}, ["big.bin"]))
+        # The fixture "+x\n" holds no hunk header, so app.py has no citable line.
+        self.assertEqual(context, checker.ReviewContext("PR", {"app.py"}, {"P1"}, ["big.bin"], {"app.py": ()}))
 
     def test_cli_reads_unreviewed_files_from_an_engine_envelope(self) -> None:
         envelope = self.engine_envelope(["big.bin"], [])
