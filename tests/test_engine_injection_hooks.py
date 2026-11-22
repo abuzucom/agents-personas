@@ -6,7 +6,6 @@ TRUSTED_CONTEXT, from the real euler prescan through the engine envelope.
 """
 import importlib.util
 import json
-import os
 import sys
 import tempfile
 import unittest

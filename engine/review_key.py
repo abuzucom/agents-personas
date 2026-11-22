@@ -19,6 +19,7 @@ import hashlib
 import json
 import os
 import sys
+from pathlib import Path
 
 KEY_VERSION = "review-v1"
 KEY_FIELDS = ("PERSONA", "MODE", "HEAD_SHA", "BASE_SHA", "PERSONAS_REF", "PR_TITLE", "PR_BODY",
@@ -48,7 +49,7 @@ def main() -> int:
     except (ReviewKeyError, KeyError) as error:
         print(f"error: cannot compute the review key: {error}. Set every key field.", file=sys.stderr)
         return 1
-    with open(output_path, "a", encoding="utf-8") as output:
+    with Path(output_path).open("a", encoding="utf-8") as output:
         output.write(f"key={key}\n")
     return 0
 
