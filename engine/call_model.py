@@ -140,8 +140,9 @@ class ContextOverflowError(ProviderError):
 
 
 HTTPS_DEFAULT_PORT = 443
-# Statuses from this value up report a failed request.
-HTTP_ERROR_STATUS = 400
+# Statuses from this value up fail the request. A 3xx redirect fails too.
+# The transport sends each request to the configured URL only.
+HTTP_ERROR_STATUS = 300
 
 
 class ProviderRequest(NamedTuple):
@@ -206,8 +207,8 @@ def open_https(request: ProviderRequest, timeout: float) -> HTTPSResponse:
     """Send one request over HTTPS and return the open response.
 
     Any scheme but HTTPS fails before a connection opens. A network failure
-    raises URLError. A 4xx or 5xx status raises HTTPError with a bounded
-    copy of the body.
+    raises URLError. A 3xx, 4xx, or 5xx status raises HTTPError with a
+    bounded copy of the body.
     """
     parts = urlsplit(request.url)
     host = parts.hostname

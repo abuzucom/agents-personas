@@ -103,6 +103,15 @@ class OpenHttpsTest(unittest.TestCase):
         self.open({"HTTPS_PROXY": "http://proxy.example.test:3128", "NO_PROXY": "api.example.test"})
         self.assertEqual(_FakeConnection.created[0].host, "api.example.test")
 
+    def test_redirect_status_raises_http_error_without_following(self):
+        redirect = _FakeHTTPResponse(302, b"moved")
+        with patch.object(_FakeConnection, "getresponse", lambda self: redirect):
+            with self.assertRaises(HTTPError) as caught:
+                self.open({})
+        self.assertEqual(caught.exception.code, 302)
+        self.assertEqual(len(_FakeConnection.created), 1)
+        self.assertTrue(_FakeConnection.created[0].closed)
+
     def test_error_status_raises_http_error_with_a_readable_body(self):
         original = _FakeConnection.getresponse
         with patch.object(_FakeConnection, "getresponse", lambda self: _FakeHTTPResponse(413, b"too large")):
