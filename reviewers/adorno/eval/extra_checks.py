@@ -5,7 +5,7 @@ revision 97a2c84:
 - expected.json carries an expected_classes list. Every entry names an
   AUDIT.md section 2 class heading.
 - notes is a non-empty string.
-- allow_non_ascii: true needs fixture_notes that state the reason.
+- allow_non_ascii: true needs non-empty fixture_notes that state the reason.
 - A case holds at least one input file the adorno runner reads.
 
 The engine core grades the verdict line and the VERDICT_JSON companion.
@@ -55,7 +55,9 @@ def validate_expected(mode: str, expected: dict) -> list[str]:
         problems.append("expected_classes must be a list")
     if not isinstance(expected.get("notes"), str) or not expected["notes"].strip():
         problems.append("notes must be a non-empty string")
-    if expected.get("allow_non_ascii") and "fixture_notes" not in expected:
+    notes = expected.get("fixture_notes")
+    # A blank reason explains nothing. A non-ASCII fixture needs real text.
+    if expected.get("allow_non_ascii") and not (isinstance(notes, str) and notes.strip()):
         problems.append("allow_non_ascii: true requires fixture_notes explaining why")
     return problems
 

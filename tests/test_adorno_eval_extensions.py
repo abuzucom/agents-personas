@@ -58,6 +58,12 @@ class ValidateExpectedTest(unittest.TestCase):
         self.assertIn("allow_non_ascii: true requires fixture_notes explaining why", problems)
         self.assertEqual(extension.validate_expected("file", _expected(allow_non_ascii=True, fixture_notes="n")), [])
 
+    def test_blank_fixture_notes_do_not_explain_non_ascii(self):
+        for notes in ("", "  ", 3):
+            with self.subTest(notes=notes):
+                problems = extension.validate_expected("file", _expected(allow_non_ascii=True, fixture_notes=notes))
+                self.assertIn("allow_non_ascii: true requires fixture_notes explaining why", problems)
+
     def test_blank_notes_are_reported(self):
         self.assertIn("notes must be a non-empty string", extension.validate_expected("file", _expected(notes=" ")))
 
