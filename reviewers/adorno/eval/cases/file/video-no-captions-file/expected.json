@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.8"],
+  "expect_json": true,
+  "notes": "The video is presented as the way to learn the connect-a-data-source task and ships no track kind=captions and no transcript link. The surrounding sentence hints at the topic but does not substitute for the spoken walkthrough content. Section 2.8 fires on prerecorded video without captions and with no transcript. Per section 1.7 missing captions are a WCAG Level A failure with a partial workaround, making HIGH correct; no flashing or sole-image carrier triggers section 5. The barrier is unambiguous.",
+  "fixture_notes": "All copy and media naming is synthetic and freshly invented; no real user data."
+}

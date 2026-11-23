@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.11"],
+  "expect_json": true,
+  "notes": "The html element carries no lang attribute, so assistive technology must guess the document language. Section 2.11 fires on the missing lang attribute itself. The document is otherwise a simple, operable page with no interaction, so the harm is mispronunciation and degraded reading for screen-reader users rather than task exclusion; per section 1.7 that degrades the experience for an affected group, making MEDIUM correct. The barrier is unambiguous.",
+  "fixture_notes": "All park and trail copy is synthetic and freshly invented; no real user data."
+}

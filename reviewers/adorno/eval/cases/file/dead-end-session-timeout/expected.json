@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.18"],
+  "expect_json": true,
+  "notes": "The timeout modal shows a session-expired message with only a Dismiss button that closes the modal and no login link, no redirect, and no recovery path. Section 2.18 fires on a session-expired dead end. In-progress work is lost and the user is left at a blank state; docs/checks/2.18 ranks session-expired data loss without a forward path HIGH.",
+  "fixture_notes": "All session copy is synthetic and freshly invented for this fixture. No real data present."
+}

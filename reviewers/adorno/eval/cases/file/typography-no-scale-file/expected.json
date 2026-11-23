@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.16"],
+  "expect_json": true,
+  "notes": "The component scatters four inline font sizes (11px, 13px, 17px, 22px) with no typographic scale, no rem units, and no line-height anywhere in scope. Section 2.16 fires on the incoherent type scale and the missing line-height. Text remains readable at browser defaults, so the barrier degrades rather than blocks; docs/checks/2.16 ranks incoherent type scales and scale drift MEDIUM, which makes MEDIUM correct.",
+  "fixture_notes": "All content is synthetic and freshly invented for this fixture. No real data present."
+}

@@ -1,0 +1,8 @@
+{
+  "mode": "Design-spec",
+  "expected_verdict": "CONFORMANCE: MATCH",
+  "expected_classes": ["2.14"],
+  "expect_json": true,
+  "notes": "The implementation matches every specified token and state in the design source. Default background, hover background, focus outline, and disabled background all resolve to the declared values. Section 2.14 checks conformance in both directions and finds no divergence. A clean Design-spec result is CONFORMANCE: MATCH per section 6.",
+  "fixture_notes": "All tokens, colors, and spec text are synthetic and freshly invented for this fixture. No real design system data present."
+}

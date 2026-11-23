@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.10"],
+  "expect_json": true,
+  "notes": "The board and its three columns are locked to fixed 1200px and 400px widths with flexShrink 0 and nowrap, so the layout cannot reflow below 1200px and forces two-dimensional horizontal scroll at 320px width or 400% zoom. Section 2.10 fires squarely on reflow failure. Reading is degraded but not impossible, so no section 5 blocker applies; per section 1.7 forced horizontal scroll is a WCAG reflow failure with a zooming and panning workaround, making HIGH correct. The barrier is unambiguous.",
+  "fixture_notes": "All company names and deal notes are synthetic and freshly invented; no real user data."
+}

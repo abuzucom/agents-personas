@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.3"],
+  "expect_json": true,
+  "notes": "The search submit button contains only an aria-hidden SVG magnifier, with no aria-label, no aria-labelledby, and no visible text, so its accessible name is empty. Section 2.3 fires squarely on an icon-only button with no accessible name. The button is a native element and remains keyboard-reachable, so no section 5 blocker applies; per section 1.7 an unnamed control in a form is a WCAG name-role-value failure with a workaround, making HIGH correct. The barrier is unambiguous: a screen reader announces an unnamed button.",
+  "fixture_notes": "All control and search text is synthetic and freshly invented; no real user data."
+}

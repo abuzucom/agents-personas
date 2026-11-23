@@ -1,0 +1,22 @@
+/* Target locales include Arabic and Hebrew. */
+
+.card {
+  margin-left: 16px;
+  padding-left: 24px;
+  text-align: left;
+}
+
+.breadcrumb {
+  float: left;
+  margin-left: 8px;
+}
+
+.input-icon {
+  left: 12px;
+  position: absolute;
+}
+
+.drawer {
+  border-right: 1px solid #d1d5db;
+  padding-right: 20px;
+}

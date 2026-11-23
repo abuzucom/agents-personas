@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.4"],
+  "expect_json": true,
+  "notes": "Referral-code validity is signaled only by the input border turning red or green via the field-invalid and field-valid classes, with no text, icon, or message accompanying the state. Section 2.4 fires on meaning carried by color alone: a user who cannot perceive the red or green gets no signal whether the value is accepted. The field is labeled and operable, so no section 5 blocker applies; per section 1.7 this is a WCAG use-of-color failure with a workaround, making HIGH correct. The barrier is unambiguous.",
+  "fixture_notes": "All field and copy text is synthetic and freshly invented; no real user data."
+}

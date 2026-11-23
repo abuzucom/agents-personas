@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: CRITICAL",
+  "expected_classes": ["2.17"],
+  "expect_json": true,
+  "notes": "The delete button calls the API directly on a single click with no confirmation dialog, no resource name shown at decision time, and no undo, archive, or restore path. Section 2.17 fires on a destructive action without confirmation and without recovery. Section 2.17's severity posture ranks a core destructive action with no confirmation and no recovery path, causing permanent loss of user data, as CRITICAL, so the File verdict is RISK: CRITICAL.",
+  "fixture_notes": "All project references are synthetic and freshly invented for this fixture. No real data present."
+}

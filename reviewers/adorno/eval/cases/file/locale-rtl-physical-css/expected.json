@@ -1,0 +1,9 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.22"],
+  "expect_json": true,
+  "notes": "The stylesheet uses margin-left, padding-left, text-align:left, float:left, and border-right throughout with no logical properties. Section 2.22 fires on physical layout properties that mirror incorrectly for right-to-left locales. Arabic and Hebrew users receive a broken layout; docs/checks/2.22 ranks physical properties that break RTL core flows HIGH per the WCAG-adjacent severity posture.",
+  "fixture_notes": "allow_non_ascii is true because the fixture names Arabic and Hebrew as locale targets in a comment. Locale names are required to explain why RTL support matters and why the barrier is meaningful. Both words are ASCII; no actual Arabic or Hebrew characters appear in the fixture. All selectors are synthetic and freshly invented.",
+  "allow_non_ascii": true
+}

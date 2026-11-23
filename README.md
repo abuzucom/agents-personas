@@ -7,6 +7,7 @@ Pull request reviewer personas on one shared review engine.
 | foucault | security | `.github/workflows/foucault-security-review.yml` |
 | euler | quality | `.github/workflows/euler-quality-review.yml` |
 | generay | time | `.github/workflows/generay-time-review.yml` |
+| adorno | ui | `.github/workflows/adorno-ui-review.yml` |
 
 - `docs/migration.md` maps old callers to the wrappers.
 - `examples/` holds the always-on caller and the label caller.

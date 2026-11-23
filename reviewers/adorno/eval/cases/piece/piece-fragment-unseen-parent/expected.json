@@ -1,0 +1,8 @@
+{
+  "mode": "Piece",
+  "expected_verdict": "RISK (partial): HIGH",
+  "expected_classes": ["2.1", "2.2"],
+  "expect_json": true,
+  "notes": "The fragment renders a clickable div with no role, no tabindex, and no keyboard handler. Section 2.1 and 2.2 both fire on a non-semantic control with no keyboard reach. In isolation it is a defect, but full operability depends on a parent wrapper that supplies keyboard focus and activation. Section 0 caps Piece verdicts at RISK (partial) because callers and keyboard handling are unseen. HIGH reflects the section 5 keyboard-inaccessibility risk when the parent does not supply the missing semantics.",
+  "fixture_notes": "All component and copy text is synthetic and freshly invented for this fixture. No real data present."
+}
