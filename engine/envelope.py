@@ -65,6 +65,7 @@ def build_envelope(
     context: dict | None = None,
     changed_files: list[str] | None = None,
     unreviewed: list[str] | None = None,
+    options: dict | None = None,
 ) -> str:
     """Return the serialized envelope for one review unit.
 
@@ -75,6 +76,10 @@ def build_envelope(
     A hook item can quote pull request text. Each key therefore joins the
     untrusted REVIEW_TARGET and its digest. TRUSTED_CONTEXT keeps engine text
     only.
+
+    options holds the trusted persona option values. The caller workflow sets
+    each value. Each value joins TRUSTED_CONTEXT.options and its digest. An
+    empty or missing options value leaves TRUSTED_CONTEXT unchanged.
     """
     leaked = sorted(FORBIDDEN_METADATA_KEYS & set(metadata))
     if leaked:
@@ -87,6 +92,8 @@ def build_envelope(
     capped_body, body_cut = cap_text(body, MAX_BODY_CHARS)
     truncated = [name for name, cut in (("title", title_cut), ("body", body_cut)) if cut]
     trusted = {"note": TRUSTED_NOTE, "persona": persona, "mode": mode, "metadata": metadata, "truncated": truncated}
+    if options:
+        trusted["options"] = dict(options)
     target = {
         "note": TARGET_NOTE,
         "title": capped_title,
@@ -96,7 +103,8 @@ def build_envelope(
         "unreviewed": list(unreviewed or []),
         **context,
     }
-    trusted["sha256"] = digest({key: trusted[key] for key in ("persona", "mode", "metadata", "truncated")})
+    trusted_keys = ("persona", "mode", "metadata", "truncated", *(("options",) if options else ()))
+    trusted["sha256"] = digest({key: trusted[key] for key in trusted_keys})
     target["sha256"] = digest({
         key: target[key] for key in ("title", "body", "files", "changed_files", "unreviewed", *context)
     })

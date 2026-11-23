@@ -1,0 +1,8 @@
+{
+  "mode": "PR",
+  "expected_verdict": "BLOCK",
+  "expected_classes": ["2.1", "2.2"],
+  "expect_json": true,
+  "notes": "Every control (the Checkout opener, Pay now, Cancel) is a clickable div with no role, no tabindex, and no keyboard handler, so checkout is completely unreachable by keyboard and the modal traps no focus and offers no keyboard path. This is a catastrophic exclusion of a core task with no workaround, hitting the section 5 hard blocker for a keyboard-inaccessible core-flow interactive element, so the PR verdict is BLOCK. Classes 2.1 (non-semantic clickable div) and 2.2 (no keyboard reach or focus management) both apply.",
+  "fixture_notes": "All component and copy text is synthetic and freshly invented for this fixture; no real user data."
+}

@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.6"],
+  "expect_json": true,
+  "notes": "The hero video autoplays and loops indefinitely behind the page heading, with no pause or stop control and no prefers-reduced-motion fallback anywhere in the unit. Section 2.6 fires on auto-playing animation with no reduced-motion path and no way to pause, stop, or hide it. Nothing flashes over three times a second, so the section 5 flashing blocker does not apply; per section 1.7 continuous motion that ignores vestibular needs is a WCAG pause-stop-hide failure where leaving the page is a workaround, making HIGH correct. The barrier is unambiguous.",
+  "fixture_notes": "All hero copy and media naming is synthetic and freshly invented; no real user data."
+}

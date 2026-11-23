@@ -184,3 +184,31 @@ candidates reach the model inside the untrusted review target.
 generay's File, Piece, Wholesale, and Contract modes run locally as the
 `file`, `piece`, `wholesale`, and `contract` modes.
 `reviewers/generay/eval/README.md` shows the commands.
+
+## adorno
+
+adorno moves from `abuzucom/adorno` to the `adorno` persona.
+
+| Old | New |
+|---|---|
+| `abuzucom/adorno/.github/workflows/ui-review.yml@<sha>` | `abuzucom/agents-personas/.github/workflows/adorno-ui-review.yml@<sha>` |
+| `audit_ref` | `personas_ref` |
+| `model_call_command` (required) | `model_call_command` (optional, empty uses the engine adapter) |
+| `pr_comment` | `pr_comment` |
+| `fail_on_block` gates BLOCK and NEEDS-HUMAN | `fail_on_block` gates BLOCK. NEEDS-HUMAN warns and concludes neutral |
+| none | `fork_review` |
+| none | `modes`, empty selects `ui` |
+| none | `paths` |
+| none | `pr_number`, `base_sha`, `head_sha`, `head_repo_url`, `head_repo_full_name` |
+
+The secret stays `MODEL_API_KEY` with `required: false`. A fork pull request
+without `fork_review: true` posts a `skipped` check.
+
+The check run carries the name `adorno / ui`. The comment uses the shared
+layout with a `## Adorno ui review: <VERDICT>` heading.
+
+The `ui` mode sends `bundles/ui-full.md`, the same bundle the adorno workflow
+sent. adorno's File, Piece, Wholesale, and Design-spec modes run locally as
+the `file`, `piece`, `wholesale`, and `design-spec` modes.
+`reviewers/adorno/eval/README.md` shows the commands.
+

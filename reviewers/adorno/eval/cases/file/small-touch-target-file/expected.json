@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.9"],
+  "expect_json": true,
+  "notes": "Each row action button is 12 by 12 CSS pixels with only 2px of spacing to its neighbor, well under the 24 by 24 floor with no spacing fallback. Section 2.9 fires directly on the undersized targets. The controls are native buttons, named, and keyboard-reachable, so precision pointing is degraded but every action remains completable by keyboard; per section 1.7 that is a gap degrading the experience for motor-impaired and touch users, making MEDIUM correct. The barrier is unambiguous.",
+  "fixture_notes": "All report and control text is synthetic and freshly invented; no real user data."
+}

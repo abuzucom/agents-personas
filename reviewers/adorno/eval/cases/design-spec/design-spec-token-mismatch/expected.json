@@ -1,0 +1,8 @@
+{
+  "mode": "Design-spec",
+  "expected_verdict": "CONFORMANCE: MISMATCH",
+  "expected_classes": ["2.14"],
+  "expect_json": true,
+  "notes": "The implementation diverges from the design source in both directions: default background (#3b82f6), hover (#2563eb), and disabled (#d1d5db) are one-off values that do not match the specified tokens (#1d4ed8, #1e40af, #9ca3af), and the specified focus state (2px color-focus-ring outline) and error state (color-border-error border) are absent from the code. Under 2.14 a spec/implementation mismatch is a finding whether caused by the spec or the code, so the Design-spec verdict is CONFORMANCE: MISMATCH.",
+  "fixture_notes": "All tokens, colors, and spec text are synthetic and freshly invented for this fixture; no real design system data."
+}

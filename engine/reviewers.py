@@ -22,10 +22,15 @@ MAX_CONTEXT_BYTES = 32 * 1024
 # companion rule set. The engine joins them in list order with this line.
 MAX_PROMPT_FILES = 4
 PROMPT_SEPARATOR = "\n"
-TOP_LEVEL_KEYS = frozenset({"persona", "function", "modes", "options"})
+TOP_LEVEL_KEYS = frozenset({"persona", "function", "modes", "options", "option_notes"})
+# option_notes maps a trusted string option value to one fixed note. The
+# engine shows the note in the check summary and the pull request comment.
+MAX_NOTE_CHARS = 300
 # options declares the caller values a persona accepts through the
 # persona_options workflow input, for example euler's exclude_paths.
-OPTION_KEYS = frozenset({"type", "default"})
+# "trusted" is optional. A trusted value joins TRUSTED_CONTEXT. The caller
+# workflow alone sets an option value. Pull request content has no path to it.
+OPTION_KEYS = frozenset({"type", "default", "trusted"})
 OPTION_TYPES = {"string": str, "integer": int, "boolean": bool}
 OPTION_NAME_CHARACTERS = frozenset(string.ascii_lowercase + string.digits + "_")
 MAX_OPTION_CHARS = 4096
@@ -331,6 +336,8 @@ def option_findings(options: object) -> list[str]:
             findings.append(f"option '{name}': type must be one of {sorted(OPTION_TYPES)}")
         elif "default" not in spec or _option_value_problem(name, kind, spec["default"]):
             findings.append(f"option '{name}': default does not match type '{kind}'")
+        if not isinstance(spec.get("trusted", False), bool):
+            findings.append(f"option '{name}': trusted must be true or false")
     return findings
 
 
@@ -360,6 +367,51 @@ def resolve_options(manifest: dict, requested: str) -> dict:
     return resolved
 
 
+def _is_note_text(note: object) -> bool:
+    """Return whether a note is printable ASCII of 1 to MAX_NOTE_CHARS characters."""
+    return (
+        isinstance(note, str)
+        and 0 < len(note) <= MAX_NOTE_CHARS
+        and all(character.isascii() and character.isprintable() for character in note)
+    )
+
+
+def option_note_findings(notes: object, options: object) -> list[str]:
+    """Return schema findings for the top-level option_notes block."""
+    if not isinstance(notes, dict):
+        return ["'option_notes' must be a JSON object"]
+    declared = options if isinstance(options, dict) else {}
+    findings = []
+    for name, table in notes.items():
+        spec = declared.get(name)
+        trusted_string = isinstance(spec, dict) and spec.get("trusted") is True and spec.get("type") == "string"
+        if not trusted_string or not isinstance(table, dict):
+            findings.append(f"option_notes '{name}' needs a trusted string option")
+            continue
+        findings += [
+            f"option_notes '{name}' value '{value}' needs printable ASCII text of 1 to {MAX_NOTE_CHARS} characters"
+            for value, note in table.items()
+            if not _is_note_text(note)
+        ]
+    return findings
+
+
+def option_notes(manifest: dict, trusted_values: dict) -> list[str]:
+    """Return the fixed notes the trusted option values select, in manifest order."""
+    selected = []
+    for name, table in manifest.get("option_notes", {}).items():
+        value = trusted_values.get(name)
+        if isinstance(value, str) and value.strip() in table:
+            selected.append(table[value.strip()])
+    return selected
+
+
+def trusted_option_values(manifest: dict, resolved: dict) -> dict:
+    """Return the resolved values of the options the manifest marks trusted."""
+    declared = manifest.get("options", {})
+    return {name: value for name, value in resolved.items() if declared.get(name, {}).get("trusted") is True}
+
+
 def validate_persona(persona_dir: Path) -> list[str]:
     """Return every schema finding for one persona directory."""
     persona_dir = Path(persona_dir)
@@ -371,6 +423,9 @@ def validate_persona(persona_dir: Path) -> list[str]:
     findings += _identity_findings(persona_dir, document)
     if "options" in document:
         findings += [f"{persona_dir.name}: {item}" for item in option_findings(document["options"])]
+    if "option_notes" in document:
+        notes = option_note_findings(document["option_notes"], document.get("options", {}))
+        findings += [f"{persona_dir.name}: {item}" for item in notes]
     modes = document.get("modes")
     if not isinstance(modes, dict) or not modes:
         return findings + [f"{persona_dir.name}: declares no modes"]

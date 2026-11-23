@@ -401,7 +401,13 @@ class ChildHooks:
         return result if present else {"context": {}, "unreviewed": []}
 
 
-def build_case(options: RunOptions, caps: dict, hooks=None, persona_options: dict | None = None) -> dict:
+def build_case(
+    options: RunOptions,
+    caps: dict,
+    hooks=None,
+    persona_options: dict | None = None,
+    trusted_options: dict | None = None,
+) -> dict:
     """Build the envelopes and return the case manifest."""
     case_dir = options.out_dir / "case"
     build_pr_case.build(
@@ -419,6 +425,7 @@ def build_case(options: RunOptions, caps: dict, hooks=None, persona_options: dic
             max_envelope_bytes=caps["max_envelope_bytes"],
             hooks=hooks,
             persona_options=persona_options or {},
+            trusted_options=trusted_options or {},
         )
     )
     return json.loads((case_dir / "manifest.json").read_text(encoding="utf-8"))
@@ -477,7 +484,8 @@ def run_mode(options: RunOptions) -> dict:
         case = read_built_case(options, caps, persona_options)
     else:
         # The parent never imports the hook file. case_context runs in a child.
-        case = build_case(options, caps, ChildHooks(persona_dir), persona_options)
+        trusted = reviewers.trusted_option_values(manifest, persona_options)
+        case = build_case(options, caps, ChildHooks(persona_dir), persona_options, trusted)
     if options.stage == "build":
         return {"stage": "build", "chunks": len(case["chunks"]), "unreviewed": case["unreviewed"]}
     prompt_text = reviewers.load_prompt(persona_dir, entry["prompt"])
@@ -496,6 +504,7 @@ def run_mode(options: RunOptions) -> dict:
         "head_sha": options.head,
         "verdict": verdict,
         "reasons": reasons + [item.reason for item in results if item.reason],
+        "notes": reviewers.option_notes(manifest, reviewers.trusted_option_values(manifest, persona_options)),
         "chunk_results": [
             {
                 "name": Path(chunk["envelope"]).stem,

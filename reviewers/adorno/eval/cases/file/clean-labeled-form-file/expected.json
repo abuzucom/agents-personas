@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: NONE-FOUND",
+  "expected_classes": [],
+  "expect_json": true,
+  "notes": "Every form control has a programmatically associated label via label/htmlFor, the submit is a native button (keyboard-reachable and named by its text), required fields are marked with the required attribute, and the status region uses role=status with aria-live for feedback. This exercises the section 8 false-positive discipline (correct labeling and semantics are the fix, not a defect) and the section 9 zero-findings protocol on a genuinely clean, well-scoped unit. No class applies.",
+  "fixture_notes": "All field and copy text is synthetic and freshly invented; no real user data."
+}

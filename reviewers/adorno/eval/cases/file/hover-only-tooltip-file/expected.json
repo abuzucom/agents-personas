@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.13"],
+  "expect_json": true,
+  "notes": "The payout timing information is revealed only by the CSS :hover rule on its wrapping span: the trigger is a non-interactive span holding an aria-hidden icon, with no focus style, no tabindex, and no touch or focus path to the same content. Section 2.13 fires on critical information available only on hover. No form or core-flow submission is at stake, so no section 5 blocker applies; per section 1.7 denying keyboard and touch users operable content is a WCAG content-on-hover failure with no same-component workaround, making HIGH correct. The barrier is unambiguous.",
+  "fixture_notes": "All tooltip copy is synthetic and freshly invented; no real user data."
+}

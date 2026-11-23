@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: MEDIUM",
+  "expected_classes": ["2.21"],
+  "expect_json": true,
+  "notes": "The component embeds twelve user-facing strings directly in JSX with no t() or intl call despite an i18n directory existing in the project. Section 2.21 fires on copy as scattered hardcoded strings. Translation and review cannot proceed; docs/checks/2.21 ranks copy that blocks translation MEDIUM when the strings remain comprehensible in the shipped language and no contradictory naming results.",
+  "fixture_notes": "All dialog copy is synthetic and freshly invented for this fixture. No real product copy present."
+}

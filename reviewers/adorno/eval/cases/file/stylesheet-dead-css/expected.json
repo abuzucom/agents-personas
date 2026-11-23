@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: LOW",
+  "expected_classes": ["2.21"],
+  "expect_json": true,
+  "notes": "The stylesheet defines .old-nav, .legacy-banner, .v1-card, and .legacy-footer-links with no matching class names in any template. Section 2.21 fires on dead CSS left as unmaintained architecture. No surface is broken and no user task is blocked; docs/checks/2.21 ranks dead CSS and style-drift polish LOW when only maintenance cost and bundle growth remain.",
+  "fixture_notes": "All class names are synthetic and freshly invented for this fixture. No real codebase data present."
+}

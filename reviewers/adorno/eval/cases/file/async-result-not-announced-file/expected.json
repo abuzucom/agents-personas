@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.7"],
+  "expect_json": true,
+  "notes": "Search results are injected into the results ul via innerHTML with no aria-live region, no status markup, and no focus movement to the list or a summary. Section 2.7 fires on an async result updating the DOM with no live region and no focus management. The form itself is labeled and operable, so no section 5 blocker applies; per section 1.7 a state change a screen-reader user never learns about is a WCAG status-message failure with a workaround, making HIGH correct. The barrier is unambiguous.",
+  "fixture_notes": "All labels, endpoints, and result copy are synthetic and freshly invented; no real user data."
+}

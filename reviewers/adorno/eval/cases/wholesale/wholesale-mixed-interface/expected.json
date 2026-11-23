@@ -1,0 +1,8 @@
+{
+  "mode": "Wholesale",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.1", "2.2", "2.7", "2.11"],
+  "expect_json": true,
+  "notes": "The interface mixes a clean login form with a settings page missing a lang attribute and using a div as its save button, plus a list that async-sorts without a live region or focus management. Section 2.11 fires on the missing lang, section 2.1 and 2.2 fire on the non-semantic save control, and section 2.7 fires on the unannounced async update. The highest severity across the tree is HIGH from the missing lang on a task-path form. Wholesale mode requires an explicit statement of what was and was not reviewed. RISK: HIGH is correct.",
+  "fixture_notes": "All markup, copy, and script names are synthetic and freshly invented for this fixture. No real codebase data present."
+}

@@ -1,0 +1,8 @@
+{
+  "ui": {
+    "full": [
+      "AUDIT.md",
+      "docs/checks/*.md"
+    ]
+  }
+}

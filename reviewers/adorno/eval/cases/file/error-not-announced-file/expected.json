@@ -1,0 +1,8 @@
+{
+  "mode": "File",
+  "expected_verdict": "RISK: HIGH",
+  "expected_classes": ["2.5"],
+  "expect_json": true,
+  "notes": "On submit failure the handler only repaints the input border red: it renders no error text, sets no aria-invalid or aria-describedby, and associates no message with the field. Section 2.5 fires on validation failure reported only by a border with no text and no association. The form remains submittable and keyboard-operable, so no section 5 blocker fires; per section 1.7 an error the user cannot perceive or locate is a WCAG error-identification failure with a workaround, making HIGH correct. The barrier is unambiguous.",
+  "fixture_notes": "All field and copy text is synthetic and freshly invented; no real user data."
+}

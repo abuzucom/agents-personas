@@ -1,0 +1,21 @@
+.btn-primary {
+  background: #0f766e;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #115e59;
+}
+
+.btn-primary:focus {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.btn-primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}

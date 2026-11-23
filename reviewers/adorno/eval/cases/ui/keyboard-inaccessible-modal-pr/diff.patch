@@ -1,0 +1,45 @@
+diff --git a/src/components/CheckoutModal.tsx b/src/components/CheckoutModal.tsx
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/components/CheckoutModal.tsx
+@@ -0,0 +1,42 @@
++import React, { useState } from "react";
++
++export function CheckoutModal(props: { onConfirm: () => void }) {
++  const [open, setOpen] = useState(false);
++
++  return (
++    <div>
++      <div
++        className="open-checkout"
++        onClick={() => setOpen(true)}
++      >
++        Checkout
++      </div>
++
++      {open && (
++        <div className="modal-overlay" onClick={() => setOpen(false)}>
++          <div className="modal" onClick={(e) => e.stopPropagation()}>
++            <h2>Confirm your order</h2>
++            <p>Your card will be charged immediately.</p>
++            <div className="modal-actions">
++              <div
++                className="btn-primary"
++                onClick={() => {
++                  props.onConfirm();
++                  setOpen(false);
++                }}
++              >
++                Pay now
++              </div>
++              <div className="btn-secondary" onClick={() => setOpen(false)}>
++                Cancel
++              </div>
++            </div>
++          </div>
++        </div>
++      )}
++    </div>
++  );
++}
