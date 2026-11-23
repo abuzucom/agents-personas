@@ -628,8 +628,10 @@ jobs:
           PY
 
       - name: Publish check run
-        # A reused review keeps its earlier check run and publishes none.
-        if: ${{ always() && steps.cached.outputs.hit != 'true' }}
+        # A reused review keeps its earlier check run and publishes none. A
+        # cancelled review publishes none either. The newer run that replaced
+        # it owns the check. No stale check then lands after its verdict.
+        if: ${{ !cancelled() && steps.cached.outputs.hit != 'true' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         env:
           PERSONA: ${{ inputs.persona }}
@@ -637,7 +639,6 @@ jobs:
           HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
           REVIEW_KEY: ${{ steps.key.outputs.key }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          JOB_STATUS: ${{ job.status }}
         with:
           script: |
             const fs = require("fs");
@@ -648,16 +649,6 @@ jobs:
               request = {
                 name: rendered.check_name, conclusion: rendered.conclusion, external_id: process.env.REVIEW_KEY,
                 output: { title: rendered.title, summary: rendered.summary, annotations: rendered.annotations },
-              };
-            } else if (process.env.JOB_STATUS === "cancelled") {
-              // A newer run for this head replaced this review. The check
-              // states the cancellation and carries no review key to reuse.
-              request = {
-                name: `${process.env.PERSONA} / ${process.env.MODE}`, conclusion: "cancelled",
-                output: {
-                  title: "Review cancelled",
-                  summary: "A newer run for this head replaced this review. That run reports the verdict.",
-                },
               };
             } else {
               // A run without a valid verdict never reports a pass.

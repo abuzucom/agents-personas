@@ -6,8 +6,9 @@ group still enrolled that skipped run and cancelled the running review of
 its persona. Each caller therefore holds the group on its review job. A
 skipped job joins no group.
 
-A review that a newer run replaces ends as cancelled. Its check run states
-the cancellation and never reports a failure.
+A review that a newer run replaces ends as cancelled. It publishes no check
+run. The newer run owns the check. A cancelled run therefore cannot land a
+stale check after the newer verdict.
 """
 
 import unittest
@@ -57,18 +58,17 @@ class CallerConcurrencyTest(unittest.TestCase):
 
 
 class CancelledReviewTest(unittest.TestCase):
-    """A cancelled review reports a cancellation, not a failure."""
+    """A cancelled review publishes no check and reports no failure."""
 
-    def test_check_run_step_reads_the_job_status(self):
-        self.assertEqual(_review_step("Publish check run")["env"]["JOB_STATUS"], "${{ job.status }}")
+    def test_check_run_step_skips_a_cancelled_job(self):
+        condition = _review_step("Publish check run")["if"]
+        self.assertIn("!cancelled()", condition)
+        self.assertIn("steps.cached.outputs.hit != 'true'", condition)
 
-    def test_cancelled_review_publishes_a_cancelled_check(self):
-        script = _review_step("Publish check run")["with"]["script"]
-        branch = script[script.index('process.env.JOB_STATUS === "cancelled"') :]
-        branch = branch[: branch.index("} else {")]
-        self.assertIn('conclusion: "cancelled"', branch)
-        self.assertIn("Review cancelled", branch)
-        self.assertNotIn("external_id", branch)
+    def test_check_run_script_holds_no_cancelled_branch(self):
+        step = _review_step("Publish check run")
+        self.assertNotIn("cancelled", step["with"]["script"])
+        self.assertNotIn("JOB_STATUS", step.get("env", {}))
 
     def test_gate_step_skips_a_cancelled_job(self):
         self.assertIn("!cancelled()", _review_step("Fail on a gating verdict")["if"])

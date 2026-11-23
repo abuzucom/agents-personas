@@ -47,10 +47,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   on its review job. A skipped job joins no group. The active human
   approved the lookup update in the existing
   `tests/test_scan_request_label.py`.
-- Report a review that a newer run replaces as cancelled. The check run
-  read `Review failed before a verdict` as a failure. It now reads
-  `Review cancelled` with the `cancelled` conclusion. The gate step skips
-  a cancelled job.
+- Stop reporting a replaced review as a failure. A cancelled review
+  posted `Review failed before a verdict`. It now publishes no check run.
+  The newer run that replaced it owns the check. A stale check therefore
+  never lands after the newer verdict. The gate step skips a cancelled
+  job.
 
 ## [0.16.0] (2026-11-22)
 
