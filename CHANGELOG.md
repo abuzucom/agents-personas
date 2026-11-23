@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.17.1] (2026-11-23)
+## [0.17.2] (2026-11-23)
 
 ### Added
 - Add the adorno persona under `reviewers/adorno`. It comes from
@@ -29,6 +29,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add `.github/workflows/adorno-ui-review-pr.yml`. This repository reviews
   with adorno only under the `adorno-scan-requested` label.
 - Extend `make lint-code` to the adorno persona and its tests.
+
+### Changed
+- Show each run of a BLOCK confirmation under its own comment heading.
+  `Run 1` and `Run 2 (confirmation)` each carry the run verdict and a
+  separate fenced report. One fence with two verdict lines read as a
+  single contradictory review. A `chunk_results` entry with a reported
+  confirmation gains a `runs` list of label, verdict, and report in
+  `result.json`. The combined `report` string keeps its form. Every other
+  chunk entry and comment keeps its shape.
 
 ### Fixed
 - Run persona scans requested together side by side. Every label event
