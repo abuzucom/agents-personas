@@ -17,10 +17,6 @@ name: euler-quality-review-pr
   pull_request_target:
     types: [labeled, unlabeled]
 
-concurrency:
-  group: euler-quality-review-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
@@ -36,6 +32,12 @@ jobs:
       checks: write
       contents: read
       pull-requests: write
+    # The group sits on the job, not the workflow. Every label event
+    # reaches every caller, and a caller skips the job for another
+    # persona label. A skipped job joins no group and cancels nothing.
+    concurrency:
+      group: euler-quality-review-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+      cancel-in-progress: true
     uses: ./.github/workflows/euler-quality-review.yml
     with:
       personas_ref: ${{ github.sha }}

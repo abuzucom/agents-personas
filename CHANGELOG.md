@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.17.0] (2026-11-23)
+## [0.17.1] (2026-11-23)
 
 ### Added
 - Add the adorno persona under `reviewers/adorno`. It comes from
@@ -29,6 +29,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add `.github/workflows/adorno-ui-review-pr.yml`. This repository reviews
   with adorno only under the `adorno-scan-requested` label.
 - Extend `make lint-code` to the adorno persona and its tests.
+
+### Fixed
+- Run persona scans requested together side by side. Every label event
+  reached every self-review caller. A caller skipped its job for another
+  persona label, but its workflow-level concurrency group still cancelled
+  the running review of its own persona. Each caller now holds the group
+  on its review job. A skipped job joins no group. The active human
+  approved the lookup update in the existing
+  `tests/test_scan_request_label.py`.
+- Report a review that a newer run replaces as cancelled. The check run
+  read `Review failed before a verdict` as a failure. It now reads
+  `Review cancelled` with the `cancelled` conclusion. The gate step skips
+  a cancelled job.
 
 ## [0.16.0] (2026-11-22)
 

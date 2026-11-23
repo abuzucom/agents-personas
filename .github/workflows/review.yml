@@ -637,6 +637,7 @@ jobs:
           HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
           REVIEW_KEY: ${{ steps.key.outputs.key }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
         with:
           script: |
             const fs = require("fs");
@@ -647,6 +648,16 @@ jobs:
               request = {
                 name: rendered.check_name, conclusion: rendered.conclusion, external_id: process.env.REVIEW_KEY,
                 output: { title: rendered.title, summary: rendered.summary, annotations: rendered.annotations },
+              };
+            } else if (process.env.JOB_STATUS === "cancelled") {
+              // A newer run for this head replaced this review. The check
+              // states the cancellation and carries no review key to reuse.
+              request = {
+                name: `${process.env.PERSONA} / ${process.env.MODE}`, conclusion: "cancelled",
+                output: {
+                  title: "Review cancelled",
+                  summary: "A newer run for this head replaced this review. That run reports the verdict.",
+                },
               };
             } else {
               // A run without a valid verdict never reports a pass.
@@ -695,7 +706,8 @@ jobs:
           if-no-files-found: error
 
       - name: Fail on a gating verdict
-        if: ${{ always() }}
+        # A cancelled review leaves the verdict to the newer run.
+        if: ${{ !cancelled() }}
         env:
           CACHED_HIT: ${{ steps.cached.outputs.hit }}
           CACHED_CONCLUSION: ${{ steps.cached.outputs.conclusion }}
