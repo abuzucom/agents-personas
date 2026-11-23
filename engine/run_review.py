@@ -73,6 +73,8 @@ ADAPTER_TIMEOUT_SECONDS = 1800
 MAX_PROBLEM_CHARS = 500
 # A confirmed chunk keeps both reports. This line separates them.
 CONFIRMATION_HEADING = "Confirmation run:"
+FIRST_RUN_LABEL = "Run 1"
+CONFIRMATION_RUN_LABEL = "Run 2 (confirmation)"
 RETRY_NOTE = (
     "Engine note: the previous response failed validation ({problem}). Return a "
     "report that ends with the VERDICT line and the VERDICT_JSON line."
@@ -114,6 +116,10 @@ class ChunkResult:
     report: str
     usage: dict
     reason: str = ""
+    # A BLOCK and its reported confirmation as two {label, verdict, report}
+    # records. The comment renders one section per run. An empty list leaves
+    # the chunk entry in result.json in its single-run shape.
+    runs: list = field(default_factory=list)
 
 
 def adapter_command(options: RunOptions) -> tuple[list[str], dict]:
@@ -339,15 +345,22 @@ def confirm_block(first: ChunkResult, confirmation: ChunkResult) -> ChunkResult:
     usage = sum_usage([first, confirmation])
     findings = merge_findings(first.findings, confirmation.findings)
     report = first.report
+    runs = []
     if confirmation.report:
         report = f"{first.report}\n{CONFIRMATION_HEADING}\n{confirmation.report}"
+        runs = [run_record(FIRST_RUN_LABEL, first), run_record(CONFIRMATION_RUN_LABEL, confirmation)]
     repeated = finding_classes(first.findings) & finding_classes(confirmation.findings)
     if confirmation.verdict == "BLOCK" and repeated:
-        return ChunkResult("BLOCK", findings, report, usage, first.reason)
+        return ChunkResult("BLOCK", findings, report, usage, first.reason, runs)
     reason = (
         f"BLOCK not confirmed: the confirmation run returned {confirmation.verdict} without a repeated finding class"
     )
-    return ChunkResult("NEEDS-HUMAN", findings, report, usage, reason)
+    return ChunkResult("NEEDS-HUMAN", findings, report, usage, reason, runs)
+
+
+def run_record(label: str, result: ChunkResult) -> dict:
+    """Return the stored record of one model run."""
+    return {"label": label, "verdict": result.verdict, "report": result.report}
 
 
 def review_confirmed_chunk(
@@ -499,6 +512,7 @@ def run_mode(options: RunOptions) -> dict:
                 "report": item.report,
                 "reason": item.reason,
             }
+            | ({"runs": item.runs} if item.runs else {})
             for chunk, item in zip(case["chunks"], results, strict=True)
         ],
         "findings": [finding for item in results for finding in item.findings],
