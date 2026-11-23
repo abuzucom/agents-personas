@@ -97,8 +97,8 @@ class CallerTriggerTest(unittest.TestCase):
                 self.assertIn("github.event.workflow_run.event == 'pull_request'", job["if"])
 
     def test_concurrency_group_names_the_head_for_both_triggers(self):
-        for name in CALLERS.values():
-            group = _workflow(name)["concurrency"]["group"]
+        for persona, name in CALLERS.items():
+            group = _workflow(name)["jobs"][persona]["concurrency"]["group"]
             with self.subTest(caller=name):
                 self.assertIn("github.event.workflow_run.head_sha", group)
                 self.assertIn("github.event.pull_request.head.sha", group)

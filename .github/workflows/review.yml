@@ -628,8 +628,10 @@ jobs:
           PY
 
       - name: Publish check run
-        # A reused review keeps its earlier check run and publishes none.
-        if: ${{ always() && steps.cached.outputs.hit != 'true' }}
+        # A reused review keeps its earlier check run and publishes none. A
+        # cancelled review publishes none either. The newer run that replaced
+        # it owns the check. No stale check then lands after its verdict.
+        if: ${{ !cancelled() && steps.cached.outputs.hit != 'true' }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9.0.0
         env:
           PERSONA: ${{ inputs.persona }}
@@ -695,7 +697,8 @@ jobs:
           if-no-files-found: error
 
       - name: Fail on a gating verdict
-        if: ${{ always() }}
+        # A cancelled review leaves the verdict to the newer run.
+        if: ${{ !cancelled() }}
         env:
           CACHED_HIT: ${{ steps.cached.outputs.hit }}
           CACHED_CONCLUSION: ${{ steps.cached.outputs.conclusion }}
