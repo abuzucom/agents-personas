@@ -118,6 +118,7 @@ def summary(result: dict) -> str:
         f"Unreviewed files: {len(result.get('unreviewed', []))}",
     ]
     lines += [f"Reason: {reason}" for reason in result.get("reasons", [])]
+    lines += [f"Note: {note}" for note in result.get("notes", [])]
     lines += [f"Clamped request: {name}" for name in result.get("clamped", [])]
     return "\n".join(lines)
 
@@ -171,6 +172,8 @@ def comment_body(result: dict, run_url: str = "") -> str:
     if run_url:
         lines.append(f"Workflow run: {run_url}")
     lines += [f"- {reason}" for reason in result.get("reasons", [])]
+    # The manifest supplies each note. No model or pull request text reaches one.
+    lines += [f"> **Note:** {note}" for note in result.get("notes", [])]
     body = "\n".join(lines) + "\n\n" + "\n\n".join(chunk_sections(result))
     if len(body) <= MAX_COMMENT_CHARS:
         return body

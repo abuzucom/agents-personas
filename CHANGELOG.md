@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.16.0] (2026-11-22)
+## [0.17.0] (2026-11-23)
 
 ### Added
 - Add the adorno persona under `reviewers/adorno`. It comes from
@@ -27,6 +27,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Add `.github/workflows/adorno-ui-review-pr.yml`. This repository reviews
   with adorno only under the `adorno-scan-requested` label.
 - Extend `make lint-code` to the adorno persona and its tests.
+
+## [0.16.0] (2026-11-22)
+
+### Added
+- Accept `"trusted": true` on a `reviewer.json` option. The engine places
+  each trusted value in `TRUSTED_CONTEXT.options`, under the trusted
+  digest. Untrusted options stay out of the envelope. An envelope without
+  trusted options keeps its old shape.
+- Accept a top-level `option_notes` block in `reviewer.json`. It maps a
+  trusted string option value to one fixed note. The engine adds the note
+  to the result, the check summary, and the pull request comment.
 - List the persona eval runner and the persona checkers in
   `hooks/workflow-scripts.txt`. A structure eval and every persona checker
   run without a prompt. A model eval routes to consent and accepts only the
