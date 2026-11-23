@@ -22,6 +22,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   mode loads the prebuilt `bundles/ui-full.md`. A test rebuilds the bundle
   and requires a byte-for-byte match. The `ui` mode reviews pull requests.
   The `file`, `piece`, `wholesale`, and `design-spec` modes run locally.
+  The bundle builder refuses a `bundles/` directory that is a symlink or
+  resolves outside the persona root. No write then leaves the root.
 - Add `.github/workflows/adorno-ui-review.yml` with an optional
   `MODEL_API_KEY`. `docs/migration.md` maps the old `ui-review.yml` inputs.
 - Add `.github/workflows/adorno-ui-review-pr.yml`. This repository reviews

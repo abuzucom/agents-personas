@@ -103,7 +103,15 @@ def resolve_sources(root: pathlib.Path, patterns) -> list:
 def output_path(root: pathlib.Path, scope: str, tier: str) -> pathlib.Path:
     """Return the bundle path for one scope and tier, inside bundles/."""
     suffix = FULL_SUFFIX if tier == "full" else ""
-    directory = (root / OUTPUT_DIRECTORY).resolve()
+    root = root.resolve()
+    link = root / OUTPUT_DIRECTORY
+    # A symlinked bundles/ would carry every write to its target. resolve()
+    # follows the link, so the check reads the unresolved entry first.
+    if link.is_symlink():
+        raise BundleError(f"{OUTPUT_DIRECTORY}/ is a symlink. Replace it with a directory inside the repository.")
+    directory = link.resolve()
+    if directory.parent != root:
+        raise BundleError(f"{OUTPUT_DIRECTORY}/ resolves outside the repository root. Use a directory inside it.")
     candidate = (directory / f"{scope}{suffix}.md").resolve()
     if candidate.parent != directory:
         raise BundleError(

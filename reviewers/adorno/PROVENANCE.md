@@ -10,7 +10,7 @@ repository.
 | `docs/checks/` | `docs/checks/` | none |
 | `bundles.json` | `bundles.json` | none |
 | `bundles/ui-full.md` | `bundles/ui-full.md` | none |
-| `scripts/build_bundle.py` | `scripts/build_bundle.py` | temp file in a context manager, two type annotations, ruff format |
+| `scripts/build_bundle.py` | `scripts/build_bundle.py` | temp file in a context manager, two type annotations, ruff format, `output_path` refuses a symlinked or escaping `bundles/` |
 | `eval/cases/ui/<case>/` | `eval/cases/<case>/` with mode `PR` | none |
 | `eval/cases/file/<case>/` | `eval/cases/<case>/` with mode `File` | none |
 | `eval/cases/piece/<case>/` | `eval/cases/<case>/` with mode `Piece` | none |
@@ -28,6 +28,8 @@ Every mode loads `bundles/ui-full.md`. The bundle joins `AUDIT.md` and every
 `tests/test_adorno_build_bundle.py` covers the builder. The two test files
 come from `tests/test_bundles.py` and `tests/test_build_bundle.py`. Each
 file points `REPO_ROOT` at this directory and takes the ruff format layout.
+`tests/test_adorno_build_bundle_paths.py` is new. It covers the output
+containment check. The source builder lacks that check.
 
 `engine/run_eval.py` replaces the standalone `eval/run_eval.py`. The engine
 grades the verdict line and the `VERDICT_JSON` companion. The engine joins
