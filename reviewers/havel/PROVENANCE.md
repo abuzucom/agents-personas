@@ -7,6 +7,7 @@ repository.
 | Here | Source | Change |
 |---|---|---|
 | `AUDIT.md` | `AUDIT.md` | step 0b scope source and `Unseen:` rule, section 6 disclaimer position |
+| `README.md` | `README.md` | adapted to the engine: persona substance kept, the old install, CI, versioning, and contributing sections replaced with the wrapper and the root README |
 | `docs/checks/` | `docs/checks/` | none |
 | `docs/regimes/` | `docs/regimes/` | none |
 | `docs/scope-boundary.md` | `docs/scope-boundary.md` | none |

@@ -14,9 +14,16 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.19.0] (2026-11-24)
+## [0.19.1] (2026-11-24)
 
 ### Added
+- Add `reviewers/<name>/README.md` for each persona. Each README adapts the
+  source repository README to the engine. It keeps the design position,
+  the policy summary, the modes, the coverage, and the customization notes.
+  It points the old install and CI sections at the wrapper.
+- Expand the root README with the review flow, adoption steps, local use,
+  the repository layout, and the verification commands. It links each
+  persona README.
 - Add `.github/workflows/havel-privacy-review.yml`. It forwards the engine
   inputs and an optional `regimes` input. toJSON escapes the value into
   `persona_options`. `MODEL_API_KEY` stays optional. `docs/migration.md`
