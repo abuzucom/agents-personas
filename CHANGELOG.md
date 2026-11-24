@@ -21,8 +21,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   bundles of every branch and tag for foucault, euler, and adorno. It holds
   a `main` tree zip and a JSON export of pull requests, reviews, comments,
   issues, and releases for all five. The generay and havel zips omit eight
-  Terraform and Kubernetes eval cases. `archive/README.md` lists them and
-  the restore steps. `archive/SHA256SUMS` lists each file digest.
+  Terraform and Kubernetes eval cases. `archive/README.md` lists each case
+  and the restore steps. `archive/SHA256SUMS` lists each file digest.
 - Add `reviewers/<name>/README.md` for each persona. Each README adapts the
   source repository README to the engine. It keeps the design position,
   the policy summary, the modes, the coverage, and the customization notes.
