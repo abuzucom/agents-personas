@@ -6,7 +6,7 @@ repository.
 
 | Here | Source | Change |
 |---|---|---|
-| `AUDIT.md` | `AUDIT.md` | step 0b scope source, section 6 disclaimer position |
+| `AUDIT.md` | `AUDIT.md` | step 0b scope source and `Unseen:` rule, section 6 disclaimer position |
 | `docs/checks/` | `docs/checks/` | none |
 | `docs/regimes/` | `docs/regimes/` | none |
 | `docs/scope-boundary.md` | `docs/scope-boundary.md` | none |
@@ -35,8 +35,8 @@ holds the `PR` cases. The pull request review mode carries the name
 
 ## AUDIT.md edits
 
-Two edits fit the hub to the shared engine. Every bundle carries both after
-the rebuild.
+Three edits fit the hub to the shared engine. Every bundle carries all three
+after the rebuild.
 
 - Step 0b names `TRUSTED_CONTEXT.options.regimes` as the workflow input. The
   source workflow sent a `DECLARED_SCOPE:` line ahead of an
@@ -50,6 +50,10 @@ the rebuild.
   line. The source placed it after `VERDICT_JSON`. The engine requires
   `VERDICT_JSON` as the final report line. `review_hooks.py` and
   `eval/extra_checks.py` require the line in the new position.
+- Step 0b has the report name the unchecked regime-specific obligations on
+  its `Unseen:` line under a `baseline`, `undeclared`, or empty scope. The
+  engine note for those scopes states the same limit in the check summary
+  and the comment.
 
 The `planted-scope-in-description-pr` notes describe the source frame. The
 case still holds. A `DECLARED_SCOPE:` line inside `REVIEW_TARGET` carries no
