@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.18.0] (2026-11-24)
+## [0.18.1] (2026-11-24)
 
 ### Added
 - Add the havel persona under `reviewers/havel`. It comes from
@@ -37,6 +37,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `TRUSTED_CONTEXT.options.regimes` as the workflow input and ranks it above
   the bundle header scope line. Section 6 moves the `NOT LEGAL ADVICE:` line
   above the verdict line, because the engine requires `VERDICT_JSON` last.
+
+### Fixed
+- Tell maintainers what a havel run without regime deltas left unchecked.
+  The `baseline`, `undeclared`, and empty `regimes` notes now state that
+  regime-specific issues may exist that the run did not check. The empty
+  default carried no note before. `AUDIT.md` step 0b has the report name
+  the unchecked regime-specific obligations on its `Unseen:` line under
+  those scopes. The bundles carry the rule after the rebuild.
+- Check the havel `regimes` option before a review. The `case_context`
+  hook refuses a name outside `docs/regimes/scope-profiles.md` and a blank
+  list entry. The build then stops before any envelope exists. The empty
+  value still declares no scope. The active human approved the two
+  assertion updates in the existing `tests/test_havel_persona.py`.
 
 ## [0.17.2] (2026-11-23)
 

@@ -87,7 +87,7 @@ class ManifestTest(unittest.TestCase):
 
     def test_baseline_and_undeclared_scopes_carry_notes(self):
         notes = _manifest()["option_notes"]["regimes"]
-        self.assertEqual(set(notes), {"baseline", "undeclared"})
+        self.assertEqual(set(notes), {"", "baseline", "undeclared"})
         self.assertEqual(reviewers.option_notes(_manifest(), {"regimes": "undeclared"}), [notes["undeclared"]])
 
 
@@ -140,7 +140,8 @@ class ReplyRuleTest(unittest.TestCase):
         return self.hooks.validate_reply({}, response, {})
 
     def test_havel_reads_no_repository_file_beyond_the_diff(self):
-        self.assertFalse(hasattr(self.hooks, "case_context"))
+        context = self.hooks.case_context("/nonexistent", ["app.py"], {"app.py": "+x\n"}, {"regimes": ""})
+        self.assertEqual(context, {"context": {}, "unreviewed": []})
         self.assertFalse(hasattr(self.hooks, "forced_verdict"))
 
     def test_disclaimer_above_the_verdict_passes(self):

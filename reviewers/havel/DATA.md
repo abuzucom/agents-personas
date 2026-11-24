@@ -11,9 +11,10 @@ every regime delta file, and the scope boundary. It holds no repository data bey
 files. The caller workflow alone sets `regimes`. Pull request content has no
 path to that value.
 
-havel sends no secret and no personal data of its own. The persona defines
-no `case_context` hook, so the model receives no repository file beyond the
-diff. `tests/test_havel_persona.py` asserts the absent hook. Every eval
+havel sends no secret and no personal data of its own. The `case_context`
+hook checks the `regimes` option and adds no context. The model receives no
+repository file beyond the diff. `tests/test_havel_persona.py` asserts the
+empty context. Every eval
 fixture holds synthetic data. `eval/extra_checks.py` requires each case to
 state that in `fixture_notes`. A pull request diff can still contain personal
 data that its author committed. The provider receives that diff as review
