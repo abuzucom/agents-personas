@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.19.1] (2026-11-24)
+## [0.19.2] (2026-11-24)
 
 ### Added
 - Add `reviewers/<name>/README.md` for each persona. Each README adapts the
@@ -49,12 +49,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Extend `make lint-code` to the havel persona and its tests.
 
 ### Changed
+- Type the BLOCK confirmation run records. `run_review.RunRecord` names the
+  label, verdict, and report fields. `ChunkResult.runs` holds those records.
+  `result.json` keeps its shape.
 - Fit the havel `AUDIT.md` to the engine in two places. Step 0b names
   `TRUSTED_CONTEXT.options.regimes` as the workflow input and ranks it above
   the bundle header scope line. Section 6 moves the `NOT LEGAL ADVICE:` line
   above the verdict line, because the engine requires `VERDICT_JSON` last.
 
 ### Fixed
+- Start a self-review after the Convention Sync Check only when that run
+  succeeds. Each of the five callers checks the `workflow_run`
+  conclusion. A failed or cancelled sync run calls no model. Label events
+  still start a review at once.
+- Name the pull request in each caller lock. Two pull requests on one head
+  commit no longer cancel each other. A fork `workflow_run` payload lists
+  no pull request. The head branch then stands in for the number.
+- Lint the adorno wrapper and caller with yamllint, as the other persona
+  workflows. `tests/test_persona_caller_gates.py` requires every persona
+  workflow in the yamllint paths.
+- Pin down padded havel `regimes` values in
+  `tests/test_havel_scope_padding.py`. Each one passes the hook and carries
+  the note of its trimmed value.
 - Tell maintainers what a havel run without regime deltas left unchecked.
   The `baseline`, `undeclared`, and empty `regimes` notes now state that
   regime-specific issues may exist that the run did not check. The empty

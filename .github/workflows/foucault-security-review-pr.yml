@@ -23,7 +23,8 @@ permissions:
 jobs:
   foucault:
     if: >-
-      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success') ||
       (github.event_name == 'pull_request_target' && github.event.action == 'labeled' &&
       github.event.label.name == 'foucault-scan-requested') ||
       (github.event_name == 'pull_request_target' && github.event.action == 'unlabeled' &&
@@ -35,8 +36,14 @@ jobs:
     # The group sits on the job, not the workflow. Every label event
     # reaches every caller, and a caller skips the job for another
     # persona label. A skipped job joins no group and cancels nothing.
+    # The group names the pull request, so two pull requests on one head
+    # commit keep separate reviews. A fork workflow_run payload lists no
+    # pull request. The head branch then stands in for the number.
     concurrency:
-      group: foucault-security-review-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+      group: >-
+        foucault-security-review-${{ github.event.pull_request.number ||
+        github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.head_branch }}-${{
+        github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
       cancel-in-progress: true
     uses: ./.github/workflows/foucault-security-review.yml
     with:
