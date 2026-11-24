@@ -14,9 +14,15 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.19.2] (2026-11-24)
+## [0.19.3] (2026-11-24)
 
 ### Added
+- Add `archive/` with the five source persona repositories. It holds Git
+  bundles of every branch and tag for foucault, euler, and adorno. It holds
+  a `main` tree zip and a JSON export of pull requests, reviews, comments,
+  issues, and releases for all five. The generay and havel zips omit eight
+  Terraform and Kubernetes eval cases. `archive/README.md` lists them and
+  the restore steps. `archive/SHA256SUMS` lists each file digest.
 - Add `reviewers/<name>/README.md` for each persona. Each README adapts the
   source repository README to the engine. It keeps the design position,
   the policy summary, the modes, the coverage, and the customization notes.
