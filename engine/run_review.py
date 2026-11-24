@@ -26,6 +26,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TypedDict
 
 # The engine directory joins the import path, so these imports resolve
 # both when a script runs directly and when a test loads it from a file.
@@ -107,6 +108,14 @@ class RunOptions:
     persona_options: str = ""
 
 
+class RunRecord(TypedDict):
+    """One model run behind a chunk verdict, as result.json stores it."""
+
+    label: str
+    verdict: str
+    report: str
+
+
 @dataclass
 class ChunkResult:
     """The outcome of one chunk review."""
@@ -116,10 +125,10 @@ class ChunkResult:
     report: str
     usage: dict
     reason: str = ""
-    # A BLOCK and its reported confirmation as two {label, verdict, report}
-    # records. The comment renders one section per run. An empty list leaves
-    # the chunk entry in result.json in its single-run shape.
-    runs: list = field(default_factory=list)
+    # A BLOCK and its reported confirmation as two run records. The comment
+    # renders one section per run. An empty list leaves the chunk entry in
+    # result.json in its single-run shape.
+    runs: list[RunRecord] = field(default_factory=list)
 
 
 def adapter_command(options: RunOptions) -> tuple[list[str], dict]:
@@ -358,7 +367,7 @@ def confirm_block(first: ChunkResult, confirmation: ChunkResult) -> ChunkResult:
     return ChunkResult("NEEDS-HUMAN", findings, report, usage, reason, runs)
 
 
-def run_record(label: str, result: ChunkResult) -> dict:
+def run_record(label: str, result: ChunkResult) -> RunRecord:
     """Return the stored record of one model run."""
     return {"label": label, "verdict": result.verdict, "report": result.report}
 

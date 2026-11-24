@@ -40,6 +40,7 @@ MYPY_PERSONAS = foucault euler generay adorno havel
 # Workflows adopted from the abuzucom/agents template stay out of scope.
 # The template repository owns the layout of those files.
 YAML_PATHS = .yamllint.yml examples .github/workflows/review.yml \
+	.github/workflows/adorno-ui-review.yml .github/workflows/adorno-ui-review-pr.yml \
 	.github/workflows/euler-quality-review.yml .github/workflows/euler-quality-review-pr.yml \
 	.github/workflows/foucault-security-review.yml .github/workflows/foucault-security-review-pr.yml \
 	.github/workflows/generay-time-review.yml .github/workflows/generay-time-review-pr.yml \
