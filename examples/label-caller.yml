@@ -6,8 +6,7 @@
 # with triage access or higher can add a label.
 # Each new push to a labeled pull request reviews again. These checks stay
 # optional in branch protection. Replace the all-zero SHA with one
-# agents-personas commit SHA in every uses: pin and every personas_ref. The
-# adorno and havel wrappers land with their migrations.
+# agents-personas commit SHA in every uses: pin and every personas_ref.
 #
 # Removing the stop-requested label reviews again with every persona whose
 # scan label is on. Removing any other label starts nothing.
@@ -69,5 +68,8 @@ jobs:
     uses: abuzucom/agents-personas/.github/workflows/havel-privacy-review.yml@0000000000000000000000000000000000000000
     with:
       personas_ref: "0000000000000000000000000000000000000000"
+      # Declare the regime scope, for example "eu, us". An empty value
+      # reviews the baseline classes alone and notes the unchecked regimes.
+      regimes: ""
     secrets:
       MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}

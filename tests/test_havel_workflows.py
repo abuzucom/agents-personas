@@ -1,0 +1,134 @@
+"""Test the havel wrapper and the label-only havel self-review caller.
+
+The wrapper forwards the engine inputs and the trusted regimes option. The
+self-review caller reviews this repository only under the
+havel-scan-requested label, with the baseline scope. Its concurrency group
+sits on the job, so another persona label event cancels no havel review.
+"""
+
+import json
+import unittest
+from pathlib import Path
+
+import yaml
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+WORKFLOWS = REPO_ROOT / ".github" / "workflows"
+WRAPPER = WORKFLOWS / "havel-privacy-review.yml"
+SELF_CALLER = WORKFLOWS / "havel-privacy-review-pr.yml"
+ENGINE = WORKFLOWS / "review.yml"
+MANIFEST = REPO_ROOT / "reviewers" / "havel" / "reviewer.json"
+FORWARDED_INPUTS = {
+    "personas_ref",
+    "modes",
+    "pr_number",
+    "base_sha",
+    "head_sha",
+    "head_repo_url",
+    "head_repo_full_name",
+    "model_call_command",
+    "pr_comment",
+    "fail_on_block",
+    "fork_review",
+    "paths",
+}
+REVIEW_PERMISSIONS = {"checks": "write", "contents": "read", "pull-requests": "write"}
+HEAD_EXPRESSIONS = ("github.event.workflow_run.head_sha", "github.event.pull_request.head.sha")
+
+
+def _load(path: Path) -> dict:
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
+
+
+def _trigger(workflow: dict) -> dict:
+    # PyYAML reads the bare key "on" as the boolean True.
+    return workflow.get("on", workflow.get(True))
+
+
+class WrapperTest(unittest.TestCase):
+    """The wrapper fixes the persona, forwards engine inputs, and passes regimes."""
+
+    def setUp(self):
+        self.workflow = _load(WRAPPER)
+        self.call = _trigger(self.workflow)["workflow_call"]
+        self.job = self.workflow["jobs"]["review"]
+
+    def test_wrapper_declares_the_engine_inputs_and_regimes(self):
+        self.assertEqual(set(self.call["inputs"]), FORWARDED_INPUTS | {"regimes"})
+        engine_inputs = _trigger(_load(ENGINE))["workflow_call"]["inputs"]
+        for name in FORWARDED_INPUTS:
+            with self.subTest(input=name):
+                self.assertEqual(self.call["inputs"][name]["type"], engine_inputs[name]["type"])
+
+    def test_regimes_input_matches_the_manifest_default(self):
+        regimes = self.call["inputs"]["regimes"]
+        manifest_default = json.loads(MANIFEST.read_text(encoding="utf-8"))["options"]["regimes"]["default"]
+        self.assertEqual(
+            (regimes["type"], regimes["required"], regimes["default"]), ("string", False, manifest_default)
+        )
+
+    def test_wrapper_forwards_every_input_and_fixes_the_persona(self):
+        self.assertEqual(self.job["uses"], "./.github/workflows/review.yml")
+        self.assertEqual(self.job["with"]["persona"], "havel")
+        for name in FORWARDED_INPUTS:
+            with self.subTest(input=name):
+                self.assertEqual(self.job["with"][name], f"${{{{ inputs.{name} }}}}")
+
+    def test_regimes_reach_the_engine_as_an_escaped_option(self):
+        options = self.job["with"]["persona_options"]
+        self.assertIn('"regimes"', options)
+        self.assertIn("toJSON(inputs.regimes)", options)
+
+    def test_wrapper_keeps_the_model_key_optional(self):
+        self.assertEqual(set(self.call["secrets"]), {"MODEL_API_KEY"})
+        self.assertIs(self.call["secrets"]["MODEL_API_KEY"]["required"], False)
+        self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.MODEL_API_KEY }}"})
+
+    def test_wrapper_grants_the_engine_permissions(self):
+        self.assertEqual(self.job["permissions"], REVIEW_PERMISSIONS)
+        self.assertEqual(self.workflow["permissions"], {"contents": "read"})
+
+
+class SelfCallerTest(unittest.TestCase):
+    """This repository reviews with havel only when a person adds its label."""
+
+    def setUp(self):
+        self.workflow = _load(SELF_CALLER)
+        self.job = self.workflow["jobs"]["havel"]
+
+    def test_caller_excludes_every_file_so_only_the_label_runs_a_review(self):
+        self.assertEqual(self.job["with"]["paths"].split(), ["!**"])
+
+    def test_caller_reviews_with_the_baseline_scope(self):
+        self.assertEqual(self.job["with"]["regimes"], "baseline")
+
+    def test_caller_passes_only_inputs_the_wrapper_declares(self):
+        declared = set(_trigger(_load(WRAPPER))["workflow_call"]["inputs"])
+        self.assertLessEqual(set(self.job["with"]), declared)
+
+    def test_caller_starts_on_ci_completion_and_on_its_labels(self):
+        trigger = _trigger(self.workflow)
+        self.assertEqual(trigger["workflow_run"], {"workflows": ["Convention Sync Check"], "types": ["completed"]})
+        self.assertEqual(trigger["pull_request_target"], {"types": ["labeled", "unlabeled"]})
+        condition = " ".join(self.job["if"].split())
+        self.assertIn("github.event.workflow_run.event == 'pull_request'", condition)
+        self.assertIn("github.event.label.name == 'havel-scan-requested'", condition)
+        self.assertIn("github.event.action == 'unlabeled' && github.event.label.name == 'stop-requested'", condition)
+
+    def test_caller_holds_a_job_level_head_group(self):
+        self.assertNotIn("concurrency", self.workflow)
+        concurrency = self.job["concurrency"]
+        self.assertTrue(concurrency["group"].startswith("havel-"))
+        for expression in HEAD_EXPRESSIONS:
+            self.assertIn(expression, concurrency["group"])
+        self.assertIs(concurrency["cancel-in-progress"], True)
+
+    def test_caller_uses_the_default_branch_engine_and_the_ollama_key(self):
+        self.assertEqual(self.job["uses"], "./.github/workflows/havel-privacy-review.yml")
+        self.assertEqual(self.job["with"]["personas_ref"], "${{ github.sha }}")
+        self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.OLLAMA_API_KEY }}"})
+        self.assertEqual(self.job["permissions"], REVIEW_PERMISSIONS)
+
+
+if __name__ == "__main__":
+    unittest.main()

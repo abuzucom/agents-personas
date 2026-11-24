@@ -212,3 +212,34 @@ sent. adorno's File, Piece, Wholesale, and Design-spec modes run locally as
 the `file`, `piece`, `wholesale`, and `design-spec` modes.
 `reviewers/adorno/eval/README.md` shows the commands.
 
+## havel
+
+havel moves from `abuzucom/havel` to the `havel` persona.
+
+| Old | New |
+|---|---|
+| `abuzucom/havel/.github/workflows/privacy-review.yml@<sha>` | `abuzucom/agents-personas/.github/workflows/havel-privacy-review.yml@<sha>` |
+| `audit_ref` | `personas_ref` |
+| `regimes` (required) | `regimes` (optional, empty reviews the baseline classes alone) |
+| `model_call_command` (required) | `model_call_command` (optional, empty uses the engine adapter) |
+| `pr_comment` | `pr_comment` |
+| `fail_on_block` gates BLOCK and NEEDS-HUMAN | `fail_on_block` gates BLOCK. NEEDS-HUMAN warns and concludes neutral |
+| none | `fork_review` |
+| none | `modes`, empty selects `privacy` |
+| none | `paths` |
+| none | `pr_number`, `base_sha`, `head_sha`, `head_repo_url`, `head_repo_full_name` |
+
+The secret stays `MODEL_API_KEY` with `required: false`. A fork pull request
+without `fork_review: true` posts a `skipped` check.
+
+The source workflow put a `DECLARED_SCOPE:` line ahead of the pull request
+text. The engine sends the `regimes` value in
+`TRUSTED_CONTEXT.options.regimes`. The havel `case_context` hook refuses a
+name outside `docs/regimes/scope-profiles.md` before any envelope exists.
+A `baseline`, `undeclared`, or empty scope adds a note to the check summary
+and the comment. The note says that regime-specific issues may exist that
+the run did not check.
+
+The check run carries the name `havel / privacy`. The comment uses the
+shared layout with a `## Havel privacy review: <VERDICT>` heading.
+
