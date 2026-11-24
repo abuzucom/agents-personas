@@ -12,7 +12,7 @@
   },
   "modes": {
     "privacy": {
-      "prompt": "bundles/all.md",
+      "prompt": "bundles/all-full.md",
       "review": true,
       "default": true,
       "json_mode": "PR",
@@ -24,14 +24,14 @@
       }
     },
     "file": {
-      "prompt": "bundles/all.md",
+      "prompt": "bundles/all-full.md",
       "local": true,
       "json_mode": "File",
       "verdict_line": "RISK",
       "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
     },
     "piece": {
-      "prompt": "bundles/all.md",
+      "prompt": "bundles/all-full.md",
       "local": true,
       "json_mode": "Piece",
       "verdict_line": "RISK (partial)",
@@ -45,7 +45,7 @@
       "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
     },
     "data-map": {
-      "prompt": "bundles/all.md",
+      "prompt": "bundles/all-full.md",
       "local": true,
       "json_mode": "Data-map",
       "verdict_line": "ACCURACY",

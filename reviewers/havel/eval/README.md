@@ -7,11 +7,11 @@ untrusted text.
 
 | Mode | Delivery | Prompt | Verdict line | Cases |
 |---|---|---|---|---|
-| `privacy` | pull request review | `bundles/all.md` | `VERDICT: APPROVE, BLOCK, or NEEDS-HUMAN` | 13 |
-| `file` | local | `bundles/all.md` | `RISK: CRITICAL, HIGH, MEDIUM, LOW, or NONE-FOUND` | 73 |
-| `piece` | local | `bundles/all.md` | `RISK (partial): <level>` | 5 |
+| `privacy` | pull request review | `bundles/all-full.md` | `VERDICT: APPROVE, BLOCK, or NEEDS-HUMAN` | 13 |
+| `file` | local | `bundles/all-full.md` | `RISK: CRITICAL, HIGH, MEDIUM, LOW, or NONE-FOUND` | 73 |
+| `piece` | local | `bundles/all-full.md` | `RISK (partial): <level>` | 5 |
 | `wholesale` | local | `bundles/all-full.md` | `RISK: CRITICAL, HIGH, MEDIUM, LOW, or NONE-FOUND` | 3 |
-| `data-map` | local | `bundles/all.md` | `ACCURACY: MATCH, MISMATCH, or NEEDS-HUMAN` | 8 |
+| `data-map` | local | `bundles/all-full.md` | `ACCURACY: MATCH, MISMATCH, or NEEDS-HUMAN` | 8 |
 
 The `declared_scope` field of a case reaches the model as
 `TRUSTED_CONTEXT.options.regimes`, the same field a CI review uses. A case

@@ -131,7 +131,7 @@ class EngineRunTest(unittest.TestCase):
         result = self.run_steps(_reply("APPROVE"))
         self.assertEqual(result["verdict"], "APPROVE")
         prompt = (self.out / "case" / "envelopes" / "001.prompt.0.txt").read_text(encoding="utf-8")
-        self.assertIn("# Havel audit bundle: all (standard tier)", prompt)
+        self.assertIn("# Havel audit bundle: all (full tier)", prompt)
         self.assertIn("TRUSTED_CONTEXT.options.regimes takes precedence", prompt)
 
     def test_reply_without_the_disclaimer_is_retried(self):

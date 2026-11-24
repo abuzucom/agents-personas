@@ -44,7 +44,7 @@ the rebuild.
   `TRUSTED_CONTEXT` and the pull request text in `REVIEW_TARGET`. Every
   bundle header also carries a `DECLARED_SCOPE:` line. The edit gives the
   trusted option precedence over that header line. The review mode sends
-  `bundles/all.md`, whose header declares `all`. Without the precedence rule
+  `bundles/all-full.md`, whose header declares `all`. Without the precedence rule
   the header would widen the declared scope to every regime.
 - Section 6 places the `NOT LEGAL ADVICE:` line directly above the verdict
   line. The source placed it after `VERDICT_JSON`. The engine requires
@@ -57,14 +57,15 @@ authority under the edited step 0b.
 
 ## Mode prompts
 
-The `privacy`, `file`, `piece`, and `data-map` modes send `bundles/all.md`,
-the standard tier with every regime. The `wholesale` mode sends
-`bundles/all-full.md`. The source README assigns the standard tier to a pull
-request review and the full tier to a whole-codebase audit. The source
-workflow sent `AUDIT.md` alone. That hub points at the scope profiles, the
-regime deltas, and the scope boundary. None of those files reached the model.
-`tests/test_havel_persona.py` requires every one of them in the review
-prompt.
+Every mode sends `bundles/all-full.md`, the full tier with every regime. The
+source README assigns the standard tier to a pull request review. A standard
+bundle omits the `docs/checks/` class files. Section 2 of `AUDIT.md` sends
+the model to those files for barrier lists, thresholds, and investigation
+steps. A review without them applies the abbreviated class table alone. The
+source workflow sent `AUDIT.md` alone. That hub points at the scope profiles,
+the class files, the regime deltas, and the scope boundary. None of those
+files reached the model. `tests/test_havel_persona.py` requires every one of
+them in the review prompt.
 
 ## Tests and runner
 

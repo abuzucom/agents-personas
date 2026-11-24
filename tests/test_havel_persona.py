@@ -94,13 +94,17 @@ class ManifestTest(unittest.TestCase):
 class ReviewPromptTest(unittest.TestCase):
     """The review mode sends the scope profiles, every regime, and the boundary."""
 
-    def test_review_mode_sends_the_all_regime_bundle(self):
-        self.assertEqual(_manifest()["modes"][REVIEW_MODE]["prompt"], "bundles/all.md")
+    def test_every_mode_sends_the_full_all_regime_bundle(self):
+        for name, mode in _manifest()["modes"].items():
+            with self.subTest(mode=name):
+                self.assertEqual(mode["prompt"], "bundles/all-full.md")
 
     def test_prompt_carries_every_file_the_hub_points_at(self):
         prompt = _review_prompt()
         sources = [PERSONA_DIR / "docs" / "regimes" / "scope-profiles.md", PERSONA_DIR / "docs" / "scope-boundary.md"]
-        for path in sources + _regime_files():
+        checks = sorted((PERSONA_DIR / "docs" / "checks").glob("2.*.md"))
+        self.assertEqual(len(checks), 29)
+        for path in sources + _regime_files() + checks:
             with self.subTest(source=path.name):
                 body = path.read_text(encoding="utf-8").strip()
                 self.assertIn(body, prompt)

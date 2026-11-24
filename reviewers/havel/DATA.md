@@ -3,11 +3,11 @@
 havel sends the provider three items per review chunk:
 
 - the fenced pull request content: the diff, title, body, and file names
-- `bundles/all.md`, the persona prompt for the privacy mode
+- `bundles/all-full.md`, the persona prompt for the privacy mode
 - the trusted `regimes` option value in `TRUSTED_CONTEXT.options`
 
-The bundle joins `AUDIT.md`, the scope profiles, every regime delta file,
-and the scope boundary. It holds no repository data beyond those policy
+The bundle joins `AUDIT.md`, the scope profiles, every class check file,
+every regime delta file, and the scope boundary. It holds no repository data beyond those policy
 files. The caller workflow alone sets `regimes`. Pull request content has no
 path to that value.
 

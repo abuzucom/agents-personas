@@ -19,9 +19,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 - Add the havel persona under `reviewers/havel`. It comes from
   `abuzucom/havel` at `5857143`. `PROVENANCE.md` maps every file. The
-  `privacy` mode reviews pull requests with `bundles/all.md`. The source
-  workflow sent `AUDIT.md` alone, without the scope profiles, regime deltas,
-  or scope boundary the hub points at. The `file`, `piece`, `wholesale`, and
+  `privacy` mode reviews pull requests with `bundles/all-full.md`. The source
+  workflow sent `AUDIT.md` alone, without the scope profiles, class check
+  files, regime deltas, or scope boundary the hub points at. The `file`, `piece`, `wholesale`, and
   `data-map` modes run locally. 102 of the 104 source eval cases moved. The
   two cases with Terraform fixtures stay in the source repository, because
   the gates protect Terraform source.
