@@ -32,6 +32,6 @@ The engine limits apply to havel as to every persona:
   `tests/test_review_workflow.py` covers this.
 
 Local modes (`file`, `piece`, `wholesale`, `data-map`) run through
-`engine/run_eval.py` on a workstation. A local run sends the mode bundle, the
-case `declared_scope`, and one eval case to the callable that `--model-call`
+`engine/run_eval.py` on a workstation. A local run sends `bundles/all-full.md`,
+the case `declared_scope`, and one eval case to the callable that `--model-call`
 names. The person running the command chooses that callable and its provider.
