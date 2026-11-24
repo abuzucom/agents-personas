@@ -1,0 +1,51 @@
+---
+name: havel-privacy-review-pr
+
+# Self-review: havel reviews this repository's pull requests only on
+# request. The paths input excludes every file, so a pull request without
+# the havel-scan-requested label gets a skipped check and no model call.
+# The label overrides that filter. Adding the label starts the review at
+# once. A push to a labeled pull request reviews after the Convention Sync
+# Check. Removing stop-requested reviews a labeled head once. This
+# repository declares the baseline scope. Each review therefore notes that
+# regime-specific issues may exist that the run did not check.
+# workflow_run and pull_request_target run this file from the default
+# branch, so a pull request cannot edit it. The engine never executes the
+# pull request head.
+
+"on":
+  workflow_run:
+    workflows: [Convention Sync Check]
+    types: [completed]
+  pull_request_target:
+    types: [labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  havel:
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request') ||
+      (github.event_name == 'pull_request_target' && github.event.action == 'labeled' &&
+      github.event.label.name == 'havel-scan-requested') ||
+      (github.event_name == 'pull_request_target' && github.event.action == 'unlabeled' &&
+      github.event.label.name == 'stop-requested')
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    # The group sits on the job, not the workflow. Every label event
+    # reaches every caller, and a caller skips the job for another
+    # persona label. A skipped job joins no group and cancels nothing.
+    concurrency:
+      group: havel-privacy-review-${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha }}
+      cancel-in-progress: true
+    uses: ./.github/workflows/havel-privacy-review.yml
+    with:
+      personas_ref: ${{ github.sha }}
+      paths: |
+        !**
+      regimes: baseline
+    secrets:
+      MODEL_API_KEY: ${{ secrets.OLLAMA_API_KEY }}

@@ -8,6 +8,7 @@ Pull request reviewer personas on one shared review engine.
 | euler | quality | `.github/workflows/euler-quality-review.yml` |
 | generay | time | `.github/workflows/generay-time-review.yml` |
 | adorno | ui | `.github/workflows/adorno-ui-review.yml` |
+| havel | privacy | `.github/workflows/havel-privacy-review.yml` |
 
 - `docs/migration.md` maps old callers to the wrappers.
 - `examples/` holds the always-on caller and the label caller.

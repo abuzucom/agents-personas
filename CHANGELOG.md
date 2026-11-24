@@ -14,9 +14,18 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.18.1] (2026-11-24)
+## [0.19.0] (2026-11-24)
 
 ### Added
+- Add `.github/workflows/havel-privacy-review.yml`. It forwards the engine
+  inputs and an optional `regimes` input. toJSON escapes the value into
+  `persona_options`. `MODEL_API_KEY` stays optional. `docs/migration.md`
+  maps the old `privacy-review.yml` inputs.
+- Add `.github/workflows/havel-privacy-review-pr.yml`. This repository
+  reviews with havel only under the `havel-scan-requested` label, with the
+  `baseline` scope. The concurrency group sits on the job.
+- Show the `regimes` input in `examples/label-caller.yml`. Extend the
+  yamllint paths and the README table to the havel workflows.
 - Add the havel persona under `reviewers/havel`. It comes from
   `abuzucom/havel` at `5857143`. `PROVENANCE.md` maps every file. The
   `privacy` mode reviews pull requests with `bundles/all-full.md`. The source

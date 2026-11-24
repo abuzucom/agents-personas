@@ -43,6 +43,7 @@ YAML_PATHS = .yamllint.yml examples .github/workflows/review.yml \
 	.github/workflows/euler-quality-review.yml .github/workflows/euler-quality-review-pr.yml \
 	.github/workflows/foucault-security-review.yml .github/workflows/foucault-security-review-pr.yml \
 	.github/workflows/generay-time-review.yml .github/workflows/generay-time-review-pr.yml \
+	.github/workflows/havel-privacy-review.yml .github/workflows/havel-privacy-review-pr.yml \
 	.github/workflows/stop-requested-notice.yml .github/workflows/sandbox-check.yml \
 	.github/workflows/lint-code.yml
 
