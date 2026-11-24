@@ -7,6 +7,7 @@ repository.
 | Here | Source | Change |
 |---|---|---|
 | `TIME.md` | `TIME.md` | none |
+| `README.md` | `README.md` | adapted to the engine: persona substance kept, the old install, CI, versioning, and contributing sections replaced with the wrapper and the root README |
 | `SYNC.md` | `SYNC.md` | none |
 | `data/` | `data/` | none |
 | `docs/classes/` | `docs/classes/` | none |

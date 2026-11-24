@@ -7,6 +7,7 @@ repository.
 | Here | Source | Change |
 |---|---|---|
 | `AUDIT.md` | `AUDIT.md` | none |
+| `README.md` | `README.md` | adapted to the engine: persona substance kept, the old install, CI, versioning, and contributing sections replaced with the wrapper and the root README |
 | `docs/checks/` | `docs/checks/` | none |
 | `bundles.json` | `bundles.json` | none |
 | `bundles/ui-full.md` | `bundles/ui-full.md` | none |

@@ -7,6 +7,7 @@ repository.
 | Here | Source | Change |
 |---|---|---|
 | `AUDIT.md` | `AUDIT.md` | none |
+| `README.md` | `README.md` | adapted to the engine: persona substance kept, the old install, CI, versioning, and contributing sections replaced with the wrapper and the root README |
 | `eval/cases/security/<case>/` | `eval/cases/<case>/` with mode `PR` | none |
 | `eval/cases/file/<case>/` | `eval/cases/<case>/` with mode `File` | none |
 | `eval/cases/piece/<case>/` | `eval/cases/<case>/` with mode `Piece` | none |
