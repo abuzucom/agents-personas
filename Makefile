@@ -33,10 +33,10 @@ test:
 # comments ineffective. The warn tier reports and never fails. The persona
 # eval cases hold planted defects. Every tool skips those cases.
 LINT_TESTS = $(wildcard tests/test_engine_*.py tests/test_euler_*.py tests/test_foucault_*.py \
-	tests/test_generay_*.py tests/test_adorno_*.py tests/test_scan_request_label.py)
+	tests/test_generay_*.py tests/test_adorno_*.py tests/test_havel_*.py tests/test_scan_request_label.py)
 RUFF_PATHS = engine reviewers $(LINT_TESTS)
 RUFF_EXCLUDE = --force-exclude --extend-exclude 'reviewers/*/eval/cases'
-MYPY_PERSONAS = foucault euler generay adorno
+MYPY_PERSONAS = foucault euler generay adorno havel
 # Workflows adopted from the abuzucom/agents template stay out of scope.
 # The template repository owns the layout of those files.
 YAML_PATHS = .yamllint.yml examples .github/workflows/review.yml \

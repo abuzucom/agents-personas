@@ -1,0 +1,55 @@
+{
+  "persona": "havel",
+  "function": "privacy",
+  "options": {
+    "regimes": {"type": "string", "default": "", "trusted": true}
+  },
+  "option_notes": {
+    "regimes": {
+      "baseline": "Scope baseline: the review applies the baseline classes and no regime delta.",
+      "undeclared": "Scope undeclared: the review applies the baseline classes alone and marks every regime-conditional finding NEEDS-HUMAN."
+    }
+  },
+  "modes": {
+    "privacy": {
+      "prompt": "bundles/all.md",
+      "review": true,
+      "default": true,
+      "json_mode": "PR",
+      "require_coverage": true,
+      "finding_rules": {
+        "keys": ["severity", "class", "regime", "file", "line", "title"],
+        "severities": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
+        "class_prefix": "2."
+      }
+    },
+    "file": {
+      "prompt": "bundles/all.md",
+      "local": true,
+      "json_mode": "File",
+      "verdict_line": "RISK",
+      "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
+    },
+    "piece": {
+      "prompt": "bundles/all.md",
+      "local": true,
+      "json_mode": "Piece",
+      "verdict_line": "RISK (partial)",
+      "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND", "NEEDS-HUMAN"]
+    },
+    "wholesale": {
+      "prompt": "bundles/all-full.md",
+      "local": true,
+      "json_mode": "Wholesale",
+      "verdict_line": "RISK",
+      "verdicts": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND"]
+    },
+    "data-map": {
+      "prompt": "bundles/all.md",
+      "local": true,
+      "json_mode": "Data-map",
+      "verdict_line": "ACCURACY",
+      "verdicts": ["MATCH", "MISMATCH", "NEEDS-HUMAN"]
+    }
+  }
+}
