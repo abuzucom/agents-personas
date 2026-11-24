@@ -14,6 +14,30 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] (2026-11-24)
+
+### Added
+- Add the havel persona under `reviewers/havel`. It comes from
+  `abuzucom/havel` at `5857143`. `PROVENANCE.md` maps every file. The
+  `privacy` mode reviews pull requests with `bundles/all-full.md`. The source
+  workflow sent `AUDIT.md` alone, without the scope profiles, class check
+  files, regime deltas, or scope boundary the hub points at. The `file`, `piece`, `wholesale`, and
+  `data-map` modes run locally. 102 of the 104 source eval cases moved. The
+  two cases with Terraform fixtures stay in the source repository, because
+  the gates protect Terraform source.
+- Declare the trusted `regimes` option. The caller value reaches the model in
+  `TRUSTED_CONTEXT.options.regimes`. The `baseline` and `undeclared` values
+  carry fixed notes in the check summary and the comment.
+- Add `reviewers/havel/review_hooks.py`. A review reply must carry the
+  `NOT LEGAL ADVICE:` line directly above its final verdict line.
+- Extend `make lint-code` to the havel persona and its tests.
+
+### Changed
+- Fit the havel `AUDIT.md` to the engine in two places. Step 0b names
+  `TRUSTED_CONTEXT.options.regimes` as the workflow input and ranks it above
+  the bundle header scope line. Section 6 moves the `NOT LEGAL ADVICE:` line
+  above the verdict line, because the engine requires `VERDICT_JSON` last.
+
 ## [0.17.2] (2026-11-23)
 
 ### Added
