@@ -6,8 +6,9 @@
   },
   "option_notes": {
     "regimes": {
-      "baseline": "Scope baseline: the review applies the baseline classes and no regime delta.",
-      "undeclared": "Scope undeclared: the review applies the baseline classes alone and marks every regime-conditional finding NEEDS-HUMAN."
+      "": "Scope empty: the caller declared no regimes value. The review applies the baseline classes alone and marks every regime-conditional finding NEEDS-HUMAN. Regime-specific issues may exist that this run did not check.",
+      "baseline": "Scope baseline: the review applies the baseline classes and no regime delta. Regime-specific issues may exist that this run did not check.",
+      "undeclared": "Scope undeclared: the review applies the baseline classes alone and marks every regime-conditional finding NEEDS-HUMAN. Regime-specific issues may exist that this run did not check."
     }
   },
   "modes": {
