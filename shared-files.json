@@ -21,7 +21,7 @@
     "tests/gate_corpus.py": "edb8d544ef7e402ad174b57e780166730cd6b86137c7d77c4293c06fd211161f",
     "tests/json_line_worker.py": "57cbf9ed4c57506201e9c9e4ae57d6b8a330d5ede2f8fb76f0c4f72dae55fc0b",
     "tests/json_line_worker_child.py": "4a6c64a70264aebe350a83dc2908963adc87b421b0ab3648631371e6b1c6c45d",
-    "tests/test_block_destructive_bash.py": "d2f888e151e9052f6937e3e177f0cfd437bb68d1dc54ae2df0542ccf9b4f751e",
+    "tests/test_block_destructive_bash.py": "143d55eddb90031ef4e007df0b266a9392d92b3342bc6b0e0a7791c101235024",
     "tests/test_block_destructive_cmd.py": "6d8ada534ccc91af6b05930a13208234361dffa6c653c2326b19d108324c33cc",
     "tests/test_block_destructive_powershell.py": "fa921504a039c48a8a7043b7ef0622ee42bd9bdb8ae4167d50caf141bc160835",
     "tests/test_check_gate_adoption.py": "3a492ab99fcbf822c492d7a988c1cd321830709be4b30bcd3cbbef4143768c51",
