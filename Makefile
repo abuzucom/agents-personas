@@ -34,8 +34,9 @@ test:
 # comments ineffective. The warn tier reports and never fails. The persona
 # eval cases hold planted defects. Every tool skips those cases.
 LINT_TESTS = $(wildcard tests/test_engine_*.py tests/test_euler_*.py tests/test_foucault_*.py \
-	tests/test_generay_*.py tests/test_adorno_*.py tests/test_havel_*.py tests/test_scan_request_label.py)
-RUFF_PATHS = engine reviewers $(LINT_TESTS)
+	tests/test_generay_*.py tests/test_adorno_*.py tests/test_havel_*.py tests/test_scan_request_label.py \
+	tests/test_release_personas_*.py)
+RUFF_PATHS = engine reviewers tools/release_personas.py $(LINT_TESTS)
 RUFF_EXCLUDE = --force-exclude --extend-exclude 'reviewers/*/eval/cases'
 MYPY_PERSONAS = foucault euler generay adorno havel
 # Workflows adopted from the abuzucom/agents template stay out of scope.
@@ -47,7 +48,7 @@ YAML_PATHS = .yamllint.yml examples .github/workflows/review.yml \
 	.github/workflows/generay-time-review.yml .github/workflows/generay-time-review-pr.yml \
 	.github/workflows/havel-privacy-review.yml .github/workflows/havel-privacy-review-pr.yml \
 	.github/workflows/stop-requested-notice.yml .github/workflows/sandbox-check.yml \
-	.github/workflows/lint-code.yml
+	.github/workflows/lint-code.yml .github/workflows/release.yml
 
 lint-code:
 	$(PYTHON) -m ruff check --ignore-noqa $(RUFF_EXCLUDE) $(RUFF_PATHS)

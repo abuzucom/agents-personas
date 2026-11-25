@@ -14,9 +14,18 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.20.0] (2026-11-25)
+## [0.21.0] (2026-11-25)
 
 ### Added
+- Add `.github/workflows/release.yml`. A pushed `vX.Y.Z` tag on a `main`
+  commit fills a draft with a source archive, its Sigstore bundle, and
+  `SHA256SUMS.txt`. The job runs in the `release` environment. A person
+  publishes the draft.
+- Add `tools/release_personas.py` with the `check-tag`, `archive`,
+  `check-assets`, `checksums`, and `notes` subcommands. Two builds of one
+  commit give identical archive bytes.
+- Add `actions/attest` at `1e69f48acb82d1966a394da916b4c1698aa569d6`
+  (v4.2.2). The active human approved the dependency.
 - Adopt the `abuzucom/agents` template at `08d88b2` (v2.45.1). The previous
   template revision was `909b937` (v2.28.5).
 - Add the template skills under `skills/`, `.claude/skills/`, and

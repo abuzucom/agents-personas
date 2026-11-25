@@ -72,6 +72,22 @@ This repository reviews its own pull requests with the five `*-review-pr.yml`
 callers. foucault and euler run after the Convention Sync Check. adorno,
 generay, and havel run only under the matching scan label.
 
+## Tagged versions
+
+`.github/workflows/release.yml` fills a draft GitHub release for each pushed
+`vX.Y.Z` tag. It never publishes.
+
+- The tag must equal `v` plus the top `CHANGELOG.md` version.
+- The tag must point to a commit on `main`.
+- The `release` job runs in the `release` environment. Give that
+  environment a required reviewer in the repository settings.
+- The draft holds a source archive of the tagged tree, its Sigstore bundle,
+  and `SHA256SUMS.txt`. `gh attestation verify` checks the archive.
+- The draft notes hold the changelog section and the pin block for the
+  tagged commit.
+- A person publishes the draft by hand.
+- `python tools/release_personas.py --help` lists the build steps.
+
 ## Local use
 
 - `python engine/run_eval.py --persona <name>` checks the eval cases of a
@@ -95,6 +111,7 @@ generay, and havel run only under the matching scan label.
 | `docs/` | The migration guide and the consolidation plan. |
 | `tests/` | Engine, persona, workflow, and policy tests. |
 | `scripts/`, `hooks/` | Repository policy checks and agent gates from `abuzucom/agents`. |
+| `tools/release_personas.py` | Tag checks, the source archive, checksums, and notes for `release.yml`. |
 
 ## Verifying changes
 
