@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.19.3] (2026-11-24)
+## [0.19.4] (2026-11-24)
 
 ### Added
 - Add `archive/` with the five source persona repositories. It holds Git
@@ -64,6 +64,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   above the verdict line, because the engine requires `VERDICT_JSON` last.
 
 ### Fixed
+- Drop inherited `GIT_CONFIG_*` variables in two hook tests. The
+  `run_hook_in` helper of `tests/test_block_destructive_bash.py` and
+  `test_match_carries_effective_git_context` of
+  `tests/test_enforce_branch_name.py` take the upstream
+  `abuzucom/agents` isolation. A cloud session exports a config vector.
+  The hooks read that vector the way git does. Two tests then failed
+  outside GitHub Actions. The hooks and every assertion stay unchanged.
 - Start a self-review after the Convention Sync Check only when that run
   succeeds. Each of the five callers checks the `workflow_run`
   conclusion. A failed or cancelled sync run calls no model. Label events
