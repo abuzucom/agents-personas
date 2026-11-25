@@ -86,7 +86,7 @@ class ManifestPromptListTest(unittest.TestCase):
         findings = reviewers.validate_persona(self.persona)
         self.assertTrue(any("prompt 'C.md' is missing" in finding for finding in findings), findings)
 
-    def test_context_mode_renders_the_joined_files(self):
+    def test_context_mode_renders_joined_files(self):
         self.write(["A.md", "B.md"])
         rendered = render_context.render_context(self.root, "sample", "notes")
         self.assertEqual(rendered, ("a\n" + reviewers.PROMPT_SEPARATOR + "b\n").encode("ascii"))
@@ -101,7 +101,7 @@ class EngineRunPromptListTest(unittest.TestCase):
     options = fixture.RunReviewTest.options
     prompts = fixture.RunReviewTest.prompts
 
-    def test_review_prompt_holds_both_files_in_order(self):
+    def test_review_prompt_holds_files_order(self):
         persona = self.root / "reviewers" / "euler"
         (persona / "S.md").write_text("Sync rules.\n", encoding="ascii")
         manifest = json.loads((persona / "reviewer.json").read_text(encoding="utf-8"))

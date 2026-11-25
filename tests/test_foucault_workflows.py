@@ -47,7 +47,7 @@ class WrapperTest(unittest.TestCase):
         self.call = _trigger(self.workflow)["workflow_call"]
         self.job = self.workflow["jobs"]["review"]
 
-    def test_wrapper_inputs_are_the_engine_inputs_minus_persona_and_caps(self):
+    def test_wrapper_inputs_match_engine(self):
         engine_inputs = _trigger(_load(ENGINE))["workflow_call"]["inputs"]
         self.assertEqual(set(self.call["inputs"]), FORWARDED_INPUTS)
         for name in FORWARDED_INPUTS:
@@ -57,17 +57,17 @@ class WrapperTest(unittest.TestCase):
                 )
                 self.assertEqual(self.call["inputs"][name]["type"], engine_inputs[name]["type"])
 
-    def test_wrapper_calls_the_engine_for_foucault_with_the_default_mode(self):
+    def test_wrapper_calls_foucault_default(self):
         self.assertEqual(self.job["uses"], "./.github/workflows/review.yml")
         self.assertEqual(self.job["with"]["persona"], "foucault")
         self.assertEqual(self.call["inputs"]["modes"]["default"], "")
 
-    def test_wrapper_forwards_every_input_by_name(self):
+    def test_wrapper_forwards_input_name(self):
         for name in FORWARDED_INPUTS:
             with self.subTest(input=name):
                 self.assertEqual(self.job["with"][name], f"${{{{ inputs.{name} }}}}")
 
-    def test_wrapper_passes_only_the_model_key(self):
+    def test_wrapper_passes_model_key(self):
         self.assertEqual(set(self.call["secrets"]), {"MODEL_API_KEY"})
         self.assertIs(self.call["secrets"]["MODEL_API_KEY"]["required"], False)
         self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.MODEL_API_KEY }}"})
@@ -84,19 +84,19 @@ class SelfCallerTest(unittest.TestCase):
         self.workflow = _load(SELF_CALLER)
         self.job = self.workflow["jobs"]["foucault"]
 
-    def test_caller_runs_after_the_sync_check(self):
+    def test_caller_runs_after_sync_check(self):
         run = _trigger(self.workflow)["workflow_run"]
         self.assertEqual(run, {"workflows": ["Convention Sync Check"], "types": ["completed"]})
 
-    def test_caller_uses_the_default_branch_engine(self):
+    def test_caller_uses_default_branch_engine(self):
         self.assertEqual(self.job["uses"], "./.github/workflows/foucault-security-review.yml")
         self.assertEqual(self.job["with"]["personas_ref"], "${{ github.sha }}")
 
-    def test_caller_maps_the_ollama_key_only(self):
+    def test_caller_maps_ollama_key(self):
         self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.OLLAMA_API_KEY }}"})
         self.assertNotIn("inherit", str(self.workflow))
 
-    def test_caller_skips_runs_that_did_not_come_from_a_pull_request(self):
+    def test_caller_skips_non_pr_runs(self):
         self.assertIn("github.event.workflow_run.event == 'pull_request'", self.job["if"])
 
 
@@ -106,7 +106,7 @@ class ExampleCallerTest(unittest.TestCase):
     def jobs(self, name: str) -> dict:
         return _load(EXAMPLES / name)["jobs"]
 
-    def test_examples_pin_uses_and_personas_ref_to_one_sha(self):
+    def test_examples_pin_one_sha(self):
         for name in ("always-on-caller.yml", "label-caller.yml"):
             for job_name, job in self.jobs(name).items():
                 with self.subTest(example=name, job=job_name):
@@ -116,12 +116,12 @@ class ExampleCallerTest(unittest.TestCase):
                     self.assertEqual(job["with"]["personas_ref"], sha)
                     self.assertEqual(set(job["secrets"]), {"MODEL_API_KEY"})
 
-    def test_always_on_example_runs_foucault_and_euler_after_ci(self):
+    def test_always_on_runs_after_ci(self):
         workflow = _load(EXAMPLES / "always-on-caller.yml")
         self.assertIn("workflow_run", _trigger(workflow))
         self.assertEqual(set(workflow["jobs"]), {"foucault", "euler"})
 
-    def test_label_example_gates_each_job_on_its_label(self):
+    def test_label_example_gates_job_label(self):
         workflow = _load(EXAMPLES / "label-caller.yml")
         trigger = _trigger(workflow)["pull_request_target"]
         # The active human approved unlabeled for review after stop-requested goes.

@@ -26,7 +26,7 @@ the persona, and the head tree copy (decision 33). Only the review step
 holds `MODEL_API_KEY`.
 
 `tests/test_generay_review_hooks.py` covers the prescan placement with
-`test_prescan_rides_in_the_review_target`. The engine tests named in
+`test_prescan_rides_review_target`. The engine tests named in
 `reviewers/euler/DATA.md` cover the envelope, the chunk split, and the step
 secrets for every persona.
 

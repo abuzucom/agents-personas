@@ -148,7 +148,7 @@ class RunReviewTest(unittest.TestCase):
         self.assertIn("REVIEW_TARGET", self.prompts()[0])
         self.assertIn("Review code quality.", self.prompts()[0])
 
-    def test_invalid_reply_gets_one_retry_with_note(self):
+    def test_invalid_reply_retries_once(self):
         self.script("no verdict here", _reply("APPROVE"))
         result = run_review.run_mode(self.options())
         self.assertEqual(result["verdict"], "APPROVE")
@@ -156,13 +156,13 @@ class RunReviewTest(unittest.TestCase):
         self.assertEqual(len(prompts), 2)
         self.assertIn("failed validation", prompts[1])
 
-    def test_two_invalid_replies_fail_the_run(self):
+    def test_two_invalid_replies_fail_run(self):
         self.script("no verdict", "still no verdict")
         with self.assertRaisesRegex(run_review.ReviewError, "invalid response after one retry"):
             run_review.run_mode(self.options())
         self.assertFalse((self.out / "result.json").exists())
 
-    def test_wrong_json_mode_counts_as_invalid(self):
+    def test_wrong_json_mode_counts_invalid(self):
         self.script(_reply("APPROVE", mode="other"), _reply("APPROVE", mode="other"))
         with self.assertRaises(run_review.ReviewError):
             run_review.run_mode(self.options())
@@ -183,7 +183,7 @@ class RunReviewTest(unittest.TestCase):
         usage = run_review.run_mode(self.options())["usage"]
         self.assertEqual(usage, {"input_tokens": 100, "output_tokens": 20})
 
-    def test_unreviewed_binary_turns_approve_into_needs_human(self):
+    def test_unreviewed_binary_needs_human(self):
         (self.repo / "image.bin").write_bytes(bytes(range(256)))
         _git(self.repo, "add", "image.bin")
         _git(self.repo, "commit", "-q", "-m", "binary")
@@ -192,7 +192,7 @@ class RunReviewTest(unittest.TestCase):
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
         self.assertIn("image.bin", result["unreviewed"])
 
-    def test_cli_exits_nonzero_without_a_verdict(self):
+    def test_cli_exits_nonzero_without_verdict(self):
         self.script("no verdict", "no verdict")
         command = [
             sys.executable,

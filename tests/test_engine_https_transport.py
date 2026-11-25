@@ -81,20 +81,20 @@ class OpenHttpsTest(unittest.TestCase):
             with call_model.open_https(request or _request(), timeout=5) as response:
                 return response.read(100)
 
-    def test_direct_request_reaches_the_endpoint_host(self):
+    def test_direct_request_reaches_endpoint_host(self):
         self.assertEqual(self.open({}), b'{"ok": true}')
         connection = _FakeConnection.created[0]
         self.assertEqual((connection.host, connection.port, connection.tunnel), ("api.example.test", 443, None))
         self.assertEqual(connection.sent[:2], ("POST", "/v1/chat?x=1"))
         self.assertTrue(connection.closed)
 
-    def test_https_proxy_tunnels_to_the_endpoint(self):
+    def test_https_proxy_tunnels_endpoint(self):
         self.open({"HTTPS_PROXY": "http://proxy.example.test:3128"})
         connection = _FakeConnection.created[0]
         self.assertEqual((connection.host, connection.port), ("proxy.example.test", 3128))
         self.assertEqual(connection.tunnel[:2], PROXY_TARGET)
 
-    def test_proxy_credentials_become_a_proxy_authorization_header(self):
+    def test_proxy_credentials_set_authorization(self):
         self.open({"HTTPS_PROXY": "http://user:secret@proxy.example.test:3128"})
         headers = _FakeConnection.created[0].tunnel[2]
         self.assertEqual(headers, {"Proxy-Authorization": "Basic dXNlcjpzZWNyZXQ="})
@@ -103,17 +103,17 @@ class OpenHttpsTest(unittest.TestCase):
         self.open({"HTTPS_PROXY": "http://proxy.example.test:3128", "NO_PROXY": "api.example.test"})
         self.assertEqual(_FakeConnection.created[0].host, "api.example.test")
 
-    def test_port_specific_no_proxy_entry_connects_directly(self):
+    def test_port_no_proxy_connects_directly(self):
         environment = {"HTTPS_PROXY": "http://proxy.example.test:3128", "NO_PROXY": "api.example.test:8443"}
         self.open(environment, _request("https://api.example.test:8443/v1/chat"))
         connection = _FakeConnection.created[0]
         self.assertEqual((connection.host, connection.port, connection.tunnel), ("api.example.test", 8443, None))
 
-    def test_proxy_user_without_a_password_sends_no_authorization(self):
+    def test_passwordless_proxy_sends_no_authorization(self):
         self.open({"HTTPS_PROXY": "http://user@proxy.example.test:3128"})
         self.assertIsNone(_FakeConnection.created[0].tunnel[2])
 
-    def test_redirect_status_raises_http_error_without_following(self):
+    def test_redirect_raises_without_following(self):
         redirect = _FakeHTTPResponse(302, b"moved")
         with patch.object(_FakeConnection, "getresponse", lambda self: redirect):
             with self.assertRaises(HTTPError) as caught:
@@ -122,7 +122,7 @@ class OpenHttpsTest(unittest.TestCase):
         self.assertEqual(len(_FakeConnection.created), 1)
         self.assertTrue(_FakeConnection.created[0].closed)
 
-    def test_error_status_raises_http_error_with_a_readable_body(self):
+    def test_error_raises_with_readable_body(self):
         original = _FakeConnection.getresponse
         with patch.object(_FakeConnection, "getresponse", lambda self: _FakeHTTPResponse(413, b"too large")):
             with self.assertRaises(HTTPError) as caught:
@@ -132,7 +132,7 @@ class OpenHttpsTest(unittest.TestCase):
         self.assertEqual(caught.exception.read(), b"too large")
         self.assertTrue(_FakeConnection.created[0].closed)
 
-    def test_non_https_scheme_is_refused_before_any_connection(self):
+    def test_non_https_scheme_refused(self):
         for url in ("http://api.example.test/v1", "file:///etc/passwd"):
             with self.subTest(url=url), self.assertRaises(call_model.ProviderError):
                 self.open({}, _request(url))

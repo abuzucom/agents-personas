@@ -55,11 +55,11 @@ class ValidateExpectedTest(unittest.TestCase):
         problems = extension.validate_expected("file", _expected(expected_checks=["C99.9"]))
         self.assertIn("unknown check 'C99.9' in expected_checks", problems)
 
-    def test_pr_case_with_prescan_is_reported(self):
+    def test_pr_case_prescan_reported(self):
         problems = extension.validate_expected("time", _expected(expected_prescan=["C9.1"]))
         self.assertIn("PR cases carry no head tree, so expected_prescan must be empty", problems)
 
-    def test_missing_and_mistyped_keys_are_reported(self):
+    def test_missing_mistyped_keys_reported(self):
         expected = _expected()
         del expected["expected_prescan"]
         self.assertEqual(extension.validate_expected("file", expected), ["missing key 'expected_prescan'"])
@@ -99,7 +99,7 @@ class ValidateCaseTest(unittest.TestCase):
 class GradeResponseTest(unittest.TestCase):
     """grade_response checks the expected check IDs in findings and escalations."""
 
-    def test_check_in_findings_or_escalations_passes(self):
+    def test_check_findings_or_escalations_passes(self):
         case = {"expected": _expected(expected_checks=["C9.1", "C14.6"])}
         grades = extension.grade_response(case, _reply(["C9.1"], ["C14.6"]))
         self.assertEqual(grades, [("checks", True, "expected checks reported")])

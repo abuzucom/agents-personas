@@ -52,7 +52,7 @@ class RegistryTest(unittest.TestCase):
         document["entries"] = {}
         self.assertIn("$.entries: expected array", errors_for(document))
 
-    def test_boolean_is_not_integer_or_string(self) -> None:
+    def test_boolean_not_integer_or_string(self) -> None:
         document = copy.deepcopy(VALID)
         document["entries"][0]["language"] = True
         self.assertIn("$.entries[0].language: expected string", errors_for(document))

@@ -124,7 +124,7 @@ class ValidateTest(unittest.TestCase):
 
 
 class CommandLineTest(unittest.TestCase):
-    def test_cli_reads_unreviewed_files_from_the_envelope(self) -> None:
+    def test_cli_reads_unreviewed_files_envelope(self) -> None:
         metadata = {"chunk": "1/1", "changed_files": ["app.py", "big.bin"], "unreviewed": ["big.bin"]}
         envelope = review_envelope.build_envelope("PR", {"app.py": "+x\n"}, "", [], metadata)
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -177,14 +177,14 @@ class EngineLayoutTest(unittest.TestCase):
         # The fixture "+x\n" holds no hunk header, so app.py has no citable line.
         self.assertEqual(context, checker.ReviewContext("PR", {"app.py"}, {"P1"}, ["big.bin"], {"app.py": ()}))
 
-    def test_context_still_reads_the_euler_layout(self) -> None:
+    def test_context_still_reads_euler_layout(self) -> None:
         metadata = {"chunk": "1/1", "unreviewed": ["big.bin"]}
         envelope = json.loads(review_envelope.build_envelope("PR", {"app.py": "+x\n"}, "", [{"id": "P1"}], metadata))
         context = checker.context_from_envelope(envelope, checker.unreviewed_from_envelope(envelope))
         # The fixture "+x\n" holds no hunk header, so app.py has no citable line.
         self.assertEqual(context, checker.ReviewContext("PR", {"app.py"}, {"P1"}, ["big.bin"], {"app.py": ()}))
 
-    def test_cli_reads_unreviewed_files_from_an_engine_envelope(self) -> None:
+    def test_cli_reads_unreviewed_files(self) -> None:
         envelope = self.engine_envelope(["big.bin"], [])
         with tempfile.TemporaryDirectory() as temp_dir:
             report_path = Path(temp_dir) / "report.md"

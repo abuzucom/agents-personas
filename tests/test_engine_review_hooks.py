@@ -112,9 +112,9 @@ class HookFixture(unittest.TestCase):
     """A persona with review hooks and a repository with a head that adds three files."""
 
     def setUp(self):
-        # These tests cover hook plumbing. Their hook writes records outside the
-        # sandbox, so it runs unsandboxed. tests/test_engine_hook_sandbox.py covers
-        # the sandbox.
+        # This class covers hook plumbing. The fixture hook writes records
+        # outside the sandbox and runs unsandboxed.
+        # tests/test_engine_hook_sandbox.py covers the sandbox.
         previous_mode = os.environ.get("PERSONAS_REQUIRE_SANDBOX")
         os.environ["PERSONAS_REQUIRE_SANDBOX"] = "off"
         self.addCleanup(
@@ -195,7 +195,7 @@ class HookFixture(unittest.TestCase):
 class HeadTreeTest(HookFixture):
     """The builder writes regular head files from git objects and nothing else."""
 
-    def test_extract_head_writes_head_blobs_only(self):
+    def test_extract_head_writes_head_blobs(self):
         target = Path(self.temp.name) / "tree"
         target.mkdir()
         builder.extract_head(self.repo, self.head, target)
@@ -232,7 +232,7 @@ class HeadTreeLimitTest(HookFixture):
         target.mkdir()
         return target
 
-    def test_blob_over_the_file_cap_is_skipped_and_reported(self):
+    def test_oversized_blob_skipped_reported(self):
         head = self.add_head_file("big.bin", 4096)
         target = self.tree_dir()
         skipped = builder.extract_head(self.repo, head, target, max_blob_bytes=1024)
@@ -240,24 +240,24 @@ class HeadTreeLimitTest(HookFixture):
         self.assertFalse((target / "big.bin").exists())
         self.assertTrue((target / "keep.txt").is_file())
 
-    def test_tree_over_the_total_cap_raises(self):
+    def test_tree_over_total_cap_raises(self):
         head = self.add_head_file("big.bin", 4096)
         with self.assertRaisesRegex(builder.HeadTreeTooLarge, "exceeds"):
             builder.extract_head(self.repo, head, self.tree_dir(), max_tree_bytes=2048)
 
-    def test_listing_over_the_entry_cap_raises(self):
+    def test_listing_over_entry_cap_raises(self):
         with self.assertRaisesRegex(builder.HeadTreeTooLarge, "entries"):
             builder.list_head_blobs(self.repo, self.head, max_entries=2)
 
-    def test_listing_over_the_byte_cap_raises(self):
+    def test_listing_over_byte_cap_raises(self):
         with self.assertRaisesRegex(builder.HeadTreeTooLarge, "listing"):
             builder.list_head_blobs(self.repo, self.head, max_listing_bytes=64)
 
-    def test_listing_within_the_caps_returns_every_regular_file(self):
+    def test_listing_returns_regular_files(self):
         blobs = builder.list_head_blobs(self.repo, self.head, max_entries=4)
         self.assertEqual(sorted(path for _, path, _ in blobs), ["file1.py", "keep.txt", "notes.md", "pkg/file0.py"])
 
-    def test_small_read_batches_write_every_file(self):
+    def test_small_read_batches_write_file(self):
         target = self.tree_dir()
         builder.extract_head(self.repo, self.head, target, batch_bytes=1)
         written = sorted(path.relative_to(target).as_posix() for path in target.rglob("*") if path.is_file())
@@ -285,7 +285,7 @@ class HeadTreeLimitTest(HookFixture):
         seen = json.loads(self.record.read_text(encoding="utf-8"))["seen"]
         self.assertEqual(seen, [])
 
-    def test_tree_over_budget_skips_the_hook_and_marks_every_change(self):
+    def test_oversized_tree_skips_hook(self):
         options = builder.BuildOptions(
             repo=self.repo,
             base=self.base,
@@ -317,7 +317,7 @@ class EnvelopeContextTest(unittest.TestCase):
     def build(self, context):
         return json.loads(envelope.build_envelope("euler", "quality", {"a.py": "+x\n"}, "T", "B", {}, context=context))
 
-    def test_context_keys_join_case_context_and_digest(self):
+    def test_context_keys_join_digest(self):
         with_item = self.build({"prescan": [{"id": "P1", "file": "a.py"}]})
         without = self.build({"prescan": []})
         self.assertEqual(with_item["REVIEW_TARGET"]["prescan"], [{"id": "P1", "file": "a.py"}])
@@ -369,7 +369,7 @@ class HookResultTest(unittest.TestCase):
 class BuildStageTest(HookFixture):
     """The build stage runs case_context and calls no model."""
 
-    def test_build_stage_writes_the_case_without_a_model_call(self):
+    def test_build_stage_skips_model(self):
         self.script()
         run_review.run_mode(self.options(stage="build", persona_options='{"blocking": ""}'))
         manifest = json.loads((self.out / "case" / "manifest.json").read_text(encoding="utf-8"))
@@ -382,7 +382,7 @@ class BuildStageTest(HookFixture):
         context = json.loads((self.out / "case" / "case_context.json").read_text(encoding="utf-8"))
         self.assertEqual([item["file"] for item in context["prescan"]], ["file1.py", "pkg/file0.py"])
 
-    def test_each_chunk_carries_only_its_own_items(self):
+    def test_chunk_carries_own_items(self):
         self.script()
         run_review.run_mode(self.options(stage="build", requested_caps={"max_envelope_bytes": 1600}))
         manifest = json.loads((self.out / "case" / "manifest.json").read_text(encoding="utf-8"))
@@ -393,7 +393,7 @@ class BuildStageTest(HookFixture):
                 files = {item["file"] for item in body["REVIEW_TARGET"]["prescan"]}
                 self.assertTrue(files <= set(chunk["files"]))
 
-    def test_undeclared_persona_option_fails_the_build(self):
+    def test_undeclared_persona_option_fails_build(self):
         with self.assertRaisesRegex(run_review.reviewers.ReviewerError, "undeclared option"):
             run_review.run_mode(self.options(stage="build", persona_options='{"exclude": "x"}'))
 
@@ -401,7 +401,7 @@ class BuildStageTest(HookFixture):
 class ReviewStageTest(HookFixture):
     """The review stage reuses the built case, applies validate_reply, and forced_verdict."""
 
-    def test_review_stage_reuses_the_built_case(self):
+    def test_review_stage_reuses_built_case(self):
         run_review.run_mode(self.options(stage="build"))
         (self.out / "case" / "envelopes" / "001.json").write_text(
             (self.out / "case" / "envelopes" / "001.json").read_text().replace("Title", "Built")
@@ -411,7 +411,7 @@ class ReviewStageTest(HookFixture):
         self.assertIn("Built", json.dumps(self.sent_envelopes()[0]))
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
 
-    def test_review_stage_hooks_never_see_the_provider_key(self):
+    def test_review_hooks_lack_provider_key(self):
         run_review.run_mode(self.options(stage="build"))
         self.script(_reply("APPROVE", ("P1", "P2")))
         previous = os.environ.get("MODEL_API_KEY")
@@ -439,7 +439,7 @@ class ReviewStageTest(HookFixture):
                 else:
                     os.environ[name] = value
 
-    def test_every_stage_imports_the_hooks_in_a_child_only(self):
+    def test_stage_imports_hooks_child(self):
         for stage in ("build", "all"):
             with self.subTest(stage=stage):
                 log = self.persona_dir / "imports.log"
@@ -451,7 +451,7 @@ class ReviewStageTest(HookFixture):
                 self.assertTrue(importers)
                 self.assertNotIn(str(os.getpid()), importers)
 
-    def test_case_context_sees_only_the_allowlisted_environment(self):
+    def test_case_context_sees_allowlisted_environment(self):
         self.script(_reply("APPROVE", ("P1", "P2")))
         self.run_with_secrets(stage="all")
         names = set(json.loads(self.record.read_text(encoding="utf-8"))["environment"])
@@ -464,7 +464,7 @@ class ReviewStageTest(HookFixture):
             names,
         )
 
-    def test_hooks_run_in_an_empty_temporary_home(self):
+    def test_hooks_run_empty_temporary_home(self):
         self.script(_reply("APPROVE", ("P1", "P2")))
         run_review.run_mode(self.options(stage="all"))
         record = json.loads(self.record.read_text(encoding="utf-8"))
@@ -476,13 +476,13 @@ class ReviewStageTest(HookFixture):
                 self.assertNotEqual(workdir, outside.resolve())
         self.assertFalse(workdir.exists())
 
-    def test_review_hooks_never_see_another_secret(self):
+    def test_review_hooks_lack_secrets(self):
         run_review.run_mode(self.options(stage="build"))
         self.script(_reply("APPROVE", ("P1", "P2")))
         result = self.run_with_secrets(stage="review")
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
 
-    def test_review_stage_imports_the_hooks_in_a_child_only(self):
+    def test_review_stage_imports_hooks_child(self):
         run_review.run_mode(self.options(stage="build"))
         log = self.persona_dir / "imports.log"
         log.unlink()
@@ -492,7 +492,7 @@ class ReviewStageTest(HookFixture):
         self.assertTrue(importers)
         self.assertNotIn(str(os.getpid()), importers)
 
-    def test_review_stage_rejects_a_case_built_for_another_input(self):
+    def test_review_rejects_foreign_case(self):
         run_review.run_mode(self.options(stage="build"))
         changes = {
             "base": self.head,
@@ -504,22 +504,22 @@ class ReviewStageTest(HookFixture):
             with self.subTest(changed=name), self.assertRaisesRegex(run_review.ReviewError, "Rerun the build"):
                 run_review.run_mode(self.options(stage="review", **{name: value}))
 
-    def test_review_stage_without_a_built_case_fails(self):
+    def test_review_without_case_fails(self):
         with self.assertRaisesRegex(run_review.ReviewError, "run the build stage first"):
             run_review.run_mode(self.options(stage="review"))
 
-    def test_validate_reply_problem_triggers_one_retry(self):
+    def test_reply_problem_retries_once(self):
         self.script(_reply("APPROVE"), _reply("APPROVE", ("P1", "P2")))
         result = run_review.run_mode(self.options())
         self.assertEqual(len(self.sent_envelopes()), 2)
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
 
-    def test_validate_reply_problem_twice_fails_the_run(self):
+    def test_repeated_reply_problem_fails(self):
         self.script(_reply("APPROVE"), _reply("APPROVE", ("P1",)))
         with self.assertRaisesRegex(run_review.ReviewError, "prescan item P2 lacks a resolution"):
             run_review.run_mode(self.options())
 
-    def test_forced_verdict_overrides_a_milder_chunk_verdict(self):
+    def test_forced_verdict_overrides_milder(self):
         self.script(_reply("APPROVE", ("P1", "P2")))
         result = run_review.run_mode(self.options(persona_options='{"blocking": "pkg/file0.py"}'))
         self.assertEqual(result["verdict"], "BLOCK")

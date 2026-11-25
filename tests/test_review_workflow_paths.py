@@ -30,7 +30,7 @@ class PathsInputTest(unittest.TestCase):
 class PathsSkipTest(unittest.TestCase):
     """No matching file posts a skipped check and runs no review."""
 
-    def test_skip_job_posts_no_matching_files_without_secret(self):
+    def test_skip_job_lacks_secret(self):
         job = _workflow()["jobs"]["skip-paths"]
         text = yaml.safe_dump(job)
         self.assertIn("paths_match", str(job["if"]))
@@ -38,7 +38,7 @@ class PathsSkipTest(unittest.TestCase):
         self.assertIn("skipped", text)
         self.assertNotIn("secrets.", text)
 
-    def test_review_jobs_require_a_path_match(self):
+    def test_review_jobs_require_path_match(self):
         jobs = _workflow()["jobs"]
         for name in ("review", "fork-review", "skip-fork"):
             with self.subTest(job=name):

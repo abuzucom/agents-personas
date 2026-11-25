@@ -51,7 +51,7 @@ class PersonaScriptVerdictTest(unittest.TestCase):
     def decide(self, command: str) -> tuple:
         return self.gate.workflow_decision(command, PROJECT_DIR)
 
-    def test_structure_evals_and_checkers_are_allowed(self) -> None:
+    def test_structure_evals_checkers_allowed(self) -> None:
         for command in ALLOWED_PERSONA_COMMANDS:
             with self.subTest(command=command):
                 self.assertEqual(self.decide(command), ("allow", ""))
@@ -63,7 +63,7 @@ class PersonaScriptVerdictTest(unittest.TestCase):
                 self.assertEqual(decision, "ask")
                 self.assertIn("execution consent", reason)
 
-    def test_other_adapters_ci_scripts_and_unsafe_arguments_stay_unmatched(self) -> None:
+    def test_other_adapters_stay_unmatched(self) -> None:
         for command in UNLISTED_COMMANDS:
             with self.subTest(command=command):
                 self.assertEqual(self.decide(command), ("", ""))

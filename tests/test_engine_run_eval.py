@@ -80,7 +80,7 @@ def _expected(verdict: str, mode: str = "PR", **extra) -> dict:
 class StructureTest(unittest.TestCase):
     """Each case needs an expected.json object that fits its mode and one input."""
 
-    def test_valid_review_and_local_cases_load(self):
+    def test_valid_review_local_cases_load(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture = PersonaFixture(directory)
             fixture.add_case("review", "block-pr", _expected("BLOCK"))
@@ -90,7 +90,7 @@ class StructureTest(unittest.TestCase):
         self.assertEqual([(case["mode"], case["prompt_mode"]) for case in cases], [("review", "PR"), ("file", "File")])
         self.assertTrue(all(Path(case["dir"]).name == case["name"] for case in cases))
 
-    def test_every_local_verdict_spelling_is_accepted(self):
+    def test_local_verdict_spelling_accepted(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture = PersonaFixture(directory)
             for index, verdict in enumerate(("HIGH", "RISK: NONE-FOUND", "RISK", "RISK:")):
@@ -98,7 +98,7 @@ class StructureTest(unittest.TestCase):
             cases, findings = fixture.collect()
         self.assertEqual((len(cases), findings), (4, []))
 
-    def test_verdict_outside_the_mode_is_reported(self):
+    def test_verdict_outside_mode_reported(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture = PersonaFixture(directory)
             fixture.add_case("file", "approve-file", _expected("APPROVE", "File"))
@@ -107,14 +107,14 @@ class StructureTest(unittest.TestCase):
         self.assertEqual(len(findings), 2, findings)
         self.assertTrue(all("does not fit mode" in item for item in findings))
 
-    def test_mode_field_must_match_json_mode(self):
+    def test_mode_field_matches_json(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture = PersonaFixture(directory)
             fixture.add_case("file", "wrong-mode", _expected("RISK: HIGH", "PR"))
             _cases, findings = fixture.collect()
         self.assertTrue(any("does not match 'File'" in item for item in findings), findings)
 
-    def test_missing_keys_non_object_and_no_input_are_reported(self):
+    def test_malformed_cases_reported(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture = PersonaFixture(directory)
             fixture.add_case("review", "no-notes", {"expected_verdict": "BLOCK"})
@@ -160,7 +160,7 @@ class ExtensionTest(unittest.TestCase):
             _cases, findings = fixture.collect()
         self.assertEqual(findings, ["review/no-ticket: needs ticket"])
 
-    def test_validate_case_sees_the_loaded_case(self):
+    def test_validate_case_sees_loaded_case(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture = PersonaFixture(directory)
             fixture.add_extension(
@@ -185,7 +185,7 @@ class ExtensionTest(unittest.TestCase):
             with self.assertRaisesRegex(run_eval.EvalError, "regular file"):
                 run_eval.load_extension(fixture.persona_dir)
 
-    def test_extension_grades_join_the_core_grades(self):
+    def test_extension_grades_join_core_grades(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture = PersonaFixture(directory)
             fixture.add_extension()
@@ -204,24 +204,24 @@ class GradingTest(unittest.TestCase):
         self.assertEqual(run_eval.verdict_matches("BLOCK", response, REVIEW_MODE)[0], False)
         self.assertEqual(run_eval.verdict_matches("APPROVE", response, REVIEW_MODE)[0], True)
 
-    def test_local_mode_reads_its_own_verdict_line(self):
+    def test_local_mode_reads_verdict(self):
         response = "VERDICT: BLOCK\nRISK: HIGH - unsanitized path\n"
         self.assertTrue(run_eval.verdict_matches("RISK: HIGH", response, FILE_MODE)[0])
         self.assertTrue(run_eval.verdict_matches("HIGH", response, FILE_MODE)[0])
         self.assertTrue(run_eval.verdict_matches("RISK:", response, FILE_MODE)[0])
         self.assertFalse(run_eval.verdict_matches("RISK: LOW", response, FILE_MODE)[0])
 
-    def test_local_mode_without_its_line_fails(self):
+    def test_local_mode_without_line_fails(self):
         passed, detail = run_eval.verdict_matches("HIGH", "VERDICT: BLOCK\n", FILE_MODE)
         self.assertFalse(passed)
         self.assertIn("no 'RISK:' line", detail)
 
-    def test_partial_label_matches_only_its_own_line(self):
+    def test_partial_label_matches_own_line(self):
         piece = {**FILE_MODE, "verdict_line": "RISK (partial)"}
         self.assertTrue(run_eval.verdict_matches("RISK (partial)", "RISK (partial): MEDIUM\n", piece)[0])
         self.assertFalse(run_eval.verdict_matches("RISK (partial)", "RISK: MEDIUM\n", piece)[0])
 
-    def test_review_status_uses_the_last_status_line(self):
+    def test_status_uses_last_line(self):
         response = "REVIEW STATUS: NEEDS-HUMAN quoted\nREVIEW STATUS: COMPLETE\n"
         self.assertFalse(run_eval.review_status_matches("NEEDS-HUMAN", response))
         self.assertTrue(run_eval.review_status_matches("COMPLETE", response))
@@ -234,7 +234,7 @@ class GradingTest(unittest.TestCase):
         self.assertIsNone(run_eval.json_companion("VERDICT_JSON: {")[0])
         self.assertIsNone(run_eval.json_companion("no companion")[0])
 
-    def test_grade_response_adds_status_and_json_checks(self):
+    def test_grade_adds_status_checks(self):
         case = {"expected": _expected("NEEDS-HUMAN", expect_json=True, expected_review_status="NEEDS-HUMAN")}
         response = (
             "REVIEW STATUS: NEEDS-HUMAN\nVERDICT: NEEDS-HUMAN\n"
@@ -250,7 +250,7 @@ class GradingTest(unittest.TestCase):
 class LiveRunTest(unittest.TestCase):
     """run_live sends the prompt, the prompt mode, and the envelope to the callable."""
 
-    def test_run_live_passes_prompt_mode_and_counts_failures(self):
+    def test_run_live_counts_failures(self):
         calls = []
 
         def call_model(system_prompt: str, mode: str, case_text: str) -> str:
@@ -268,7 +268,7 @@ class LiveRunTest(unittest.TestCase):
         self.assertEqual(sorted(calls), [("prompt\n", "File", "File"), ("prompt\n", "PR", "PR")])
         self.assertIn("1/2 response checks passed", output.getvalue())
 
-    def test_extension_model_input_replaces_the_default_unless_none(self):
+    def test_extension_input_replaces_default(self):
         seen = []
 
         def call_model(system_prompt: str, mode: str, case_text: str) -> str:
@@ -290,14 +290,14 @@ class LiveRunTest(unittest.TestCase):
         self.assertEqual(seen[1], "plain")
         self.assertIn("REVIEW_TARGET", json.loads(seen[0]))
 
-    def test_default_model_input_labels_target_and_trusted_context(self):
+    def test_default_input_labels_context(self):
         case = {"prompt_mode": "PR", "context": "ctx", "case_text": "diff", "hook_context": "hook"}
         envelope = json.loads(run_eval.default_model_input(case, "prompt"))
         self.assertEqual(envelope["REVIEW_TARGET"]["text"], "ctx\n\ndiff")
         self.assertIs(envelope["TRUSTED_HOOK_CONTEXT"]["read_only"], True)
         self.assertEqual(envelope["policy_sha256"], run_eval.sha256_text("prompt"))
 
-    def test_model_call_spec_must_name_a_function(self):
+    def test_call_spec_names_function(self):
         with self.assertRaisesRegex(run_eval.EvalError, "module:function"):
             run_eval.resolve_model_call("json")
         with self.assertRaisesRegex(run_eval.EvalError, "not callable"):
@@ -314,7 +314,7 @@ class EngineVerdictParityTest(unittest.TestCase):
 class RepositoryCasesTest(unittest.TestCase):
     """Every committed persona passes the structure check."""
 
-    def test_every_persona_case_tree_is_valid(self):
+    def test_persona_case_tree_valid(self):
         for persona in reviewers.list_personas(REPO_ROOT):
             with self.subTest(persona=persona):
                 persona_dir, manifest = reviewers.load_persona(REPO_ROOT, persona)

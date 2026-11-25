@@ -58,13 +58,13 @@ class StructureExtensionTest(unittest.TestCase):
     def contract_case(self) -> dict:
         return copy.deepcopy(_case("security", "report-process-narration-pr")["expected"])
 
-    def test_review_status_other_than_needs_human_is_reported(self):
+    def test_other_status_reported(self):
         expected = {"expected_review_status": "COMPLETE"}
         self.assertEqual(
             extension.validate_expected("security", expected), ["expected_review_status must be NEEDS-HUMAN"]
         )
 
-    def test_report_contract_needs_the_security_mode(self):
+    def test_report_contract_needs_security_mode(self):
         findings = extension.validate_expected("file", self.contract_case())
         self.assertEqual(findings, ["report_contract requires a JSON-enabled security case"])
 
@@ -88,7 +88,7 @@ class StructureExtensionTest(unittest.TestCase):
 class InputExtensionTest(unittest.TestCase):
     """omit_provenance sends the bare target. Other cases use the engine envelope."""
 
-    def test_omit_provenance_case_sends_bare_text(self):
+    def test_omit_provenance_sends_bare(self):
         cases = [
             case
             for mode in MANIFEST["modes"]
@@ -106,7 +106,7 @@ class InputExtensionTest(unittest.TestCase):
 class GradeExtensionTest(unittest.TestCase):
     """VERDICT_JSON needs the exact foucault keys. Report contracts need evidence."""
 
-    def test_json_shape_requires_exact_keys_and_mode(self):
+    def test_json_shape_requires_keys(self):
         case = _case("security", "sql-injection-pr")
         good = 'VERDICT: BLOCK\nVERDICT_JSON: {"mode": "PR", "verdict": "BLOCK", "findings": []}\n'
         extra = 'VERDICT: BLOCK\nVERDICT_JSON: {"mode": "PR", "verdict": "BLOCK", "findings": [], "x": 1}\n'
@@ -115,14 +115,14 @@ class GradeExtensionTest(unittest.TestCase):
         self.assertFalse(extension.grade_response(case, extra)[0][1])
         self.assertFalse(extension.grade_response(case, wrong_mode)[0][1])
 
-    def test_report_contract_passes_with_status_and_required_finding(self):
+    def test_report_contract_passes(self):
         case = _case("security", "report-process-narration-pr")
         required = case["expected"]["report_contract"]["required_finding"]
         finding = {"severity": "HIGH", "title": "Defect", **required}
         grades = {label: passed for label, passed, _ in extension.grade_response(case, _report([finding]))}
         self.assertEqual(grades, {"VERDICT_JSON shape": True, "report contract": True})
 
-    def test_report_contract_fails_without_prior_status_or_finding(self):
+    def test_report_contract_fails(self):
         case = _case("security", "report-process-narration-pr")
         grades = extension.grade_response(case, _report([], prior="Scope: one file."))
         label, passed, detail = grades[-1]

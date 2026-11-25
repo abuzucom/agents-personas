@@ -64,7 +64,7 @@ class ManifestValidationTest(unittest.TestCase):
         persona_dir = _write_persona(self.root, name, manifest, prompts)
         return reviewers.validate_persona(persona_dir)
 
-    def test_valid_two_mode_manifest_has_no_findings(self):
+    def test_two_mode_manifest_valid(self):
         self.assertEqual(self.findings(GENERAY), [])
 
     def test_missing_default_mode_is_reported(self):
@@ -86,7 +86,7 @@ class ManifestValidationTest(unittest.TestCase):
         manifest["modes"]["sync"] = {"prompt": "SYNC.md", "review": False, "context": False}
         self.assertTrue(any("no delivery" in item for item in self.findings(manifest)))
 
-    def test_prompt_path_escaping_persona_is_reported(self):
+    def test_prompt_path_escaping_persona_reported(self):
         manifest = _with(GENERAY)
         manifest["modes"]["sync"]["prompt"] = "../outside.md"
         self.assertTrue(any("escapes" in item for item in self.findings(manifest)))
@@ -100,7 +100,7 @@ class ManifestValidationTest(unittest.TestCase):
         findings = self.findings(_with(GENERAY, persona="euler"))
         self.assertTrue(any("does not match directory" in item for item in findings))
 
-    def test_unknown_top_level_key_is_reported(self):
+    def test_unknown_top_level_key_reported(self):
         findings = self.findings(_with(GENERAY, extra=1))
         self.assertTrue(any("unknown key 'extra'" in item for item in findings))
 
@@ -119,7 +119,7 @@ class ManifestValidationTest(unittest.TestCase):
         manifest["modes"]["Sync--Mode"] = manifest["modes"].pop("sync")
         self.assertTrue(any("invalid mode name" in item for item in self.findings(manifest)))
 
-    def test_invalid_persona_directory_name_is_reported(self):
+    def test_invalid_persona_directory_name_reported(self):
         findings = self.findings(_with(GENERAY, persona="Bad_Name"), name="Bad_Name")
         self.assertTrue(any("invalid persona name" in item for item in findings))
 
@@ -142,17 +142,17 @@ class ManifestValidationTest(unittest.TestCase):
 class ReviewModeResolutionTest(unittest.TestCase):
     """resolve_review_modes picks the default and rejects bad requests."""
 
-    def test_empty_request_selects_the_default_mode(self):
+    def test_empty_request_selects_default_mode(self):
         self.assertEqual(reviewers.resolve_review_modes(GENERAY, ""), ["time"])
 
-    def test_listed_modes_keep_request_order_without_duplicates(self):
+    def test_listed_modes_keep_order(self):
         self.assertEqual(reviewers.resolve_review_modes(GENERAY, "sync, time,sync"), ["sync", "time"])
 
     def test_unknown_mode_is_rejected(self):
         with self.assertRaisesRegex(reviewers.ReviewerError, "unknown mode 'audit'"):
             reviewers.resolve_review_modes(GENERAY, "time,audit")
 
-    def test_mode_without_review_delivery_is_rejected(self):
+    def test_mode_without_review_delivery_rejected(self):
         manifest = _with(GENERAY)
         manifest["modes"]["sync"]["review"] = False
         with self.assertRaisesRegex(reviewers.ReviewerError, "no review delivery"):
@@ -266,7 +266,7 @@ class TemplateTest(unittest.TestCase):
     def test_template_validates(self):
         self.assertEqual(reviewers.validate_persona(REPO_ROOT / "reviewers" / "_template"), [])
 
-    def test_template_is_not_a_runnable_persona(self):
+    def test_template_not_runnable_persona(self):
         self.assertNotIn("_template", reviewers.list_personas(REPO_ROOT))
 
     def test_template_carries_data_statement(self):

@@ -127,7 +127,7 @@ class ResolutionTest(unittest.TestCase):
         with self.assertRaises(builder.BundleError):
             builder.resolve_sources(self.root, ["../outside.md"])
 
-    def test_unresolved_root_resolves_the_same_sources(self):
+    def test_unresolved_root_resolves_same_sources(self):
         """An unresolved root must not read as a path escaping the root.
 
         relative_to raises ValueError against an unnormalized root, and the
@@ -156,7 +156,7 @@ class RenderTest(unittest.TestCase):
         self.assertIn("ui", text.splitlines()[0])
         self.assertIn("full", text.splitlines()[0])
 
-    def test_header_source_names_use_posix_separators(self):
+    def test_header_names_use_posix_separators(self):
         """A rebuild on Windows must produce the same bytes.
 
         str() on a relative path yields backslashes there, so every header
@@ -172,7 +172,7 @@ class RenderTest(unittest.TestCase):
         text = builder.render(self.root / "docs" / "..", "ui", "full", self.manifest)
         self.assertEqual(text, builder.render(self.root, "ui", "full", self.manifest))
 
-    def test_full_tier_includes_every_check_section(self):
+    def test_full_tier_includes_check_section(self):
         text = builder.render(self.root, "ui", "full", self.manifest)
         for number in ("2.1", "2.2", "2.10"):
             self.assertIn(f"# {number} Title", text)
@@ -194,7 +194,7 @@ class WriteTest(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = build_tree(self.temp.name)
 
-    def test_build_writes_one_file_per_declared_tier(self):
+    def test_build_writes_file_per_tier(self):
         self.assertEqual(builder.main([str(self.root)]), 0)
         written = sorted(p.name for p in (self.root / "bundles").iterdir())
         self.assertEqual(written, ["ui-full.md"])
@@ -213,14 +213,14 @@ class CheckModeTest(unittest.TestCase):
         self.root = build_tree(self.temp.name)
         self.assertEqual(builder.main([str(self.root)]), 0)
 
-    def test_check_passes_on_a_current_tree(self):
+    def test_check_passes_current_tree(self):
         self.assertEqual(builder.main([str(self.root), "--check"]), 0)
 
-    def test_check_fails_on_a_stale_bundle(self):
+    def test_check_fails_stale_bundle(self):
         (self.root / "AUDIT.md").write_text("# AUDIT\n\nChanged.\n", encoding="utf-8")
         self.assertEqual(builder.main([str(self.root), "--check"]), 1)
 
-    def test_check_fails_on_a_missing_bundle(self):
+    def test_check_fails_missing_bundle(self):
         (self.root / "bundles" / "ui-full.md").unlink()
         self.assertEqual(builder.main([str(self.root), "--check"]), 1)
 

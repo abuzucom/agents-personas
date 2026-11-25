@@ -70,21 +70,21 @@ class VerdictContractTest(unittest.TestCase):
         with self.assertRaisesRegex(ResponseError, "empty"):
             validator.validate_response("")
 
-    def test_rejects_json_that_disagrees_with_the_verdict_line(self):
+    def test_rejects_json_disagrees_verdict_line(self):
         response = _response("Scope.").replace('"verdict": "APPROVE"', '"verdict": "BLOCK"')
         with self.assertRaisesRegex(ResponseError, "does not match"):
             validator.validate_response(response)
 
-    def test_rejects_text_after_the_json_line(self):
+    def test_rejects_text_after_json_line(self):
         with self.assertRaisesRegex(ResponseError, "final report line"):
             validator.validate_response(_response("Scope.") + "Trailing note.\n")
 
-    def test_rejects_json_that_does_not_follow_the_verdict_line(self):
+    def test_rejects_json_before_verdict(self):
         response = _response("Scope.").replace("\nVERDICT_JSON", "\n\nVERDICT_JSON")
         with self.assertRaisesRegex(ResponseError, "immediately follow"):
             validator.validate_response(response)
 
-    def test_rejects_json_that_is_not_an_object(self):
+    def test_rejects_json_not_object(self):
         response = "Scope.\nVERDICT: APPROVE\nVERDICT_JSON: [1]\n"
         with self.assertRaisesRegex(ResponseError, "not an object"):
             validator.validate_response(response)
@@ -94,7 +94,7 @@ class VerdictContractTest(unittest.TestCase):
         with self.assertRaisesRegex(ResponseError, "limit"):
             validator.validate_response(_response(report))
 
-    def test_reads_the_last_verdict_line_like_the_gate(self):
+    def test_reads_last_verdict_line(self):
         response = "VERDICT: BLOCK\nScope.\n" + _response("")
         self.assertEqual(validator.validate_response(response)[0], "APPROVE")
 
@@ -132,15 +132,15 @@ class FindingLocationTest(unittest.TestCase):
         with self.assertRaisesRegex(ResponseError, "file"):
             validator.validate_response(_response("Scope.", "BLOCK", [_finding(file="")]))
 
-    def test_finding_with_zero_line_is_rejected(self):
+    def test_finding_zero_line_rejected(self):
         with self.assertRaisesRegex(ResponseError, "line"):
             validator.validate_response(_response("Scope.", "BLOCK", [_finding(line=0)]))
 
-    def test_finding_with_boolean_line_is_rejected(self):
+    def test_finding_boolean_line_rejected(self):
         with self.assertRaisesRegex(ResponseError, "line"):
             validator.validate_response(_response("Scope.", "BLOCK", [_finding(line=True)]))
 
-    def test_finding_that_is_not_an_object_is_rejected(self):
+    def test_finding_not_object_rejected(self):
         with self.assertRaisesRegex(ResponseError, "object"):
             validator.validate_response(_response("Scope.", "BLOCK", ["text"]))
 
@@ -158,7 +158,7 @@ class NarrationTest(unittest.TestCase):
             with self.subTest(statement=statement):
                 self.assertEqual(validator.validate_response(_response(statement))[0], "APPROVE")
 
-    def test_first_person_narration_fails_with_line_number(self):
+    def test_narration_fails_with_line(self):
         for statement in (
             "I need to inspect the helper.",
             "- We checked the caller.",
@@ -197,7 +197,7 @@ class CliTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("invalid review response", result.stderr)
 
-    def test_bare_carriage_return_stays_inside_one_line(self):
+    def test_bare_return_stays_inline(self):
         response = _response("Scope.").replace("VERDICT: APPROVE\n", "VERDICT: APPROVE\rX\n")
         result = self.run_cli(response)
         self.assertEqual(result.returncode, 1)

@@ -46,12 +46,12 @@ class StoredRunsTest(unittest.TestCase):
             ],
         )
 
-    def test_single_run_chunk_keeps_its_shape(self):
+    def test_single_run_chunk_keeps_shape(self):
         self.script(fixture._reply("APPROVE"))
         fixture.run_review.run_mode(self.options())
         self.assertNotIn("runs", self.stored_chunk())
 
-    def test_confirmation_without_a_report_keeps_the_single_run_shape(self):
+    def test_reportless_confirmation_keeps_shape(self):
         first = fixture._reply("BLOCK", [_finding("M14")])
         self.script(first, CAPACITY_EXIT_CODE)
         fixture.run_review.run_mode(self.options())
@@ -76,7 +76,7 @@ class RenderRunsTest(unittest.TestCase):
             "reports": ["combined"],
         }
 
-    def test_two_runs_render_as_separate_sections(self):
+    def test_two_runs_render_separate_sections(self):
         runs = [
             {"label": FIRST_LABEL, "verdict": "BLOCK", "report": "first report\nVERDICT: BLOCK - x"},
             {"label": CONFIRMATION_LABEL, "verdict": "APPROVE", "report": "second report\nVERDICT: APPROVE - y"},

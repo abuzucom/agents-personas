@@ -47,7 +47,7 @@ class CurrencyTest(unittest.TestCase):
 class ManifestPairingTest(unittest.TestCase):
     """Manifest entries and committed bundles correspond exactly."""
 
-    def test_every_entry_has_both_tiers_committed(self):
+    def test_entry_has_tiers_committed(self):
         for scope in MANIFEST:
             for tier in builder.TIERS:
                 with self.subTest(scope=scope, tier=tier):
@@ -73,7 +73,7 @@ class SourceResolutionTest(unittest.TestCase):
 class DeadPointerTest(unittest.TestCase):
     """A full bundle resolves every repository path it names."""
 
-    def test_full_tier_carries_every_path_it_references(self):
+    def test_full_tier_carries_path_references(self):
         for scope in MANIFEST:
             text = bundle_path(scope, "full").read_text(encoding="utf-8")
             listed = set(re.findall(r"^- `(.+)`$", text, re.MULTILINE))
@@ -137,13 +137,13 @@ class RegimeContentTest(unittest.TestCase):
                 with self.subTest(scope=scope, number=number):
                     self.assertIn(f"# {number} ", text)
 
-    def test_standard_tier_carries_no_class_body(self):
+    def test_standard_tier_lacks_body(self):
         for scope in MANIFEST:
             text = bundle_path(scope, "standard").read_text(encoding="utf-8")
             with self.subTest(scope=scope):
                 self.assertNotIn("## Barrier list", text)
 
-    def test_tier_carries_exactly_the_scope_regimes(self):
+    def test_tier_carries_exactly_scope_regimes(self):
         every = {
             path.stem
             for path in (REPO_ROOT / "docs" / "regimes").glob("*.md")

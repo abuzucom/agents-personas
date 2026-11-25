@@ -54,7 +54,7 @@ class EnvelopePathTest(unittest.TestCase):
             envelope.build_envelope("euler", "quality", {"a.py": "+x\n"}, "T", "B", {"pr_number": 1}, **paths)
         )
 
-    def test_path_lists_join_the_review_target_and_its_digest(self):
+    def test_path_lists_join_digest(self):
         document = self.build(changed_files=["a.py", "b.bin"], unreviewed=["b.bin"])
         target = document["REVIEW_TARGET"]
         self.assertEqual((target["changed_files"], target["unreviewed"]), (["a.py", "b.bin"], ["b.bin"]))
@@ -71,7 +71,7 @@ class EnvelopePathTest(unittest.TestCase):
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, "pull request fields"):
                 envelope.build_envelope("euler", "quality", {}, "T", "B", {key: ["a.py"]})
 
-    def test_persona_context_cannot_take_the_path_keys(self):
+    def test_persona_context_rejects_paths(self):
         for key in ("changed_files", "unreviewed"):
             with self.subTest(key=key), self.assertRaisesRegex(ValueError, "reserved"):
                 envelope.build_envelope("euler", "quality", {}, "T", "B", {}, context={key: []})
@@ -98,7 +98,7 @@ class BuiltEnvelopeTest(unittest.TestCase):
         self.head = _git(self.repo, "rev-parse", "HEAD")
         self.out = Path(self.temp.name) / "out"
 
-    def test_trusted_context_holds_counts_and_no_path(self):
+    def test_trusted_context_holds_counts(self):
         builder.build(
             builder.BuildOptions(
                 repo=self.repo,

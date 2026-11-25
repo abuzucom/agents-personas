@@ -28,12 +28,12 @@ SKIP_ONLY = path_filter.parse_patterns("!CHANGELOG.md\n!README.md")
 class ExclusionTest(unittest.TestCase):
     """Exclusions remove files from the match set."""
 
-    def test_only_excluded_files_skip_the_review(self):
+    def test_excluded_files_skip_review(self):
         for files in (["CHANGELOG.md"], ["README.md"], ["CHANGELOG.md", "README.md"]):
             with self.subTest(files=files):
                 self.assertFalse(path_filter.any_match(files, SKIP_ONLY))
 
-    def test_any_other_file_runs_the_review(self):
+    def test_any_other_file_runs_review(self):
         for files in (["CHANGELOG.md", "engine/run_review.py"], ["reviewers/euler/README.md"], ["docs/README.md"]):
             with self.subTest(files=files):
                 self.assertTrue(path_filter.any_match(files, SKIP_ONLY))
@@ -44,10 +44,10 @@ class ExclusionTest(unittest.TestCase):
         self.assertFalse(path_filter.any_match(["engine/apparmor/bwrap"], patterns))
         self.assertFalse(path_filter.any_match(["docs/plan.md"], patterns))
 
-    def test_empty_patterns_still_select_every_pull_request(self):
+    def test_empty_patterns_select_all(self):
         self.assertTrue(path_filter.any_match(["CHANGELOG.md"], []))
 
-    def test_bare_or_unsafe_exclusions_are_refused(self):
+    def test_bare_or_unsafe_exclusions_refused(self):
         for text in ("!", "!/etc/passwd", "!../x", "! "):
             with self.subTest(text=text):
                 with self.assertRaises(ValueError):

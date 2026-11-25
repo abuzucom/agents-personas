@@ -80,7 +80,7 @@ class DecodeTest(unittest.TestCase):
         _, violations = policy.decode_policy(b"a\r\n", limit_size=True)
         self.assertIn("document must use LF line endings", violations)
 
-    def test_size_limit_enforced_only_when_requested(self) -> None:
+    def test_size_limit_enforced_requested(self) -> None:
         raw = b"a" * (policy.MAX_BYTES + 1)
         self.assertEqual(len(policy.decode_policy(raw, limit_size=True)[1]), 1)
         self.assertEqual(policy.decode_policy(raw, limit_size=False)[1], [])

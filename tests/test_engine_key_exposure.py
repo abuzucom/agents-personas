@@ -69,7 +69,7 @@ class WorkflowExecTest(unittest.TestCase):
 class ProcEnvironTest(unittest.TestCase):
     """A hook child cannot read MODEL_API_KEY from the engine process."""
 
-    def test_hook_cannot_read_the_key_from_the_engine(self):
+    def test_hook_cannot_read_key_engine(self):
         with tempfile.TemporaryDirectory() as directory:
             base_dir = Path(directory)
             persona_dir = base_dir / "personas" / "reviewers" / "euler"

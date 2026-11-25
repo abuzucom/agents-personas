@@ -26,7 +26,7 @@ def _reply(opening: str, verdict: str = "APPROVE", findings=None) -> str:
 class CoverageCheckTest(unittest.TestCase):
     """validate_response checks the three opening lines when asked."""
 
-    def test_bold_and_plain_mode_lines_pass(self):
+    def test_bold_plain_mode_lines_pass(self):
         for opening in (
             COVERED,
             "Mode: PR\nScope: app.py.\nUnseen: callers.\n",
@@ -37,7 +37,7 @@ class CoverageCheckTest(unittest.TestCase):
                     validator.validate_response(_reply(opening), "PR", require_coverage=True)[0], "APPROVE"
                 )
 
-    def test_malformed_openings_fail_as_coverage_errors(self):
+    def test_malformed_openings_fail_coverage_errors(self):
         openings = {
             "missing scope": "**Mode:** PR\nUnseen: callers.\n",
             "missing unseen": "**Mode:** PR\nScope: app.py.\n",
@@ -54,7 +54,7 @@ class CoverageCheckTest(unittest.TestCase):
                 self.assertIsInstance(caught.exception, validator.NarrationError)
                 self.assertIn("coverage", str(caught.exception))
 
-    def test_mode_value_is_free_without_an_expected_mode(self):
+    def test_mode_free_without_expectation(self):
         opening = "**Mode:** File\nScope: app.py.\nUnseen: callers.\n"
         payload_free = _reply(opening).replace('"mode": "PR", ', "")
         self.assertEqual(validator.validate_response(payload_free, None, require_coverage=True)[0], "APPROVE")
@@ -62,7 +62,7 @@ class CoverageCheckTest(unittest.TestCase):
     def test_check_is_off_by_default(self):
         self.assertEqual(validator.validate_response(_reply(""), "PR")[0], "APPROVE")
 
-    def test_allow_narration_also_skips_the_coverage_check(self):
+    def test_allow_narration_skips_coverage(self):
         verdict, _payload = validator.validate_response(_reply(""), "PR", require_coverage=True, allow_narration=True)
         self.assertEqual(verdict, "APPROVE")
 
@@ -100,12 +100,12 @@ class EngineCoverageTest(unittest.TestCase):
         self.script(_reply(COVERED))
         self.assertEqual(fixture.run_review.run_mode(self.options())["verdict"], "APPROVE")
 
-    def test_missing_lines_retry_with_a_coverage_note(self):
+    def test_missing_lines_retry_coverage_note(self):
         self.script(_reply("Mode: PR\n"), _reply(COVERED))
         self.assertEqual(fixture.run_review.run_mode(self.options())["verdict"], "APPROVE")
         self.assertIn("coverage", self.prompts()[1])
 
-    def test_two_uncovered_replies_record_needs_human_with_findings(self):
+    def test_uncovered_replies_need_human(self):
         finding = {"file": "app.py", "line": 1, "severity": "HIGH", "title": "t"}
         self.script(_reply("Mode: PR\n"), _reply("Mode: PR\n", "APPROVE", [finding]))
         result = fixture.run_review.run_mode(self.options())

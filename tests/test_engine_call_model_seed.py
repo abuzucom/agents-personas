@@ -38,17 +38,17 @@ def _body(protocol: str) -> dict:
 class SeedTest(unittest.TestCase):
     """Every protocol with a seed parameter sends the fixed seed."""
 
-    def test_seed_is_a_fixed_non_negative_integer(self):
+    def test_seed_fixed_non_negative_integer(self):
         self.assertIsInstance(call_model.REVIEW_SEED, int)
         self.assertGreaterEqual(call_model.REVIEW_SEED, 0)
 
-    def test_ollama_sends_the_seed_in_options(self):
+    def test_ollama_sends_seed_options(self):
         self.assertEqual(_body("ollama")["options"]["seed"], call_model.REVIEW_SEED)
 
     def test_openai_compatible_sends_the_seed(self):
         self.assertEqual(_body("openai-compatible")["seed"], call_model.REVIEW_SEED)
 
-    def test_google_sends_the_seed_in_the_generation_config(self):
+    def test_google_sends_seed_generation_config(self):
         self.assertEqual(_body("google")["generationConfig"]["seed"], call_model.REVIEW_SEED)
 
     def test_anthropic_sends_no_seed(self):

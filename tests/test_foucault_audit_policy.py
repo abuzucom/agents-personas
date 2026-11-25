@@ -49,7 +49,7 @@ class AuditPolicyTest(unittest.TestCase):
     def test_duplicate_heading_fails(self):
         self.assertTrue(any("duplicate" in item for item in _violations(b"## Duplicate\n## Duplicate\n")))
 
-    def test_git_checks_out_the_prompt_with_lf_on_every_platform(self):
+    def test_prompt_checks_out_lf(self):
         # Windows checks out text with CRLF unless .gitattributes pins LF. The
         # checker rejects CRLF, so the attribute keeps the prompt valid there.
         completed = subprocess.run(
@@ -61,7 +61,7 @@ class AuditPolicyTest(unittest.TestCase):
         )
         self.assertEqual(completed.stdout.strip(), "reviewers/foucault/AUDIT.md: eol: lf")
 
-    def test_script_checks_the_persona_prompt_by_default(self):
+    def test_script_checks_persona_prompt_default(self):
         completed = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True, check=False)
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("AUDIT.md", completed.stdout)

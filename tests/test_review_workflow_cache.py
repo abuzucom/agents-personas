@@ -29,7 +29,7 @@ def _named(job: str) -> dict[str, dict]:
 class CacheWiringTest(unittest.TestCase):
     """Both review jobs compute the key and look up an earlier check run first."""
 
-    def test_key_and_lookup_run_before_the_head_fetch(self):
+    def test_lookup_precedes_head_fetch(self):
         for job in REVIEW_JOBS:
             names = [step["name"] for step in _steps(job)]
             with self.subTest(job=job):
@@ -37,7 +37,7 @@ class CacheWiringTest(unittest.TestCase):
                 self.assertLess(names.index("Compute review key"), names.index("Find an earlier review"))
                 self.assertLess(names.index("Find an earlier review"), names.index("Fetch pull request head object"))
 
-    def test_key_step_passes_every_key_field(self):
+    def test_key_step_passes_key_field(self):
         step = _named("review")["Compute review key"]
         self.assertEqual(step["id"], "key")
         self.assertIn("engine/review_key.py", step["run"])
@@ -49,7 +49,7 @@ class CacheWiringTest(unittest.TestCase):
         self.assertEqual(step["env"]["FAIL_ON_BLOCK"], "${{ inputs.fail_on_block }}")
         self.assertNotIn("secrets.", yaml.safe_dump(step))
 
-    def test_lookup_matches_app_status_name_and_key(self):
+    def test_lookup_matches_status_key(self):
         step = _named("review")["Find an earlier review"]
         self.assertEqual(step["id"], "cached")
         script = step["with"]["script"]
@@ -60,7 +60,7 @@ class CacheWiringTest(unittest.TestCase):
                 self.assertIn(fragment, script)
         self.assertEqual(step["env"]["REVIEW_KEY"], "${{ steps.key.outputs.key }}")
 
-    def test_lookup_never_reuses_a_passing_conclusion(self):
+    def test_lookup_never_reuses_passing_conclusion(self):
         # Any workflow with checks: write can plant a check run with the key.
         # Branch protection passes success and neutral. Reusing only failure
         # means a planted result can never suppress a review.
@@ -68,24 +68,24 @@ class CacheWiringTest(unittest.TestCase):
         self.assertNotIn('"success"', script)
         self.assertNotIn('"neutral"', script)
 
-    def test_hit_skips_the_fetch_build_model_and_publish_steps(self):
+    def test_cache_hit_skips_steps(self):
         for job in REVIEW_JOBS:
             steps = _named(job)
             for name in SKIPPED_ON_HIT:
                 with self.subTest(job=job, step=name):
                     self.assertIn(HIT, str(steps[name].get("if", "")))
 
-    def test_published_check_run_carries_the_key(self):
+    def test_published_check_run_carries_key(self):
         step = _named("review")["Publish check run"]
         self.assertIn("external_id: process.env.REVIEW_KEY", step["with"]["script"])
         self.assertEqual(step["env"]["REVIEW_KEY"], "${{ steps.key.outputs.key }}")
 
-    def test_failure_check_run_carries_no_key(self):
+    def test_failure_check_lacks_key(self):
         script = _named("review")["Publish check run"]["with"]["script"]
         failure = script[script.index("Review failed before a verdict") - 300:]
         self.assertNotIn("external_id", failure[:400])
 
-    def test_gate_step_fails_a_reused_failure(self):
+    def test_gate_step_fails_reused_failure(self):
         step = _named("review")["Fail on a gating verdict"]
         self.assertEqual(step["env"]["CACHED_HIT"], "${{ steps.cached.outputs.hit }}")
         self.assertEqual(step["env"]["CACHED_CONCLUSION"], "${{ steps.cached.outputs.conclusion }}")

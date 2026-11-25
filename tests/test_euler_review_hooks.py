@@ -92,7 +92,7 @@ class TrustedContextTest(unittest.TestCase):
     def context(self, patches: dict, exclude: str = "") -> dict:
         return hooks.case_context(self.tree, sorted(patches), patches, {"exclude_paths": exclude})
 
-    def test_blocking_candidate_on_an_added_line(self):
+    def test_blocking_candidate_added_line(self):
         result = self.context({"src/app.py": _patch(EMPTY_CATCH)})
         classes = {item["class"] for item in result["context"]["prescan"]}
         self.assertIn("M1", classes)
@@ -113,7 +113,7 @@ class TrustedContextTest(unittest.TestCase):
         result = self.context({"src/app.py": patch})
         self.assertNotIn("M1", {item["class"] for item in result["context"]["prescan"]})
 
-    def test_result_passes_the_engine_shape_check(self):
+    def test_result_passes_engine_shape_check(self):
         patches = {"src/app.py": _patch(EMPTY_CATCH)}
         result = self.context(patches)
         self.assertIs(persona_hooks.check_context_result(result, sorted(patches)), result)
@@ -143,7 +143,7 @@ class ReplyHookTest(unittest.TestCase):
         reply = _reply("APPROVE", [{"id": "P1", "status": "dismissed", "reason": "clear"}])
         self.assertEqual(hooks.validate_reply({}, reply, sent), [])
 
-    def test_unresolved_prescan_item_is_a_problem(self):
+    def test_unresolved_prescan_item_problem(self):
         sent = self.sent([{"id": "P1", "file": "app.py", "line": 1}])
         self.assertIn("prescan item P1 lacks a resolution", hooks.validate_reply({}, _reply("APPROVE"), sent))
 
@@ -151,7 +151,7 @@ class ReplyHookTest(unittest.TestCase):
         problems = hooks.validate_reply({}, _reply("APPROVE"), self.sent(unreviewed=["big.bin"]))
         self.assertIn("unreviewed files forbid APPROVE", problems)
 
-    def test_finding_outside_the_chunk_files_is_a_problem(self):
+    def test_finding_outside_chunk_files_problem(self):
         finding = {
             "severity": "LOW",
             "class": "Q13",
@@ -231,7 +231,7 @@ class EngineRunTest(unittest.TestCase):
         sent = json.loads((self.out / "case" / "envelopes" / "001.json").read_text(encoding="utf-8"))
         return [item["id"] for item in sent["REVIEW_TARGET"]["prescan"]]
 
-    def test_blocking_prescan_forces_block_over_a_model_approve(self):
+    def test_blocking_prescan_forces_block(self):
         run_review.run_mode(self.options(stage="build"))
         resolutions = [{"id": item, "status": "dismissed", "reason": "checked"} for item in self.prescan_ids()]
         (self.adapter_dir / "steps.json").write_text(json.dumps([_reply("APPROVE", resolutions)]), encoding="utf-8")

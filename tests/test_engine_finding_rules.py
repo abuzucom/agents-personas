@@ -59,7 +59,7 @@ class FindingRulesSchemaTest(unittest.TestCase):
     def test_unknown_rule_key_is_reported(self):
         self.assertTrue(any("finding_rules" in item for item in _schema_findings({"regex": "x"})))
 
-    def test_keys_must_include_file_and_line(self):
+    def test_keys_must_include_file_line(self):
         self.assertTrue(any("file" in item for item in _schema_findings({"keys": ["title"]})))
 
     def test_severities_must_be_strings(self):
@@ -96,11 +96,11 @@ class FindingRulesEnforcementTest(unittest.TestCase):
         with self.assertRaisesRegex(validator.ResponseError, "class"):
             self.validate([_finding(**{"class": "3.1"})])
 
-    def test_class_with_non_numeric_suffix_is_rejected(self):
+    def test_class_non_numeric_suffix_rejected(self):
         with self.assertRaisesRegex(validator.ResponseError, "class"):
             self.validate([_finding(**{"class": "2.x"})])
 
-    def test_no_rules_keeps_the_generic_check(self):
+    def test_no_rules_keeps_generic_check(self):
         verdict, _payload = validator.validate_response(_response([_finding(severity="EXTREME")]), "PR")
         self.assertEqual(verdict, "BLOCK")
 

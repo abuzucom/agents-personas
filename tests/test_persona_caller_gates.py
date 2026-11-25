@@ -42,13 +42,13 @@ def _job(persona: str) -> dict:
 class SuccessGateTest(unittest.TestCase):
     """A workflow_run review needs a successful Convention Sync Check."""
 
-    def test_every_caller_requires_a_successful_sync_run(self):
+    def test_caller_requires_successful_sync_run(self):
         for persona in CALLERS:
             with self.subTest(caller=persona):
                 condition = " ".join(_job(persona)["if"].split())
                 self.assertIn(SUCCESS_CONDITION, condition)
 
-    def test_label_branches_stay_free_of_the_sync_result(self):
+    def test_label_branches_ignore_sync(self):
         for persona in CALLERS:
             with self.subTest(caller=persona):
                 condition = " ".join(_job(persona)["if"].split())
@@ -59,14 +59,14 @@ class SuccessGateTest(unittest.TestCase):
 class PullRequestLockTest(unittest.TestCase):
     """Each caller lock names the pull request, the persona, and the head."""
 
-    def test_every_lock_names_the_pull_request_for_both_triggers(self):
+    def test_lock_names_pull_request_triggers(self):
         for persona in CALLERS:
             group = _job(persona)["concurrency"]["group"]
             with self.subTest(caller=persona):
                 for expression in PULL_REQUEST_EXPRESSIONS + HEAD_EXPRESSIONS:
                     self.assertIn(expression, group)
 
-    def test_fork_runs_fall_back_to_the_head_branch(self):
+    def test_fork_runs_use_head(self):
         for persona in CALLERS:
             with self.subTest(caller=persona):
                 self.assertIn("github.event.workflow_run.head_branch", _job(persona)["concurrency"]["group"])
@@ -75,7 +75,7 @@ class PullRequestLockTest(unittest.TestCase):
 class YamlLintCoverageTest(unittest.TestCase):
     """make lint-code lints every persona wrapper and self-review caller."""
 
-    def test_yaml_paths_name_every_persona_workflow(self):
+    def test_yaml_paths_name_persona_workflow(self):
         makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
         listed = set(YAML_PATHS_PATTERN.search(makefile).group(1).replace("\\\n", " ").split())
         persona_workflows = {

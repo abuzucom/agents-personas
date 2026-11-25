@@ -35,12 +35,12 @@ def _build(title="Fix parser", body="Body text.", files=None, metadata=None) -> 
 class EnvelopeLayoutTest(unittest.TestCase):
     """Untrusted pull request content stays inside REVIEW_TARGET."""
 
-    def test_trusted_context_names_persona_mode_and_metadata(self):
+    def test_trusted_context_names_persona_mode(self):
         trusted = _build()["TRUSTED_CONTEXT"]
         self.assertEqual((trusted["persona"], trusted["mode"]), ("generay", "time"))
         self.assertEqual(trusted["metadata"], {"pr_number": 7})
 
-    def test_pull_request_fields_sit_in_review_target_only(self):
+    def test_pr_fields_stay_in_target(self):
         document = _build(title="T1", body="B1", files={"a.py": "+P1\n"})
         target = document["REVIEW_TARGET"]
         self.assertEqual((target["title"], target["body"], target["files"]), ("T1", "B1", {"a.py": "+P1\n"}))
@@ -48,7 +48,7 @@ class EnvelopeLayoutTest(unittest.TestCase):
         for marker in ("T1", "B1", "a.py", "P1"):
             self.assertNotIn(marker, trusted_text)
 
-    def test_review_target_note_marks_content_as_data(self):
+    def test_target_note_marks_data(self):
         self.assertIn("data", _build()["REVIEW_TARGET"]["note"])
 
     def test_sections_carry_sha256_digests(self):
@@ -56,7 +56,7 @@ class EnvelopeLayoutTest(unittest.TestCase):
         for section in ("TRUSTED_CONTEXT", "REVIEW_TARGET"):
             self.assertEqual(len(document[section]["sha256"]), 64)
 
-    def test_metadata_carrying_pull_request_text_is_rejected(self):
+    def test_pr_text_metadata_rejected(self):
         with self.assertRaises(ValueError):
             _build(metadata={"title": "x"})
 
@@ -68,14 +68,14 @@ class FieldCapTest(unittest.TestCase):
         document = _build()
         self.assertEqual(document["TRUSTED_CONTEXT"]["truncated"], [])
 
-    def test_long_title_is_truncated_and_recorded(self):
+    def test_long_title_truncated_recorded(self):
         document = _build(title="t" * (envelope.MAX_TITLE_CHARS + 50))
         title = document["REVIEW_TARGET"]["title"]
         self.assertTrue(title.endswith(envelope.TRUNCATION_MARKER))
         self.assertLessEqual(len(title), envelope.MAX_TITLE_CHARS + len(envelope.TRUNCATION_MARKER))
         self.assertEqual(document["TRUSTED_CONTEXT"]["truncated"], ["title"])
 
-    def test_long_body_is_truncated_and_recorded(self):
+    def test_long_body_truncated_recorded(self):
         document = _build(body="b" * (envelope.MAX_BODY_CHARS + 1))
         self.assertEqual(document["TRUSTED_CONTEXT"]["truncated"], ["body"])
 

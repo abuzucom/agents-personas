@@ -44,21 +44,21 @@ class WrapperTest(unittest.TestCase):
         self.call = _trigger(self.workflow)["workflow_call"]
         self.job = self.workflow["jobs"]["review"]
 
-    def test_wrapper_declares_the_engine_inputs_with_engine_types(self):
+    def test_wrapper_declares_engine_input_types(self):
         self.assertEqual(set(self.call["inputs"]), FORWARDED_INPUTS)
         engine_inputs = _trigger(_load(ENGINE))["workflow_call"]["inputs"]
         for name in FORWARDED_INPUTS:
             with self.subTest(input=name):
                 self.assertEqual(self.call["inputs"][name]["type"], engine_inputs[name]["type"])
 
-    def test_wrapper_forwards_every_input_and_fixes_the_persona(self):
+    def test_wrapper_forwards_input_fixes_persona(self):
         self.assertEqual(self.job["uses"], "./.github/workflows/review.yml")
         self.assertEqual(self.job["with"]["persona"], "adorno")
         for name in FORWARDED_INPUTS:
             with self.subTest(input=name):
                 self.assertEqual(self.job["with"][name], f"${{{{ inputs.{name} }}}}")
 
-    def test_wrapper_keeps_the_model_key_optional(self):
+    def test_wrapper_keeps_model_key_optional(self):
         self.assertEqual(set(self.call["secrets"]), {"MODEL_API_KEY"})
         self.assertIs(self.call["secrets"]["MODEL_API_KEY"]["required"], False)
         self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.MODEL_API_KEY }}"})
@@ -75,14 +75,14 @@ class SelfCallerTest(unittest.TestCase):
         self.workflow = _load(SELF_CALLER)
         self.job = self.workflow["jobs"]["adorno"]
 
-    def test_caller_excludes_every_file_so_only_the_label_runs_a_review(self):
+    def test_label_alone_runs_excluded_review(self):
         self.assertEqual(self.job["with"]["paths"].split(), ["!**"])
 
-    def test_caller_passes_only_inputs_the_wrapper_declares(self):
+    def test_caller_passes_inputs_wrapper_declares(self):
         declared = set(_trigger(_load(WRAPPER))["workflow_call"]["inputs"])
         self.assertLessEqual(set(self.job["with"]), declared)
 
-    def test_caller_starts_on_ci_completion_and_on_its_labels(self):
+    def test_caller_starts_ci_completion_labels(self):
         trigger = _trigger(self.workflow)
         self.assertEqual(trigger["workflow_run"], {"workflows": ["Convention Sync Check"], "types": ["completed"]})
         self.assertEqual(trigger["pull_request_target"], {"types": ["labeled", "unlabeled"]})
@@ -90,7 +90,7 @@ class SelfCallerTest(unittest.TestCase):
         self.assertIn("github.event.label.name == 'adorno-scan-requested'", condition)
         self.assertIn("github.event.action == 'unlabeled' && github.event.label.name == 'stop-requested'", condition)
 
-    def test_caller_uses_the_default_branch_engine_and_the_ollama_key(self):
+    def test_caller_uses_default_engine_key(self):
         self.assertEqual(self.job["uses"], "./.github/workflows/adorno-ui-review.yml")
         self.assertEqual(self.job["with"]["personas_ref"], "${{ github.sha }}")
         self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.OLLAMA_API_KEY }}"})

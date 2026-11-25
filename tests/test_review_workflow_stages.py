@@ -32,23 +32,23 @@ class PersonaOptionsInputTest(unittest.TestCase):
 class StageTest(unittest.TestCase):
     """The build stage runs persona hooks before the provider key enters the job."""
 
-    def test_build_step_precedes_the_review_step(self):
+    def test_build_step_precedes_review_step(self):
         names = [step["name"] for step in _review_steps()]
         self.assertLess(names.index("Build review case"), names.index("Run review"))
 
-    def test_build_step_holds_no_secret_and_runs_the_build_stage(self):
+    def test_build_step_lacks_secret(self):
         step = _step("Build review case")
         self.assertNotIn("secrets.", yaml.safe_dump(step))
         self.assertIn("--stage build", step["run"])
         self.assertEqual(step["env"]["PERSONA_OPTIONS"], "${{ inputs.persona_options }}")
 
-    def test_review_step_reads_the_built_case(self):
+    def test_review_step_reads_built_case(self):
         step = _step("Run review")
         self.assertIn("--stage review", step["run"])
         # The review stage checks the options digest against the built case.
         self.assertEqual(step["env"]["PERSONA_OPTIONS"], "${{ inputs.persona_options }}")
 
-    def test_persona_options_reach_only_the_two_stage_steps(self):
+    def test_persona_options_reach_stages(self):
         for job in ("review", "fork-review"):
             names = {step["name"] for step in _review_steps(job) if "persona_options" in yaml.safe_dump(step)}
             with self.subTest(job=job):

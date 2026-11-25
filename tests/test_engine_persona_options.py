@@ -52,7 +52,7 @@ class OptionSchemaTest(unittest.TestCase):
     def test_options_must_be_an_object(self):
         self.assertTrue(any("'options' must be a JSON object" in item for item in _findings([])))
 
-    def test_option_name_must_be_snake_case(self):
+    def test_option_name_must_snake_case(self):
         findings = _findings({"Exclude-Paths": {"type": "string", "default": ""}})
         self.assertTrue(any("invalid option name" in item for item in findings), findings)
 
@@ -89,25 +89,25 @@ class ResolveOptionsTest(unittest.TestCase):
         with self.assertRaisesRegex(reviewers.ReviewerError, "option 'depth' must be an integer"):
             reviewers.resolve_options(MANIFEST, '{"depth": true}')
 
-    def test_request_must_be_a_json_object(self):
+    def test_request_must_json_object(self):
         for text in ("[1]", "{", "3"):
             with self.subTest(text=text), self.assertRaisesRegex(reviewers.ReviewerError, "JSON object"):
                 reviewers.resolve_options(MANIFEST, text)
 
-    def test_string_value_must_be_printable_ascii_and_bounded(self):
+    def test_string_value_bounded_ascii(self):
         with self.assertRaisesRegex(reviewers.ReviewerError, "printable ASCII"):
             reviewers.resolve_options(MANIFEST, json.dumps({"exclude_paths": "aé"}))
         long_value = "x" * (reviewers.MAX_OPTION_CHARS + 1)
         with self.assertRaisesRegex(reviewers.ReviewerError, "at most"):
             reviewers.resolve_options(MANIFEST, json.dumps({"exclude_paths": long_value}))
 
-    def test_string_value_keeps_newlines_and_tabs(self):
+    def test_string_value_keeps_newlines_tabs(self):
         resolved = reviewers.resolve_options(MANIFEST, json.dumps({"exclude_paths": "tests/**\n\tdocs/**"}))
         self.assertEqual(resolved["exclude_paths"], "tests/**\n\tdocs/**")
         with self.assertRaisesRegex(reviewers.ReviewerError, "printable ASCII"):
             reviewers.resolve_options(MANIFEST, json.dumps({"exclude_paths": "a\rb"}))
 
-    def test_persona_without_options_accepts_only_an_empty_request(self):
+    def test_optionless_persona_accepts_empty(self):
         manifest = {key: value for key, value in MANIFEST.items() if key != "options"}
         self.assertEqual(reviewers.resolve_options(manifest, "{}"), {})
         with self.assertRaisesRegex(reviewers.ReviewerError, "undeclared option"):

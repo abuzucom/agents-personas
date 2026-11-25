@@ -186,7 +186,7 @@ class ReferenceGraphFailureTest(unittest.TestCase):
         check = CHECK.replace("[2.1@gdpr]", "[2.99@gdpr]")
         self.assertEqual(self._run(check=check), 1)
 
-    def test_anchor_inside_a_check_file_fails(self):
+    def test_anchor_inside_check_file_fails(self):
         check = CHECK + "\n### [2.1@gdpr]\nWrong file.\n"
         self.assertEqual(self._run(check=check), 1)
 
@@ -250,18 +250,18 @@ class ProfileFailureTest(unittest.TestCase):
         root = build_tree(temp.name, profiles=profiles)
         return checker.main([str(root)])
 
-    def test_profile_expanding_to_unknown_slug_fails(self):
+    def test_profile_expanding_unknown_slug_fails(self):
         profiles = PROFILES.replace("| `eu` | `gdpr` |", "| `eu` | `atlantis` |")
         self.assertEqual(self._run(profiles), 1)
 
-    def test_slug_absent_from_every_profile_fails(self):
+    def test_slug_absent_profile_fails(self):
         profiles = PROFILES.replace(
             "| `gdpr` | General Data Protection Regulation |",
             "| `gdpr` | General Data Protection Regulation |\n| `orphan` | Orphan Regime |",
         )
         self.assertEqual(self._run(profiles), 1)
 
-    def test_slug_without_a_regime_file_fails(self):
+    def test_slug_without_regime_file_fails(self):
         profiles = PROFILES.replace("| `eu` | `gdpr` |", "| `eu` | `gdpr`, `ghost` |")
         profiles = profiles.replace(
             "| `gdpr` | General Data Protection Regulation |",
