@@ -74,7 +74,8 @@ INSPECTABLE_PROGRAMS = command_gate.INSPECTABLE_PROGRAMS
 WORKFLOW_SCRIPT_ARGUMENTS = command_gate.WORKFLOW_SCRIPT_ARGUMENTS
 SEARCH_FLAGS = command_gate.SEARCH_FLAGS
 MAX_WORKFLOW_ARGUMENTS = command_gate.MAX_WORKFLOW_ARGUMENTS
-# The primary branch and a detached HEAD permit inspection and planning only.
+# Stable branches and a detached HEAD permit inspection and planning only.
+# The stable branches are the primary branch, test, and develop.
 DEFAULT_PRIMARY_BRANCH = "main"
 PRIMARY_BRANCH_FILE = "hooks/primary-branch.txt"
 MAX_PRIMARY_BRANCH_BYTES = 256
@@ -94,6 +95,11 @@ PLAN_WRITE_TOOLS = frozenset({
     "Edit", "MultiEdit", "Write", "write_file", "replace", "write_to_file",
     "replace_file_content",
 })
+# Plan mode forbids the branch rename. On an invalid branch a session may
+# always enter plan mode. Inside plan mode it may also leave plan mode and
+# load tool schemas. None of these tools reads or writes the repository.
+PLAN_ENTRY_TOOL = "EnterPlanMode"
+PLAN_EXIT_TOOLS = frozenset({"ExitPlanMode", "ToolSearch"})
 BASH_READ_PROGRAMS = frozenset({
     "echo", "printf", "pwd", "cat", "head", "tail", "wc", "ls", "dir",
 })
@@ -698,12 +704,12 @@ _python_workflow = command_gate._python_workflow
 def recovery_command(branch_name: str, rebase_active: bool) -> str:
     """Return the recovery command family for one failed preflight.
 
-    A rebase allows only its own continuation commands. The primary branch
+    A rebase allows only its own continuation commands. A stable branch
     and a detached HEAD need a new branch. Any other name needs a rename.
     """
     if rebase_active:
         return "git rebase --abort, git rebase --continue, or git rebase --skip"
-    if branch_name in ("main", "master", "HEAD"):
+    if branch_name in ("main", "master", "HEAD", *core.EXTRA_STABLE_BRANCHES):
         return "git switch -c"
     return "git branch -m"
 
@@ -804,7 +810,7 @@ def branch_state(branch_name: str, project_dir: str, rebase_state: tuple = None)
     primary = primary_branch_name(project_dir)
     if branch_name == "master":
         return "master"
-    if branch_name in (primary, "HEAD"):
+    if branch_name in (primary, "HEAD", *core.EXTRA_STABLE_BRANCHES):
         return "read-only"
     return "invalid"
 
@@ -1153,7 +1159,12 @@ def _handle_invalid_branch(
     tool_name, tool_input = _tool_call(payload, client)
     if not isinstance(tool_name, str):
         return _deny(client, "Tool name is missing or malformed")
-    if tool_name in QUESTION_TOOLS:
+    if tool_name in QUESTION_TOOLS or tool_name == PLAN_ENTRY_TOOL:
+        return 0
+    if tool_name in PLAN_EXIT_TOOLS and payload.get("permission_mode") == core.PLAN_MODE:
+        return 0
+    if (tool_name in PLAN_WRITE_TOOLS and isinstance(tool_input, dict)
+            and _plan_write_allowed(tool_input, project_dir, client)):
         return 0
     label = str(tool_name or "tool")
     rebase_active, lookup_error = rebase_state or read_rebase_state(project_dir)
@@ -1202,7 +1213,9 @@ def _handle_pre_tool_use(payload: dict, project_dir: str, client: str) -> int:
     command_text = _command_text(tool_input)
     if _valid_bootstrap(command_text, project_dir):
         return 0
-    decision, reason = command_gate.workflow_decision(command_text, project_dir)
+    session_id = payload.get("session_id")
+    decision, reason = command_gate.workflow_decision(
+        command_text, project_dir, session_id=session_id if isinstance(session_id, str) else "")
     if decision == command_gate.ALLOW:
         return 0
     if decision == "ask":
@@ -1242,6 +1255,11 @@ def handle_stop_event(payload: dict, project_dir: str) -> int:
     else:
         recovery = recovery_authorization_reason(branch_name, _rebase_assumed(project_dir))
         reason = f"{recovery} {core.sanitize(branch_violation)}"
+    # Plan mode forbids the rename itself. A block there would only repeat a
+    # demand the session cannot meet. The turn ends with the reminder instead.
+    if payload.get("permission_mode") == core.PLAN_MODE:
+        print(json.dumps({"systemMessage": reason}))
+        return 0
     output = {
         "decision": "block",
         "reason": reason,
