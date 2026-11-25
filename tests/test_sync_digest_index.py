@@ -16,12 +16,13 @@ import unittest
 from pathlib import Path
 
 # scripts/ is never on the path, so the file lists come from the module
-# that defines them instead of a restated copy.
+# that defines the lists instead of a restated copy.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import sync
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SYNC = REPO_ROOT / "scripts" / "sync.py"
+SKILL_SYNC = REPO_ROOT / "scripts" / "_skill_sync.py"
 INDEX_NAME = "policy-digests.json"
 # Only the source repository holds this file. Adopters copy this test and
 # hold no digest index.
@@ -61,6 +62,14 @@ def build_index_tree(root: Path) -> None:
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"# {name}\nbody = 1\n", encoding="utf-8")
+    # sync.py validates skills and loads the skill module, so those shared
+    # paths hold working content instead of inert text.
+    (root / "scripts" / "_skill_sync.py").write_text(
+        SKILL_SYNC.read_text(encoding="utf-8"), encoding="utf-8")
+    for path in root.glob("skills/*/SKILL.md"):
+        path.write_text(
+            f"---\nname: {path.parent.name}\ndescription: Fixture skill.\n---\n",
+            encoding="utf-8")
     write_changelog(root, FIRST_VERSION)
     (root / INDEX_NAME).write_text(
         json.dumps({"versions": {}}) + "\n", encoding="utf-8")
@@ -96,13 +105,13 @@ class WriteIndexTest(IndexFixture):
         self.assertEqual(entry["policy"]["AGENTS.md"], expected)
         self.assertIn("docs/agent-policy/adoption.md", entry["policy"])
 
-    def test_the_orientation_stub_stays_out_of_the_index(self):
+    def test_orientation_stub_excluded(self):
         """Every adopter rewrites the orientation file, so it never matches."""
         run_sync(self.root)
         entry = read_index(self.root)["versions"][FIRST_VERSION]
         self.assertNotIn("docs/project-orientation.md", entry["policy"])
 
-    def test_a_new_version_keeps_the_earlier_entry(self):
+    def test_new_version_keeps_entry(self):
         run_sync(self.root)
         before = read_index(self.root)["versions"][FIRST_VERSION]
         write_changelog(self.root, SECOND_VERSION)
@@ -114,7 +123,7 @@ class WriteIndexTest(IndexFixture):
         self.assertEqual(versions[FIRST_VERSION], before)
         self.assertNotEqual(versions[SECOND_VERSION], before)
 
-    def test_a_tree_without_an_index_gains_none(self):
+    def test_missing_index_not_created(self):
         """Adopters copy sync.py. Only the source repository holds an index."""
         (self.root / INDEX_NAME).unlink()
         result = run_sync(self.root)
@@ -147,7 +156,7 @@ class CheckIndexTest(IndexFixture):
         self.assertEqual(result.returncode, 1)
         self.assertIn(INDEX_NAME, result.stderr)
 
-    def test_a_version_without_an_entry_fails(self):
+    def test_missing_version_entry_fails(self):
         write_changelog(self.root, SECOND_VERSION)
         result = run_sync(self.root, "--check")
         self.assertEqual(result.returncode, 1)
@@ -166,7 +175,7 @@ class CheckIndexTest(IndexFixture):
         self.assertEqual(result.returncode, 1)
         self.assertIn(INDEX_NAME, result.stderr)
 
-    def test_a_tree_without_an_index_passes(self):
+    def test_missing_index_passes(self):
         (self.root / INDEX_NAME).unlink()
         result = run_sync(self.root, "--check")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -196,9 +205,8 @@ class BackfillHistory:
         self.template.mkdir()
         build_index_tree(self.template)
         run_git(self.template, "init", "--quiet")
-        # A commit can start detached Git maintenance. That process creates
-        # and removes .git/objects/maintenance.lock while copy_into runs
-        # shutil.copytree, which then fails on the vanished lock.
+        # A commit can start detached Git maintenance. That process removes
+        # .git/objects/maintenance.lock while copy_into copies the template.
         run_git(self.template, "config", "maintenance.auto", "false")
         run_git(self.template, "config", "gc.auto", "0")
         self.write_shared_manifest()
@@ -253,7 +261,7 @@ class BackfillIndexTest(unittest.TestCase):
         versions = read_index(self.root)["versions"]
         self.assertEqual(sorted(versions), [FIRST_VERSION, SECOND_VERSION])
 
-    def test_backfill_hashes_each_revision_own_policy(self):
+    def test_backfill_revision_policy(self):
         run_sync(self.root, "--backfill-digests")
         versions = read_index(self.root)["versions"]
         first = hashlib.sha256(b"# Policy\n").hexdigest()
@@ -264,7 +272,7 @@ class BackfillIndexTest(unittest.TestCase):
         self.assertNotIn("docs/project-orientation.md",
                          versions[FIRST_VERSION]["policy"])
 
-    def test_backfill_reuses_each_revision_own_shared_manifest(self):
+    def test_backfill_revision_manifest(self):
         run_sync(self.root, "--backfill-digests")
         versions = read_index(self.root)["versions"]
         self.assertEqual(
@@ -312,7 +320,7 @@ class BackfillExistingIndexTest(unittest.TestCase):
 class LiveIndexTest(unittest.TestCase):
     """This repository's committed index describes its current release."""
 
-    def test_the_committed_index_matches_this_tree(self):
+    def test_committed_index_current(self):
         if SOURCE_MARKER.is_file():
             self.assertTrue((REPO_ROOT / INDEX_NAME).is_file())
         result = run_sync(REPO_ROOT, "--check")
