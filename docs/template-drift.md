@@ -26,8 +26,7 @@ The previous revision was `909b93702273befaec9227ee892fe1a2261a4a41`.
 
 ## Declined
 
-- `.github/workflows/release.yml`,
-  `policy-size-report.yml`, `security-review-pr.yml`, and
+- The template `.github/workflows/release.yml`, `policy-size-report.yml`, `security-review-pr.yml`, and
   `quality-review-pr.yml`. The source repository owns these workflows.
 - `ci/`. Plan step 3 moves the review engine into `engine/`.
 - `docs/agent-policy/source-orientation.md`, `DRIFT.md`, `adopters/`,
@@ -57,6 +56,10 @@ The previous revision was `909b93702273befaec9227ee892fe1a2261a4a41`.
 
 ## Current drift
 
+- `.github/workflows/release.yml` is a local workflow. It replaces the
+  declined template workflow of the same name. `tools/release_personas.py`
+  builds its files. The template `scripts/release.py` stays unused. The
+  template `test_release_*.py` modules stay declined.
 - `AGENTS.md` rewraps eight template lines longer than 120 characters at
   80 columns. The words match the template. The euler policy check in
   `tests/test_euler_quality_policy.py` rejects lines over 120 characters.
