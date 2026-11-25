@@ -50,7 +50,7 @@ class RepeatTest(unittest.TestCase):
         _failures, _output, calls = self.run_cases(["VERDICT: BLOCK\n"], 3)
         self.assertEqual(calls, 3)
 
-    def test_split_verdicts_report_the_modal_share(self):
+    def test_split_verdicts_report_modal_share(self):
         failures, output, _calls = self.run_cases(["VERDICT: BLOCK\n", "VERDICT: APPROVE\n", "VERDICT: BLOCK\n"], 3)
         self.assertEqual(failures, 1)
         self.assertIn("agreement review/block-pr: 2/3 BLOCK", output)
@@ -61,11 +61,11 @@ class RepeatTest(unittest.TestCase):
         self.assertIn("agreement review/block-pr: 2/2 BLOCK", output)
         self.assertIn("1/1 case(s) agree on every run", output)
 
-    def test_missing_verdict_line_counts_as_its_own_answer(self):
+    def test_missing_verdict_counts_separately(self):
         _failures, output, _calls = self.run_cases(["no verdict\n", "VERDICT: BLOCK\n"], 2)
         self.assertIn("agreement review/block-pr: 1/2", output)
 
-    def test_single_run_prints_no_agreement_report(self):
+    def test_single_run_skips_agreement(self):
         _failures, output, _calls = self.run_cases(["VERDICT: BLOCK\n"], 1)
         self.assertNotIn("agreement", output)
 
@@ -81,7 +81,7 @@ class RepeatOptionTest(unittest.TestCase):
                 code = exit_error.code
         return code, errors.getvalue()
 
-    def test_repeat_without_a_model_call_fails(self):
+    def test_repeat_without_model_call_fails(self):
         code, errors = self.run_main("--repeat", "3")
         self.assertEqual(code, 1)
         self.assertIn("--repeat needs --model-call", errors)

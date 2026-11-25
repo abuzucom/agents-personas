@@ -38,12 +38,12 @@ def _review_step(name: str) -> dict:
 class CallerConcurrencyTest(unittest.TestCase):
     """Each caller scopes its concurrency group to its review job."""
 
-    def test_no_caller_holds_a_workflow_level_group(self):
+    def test_callers_lack_workflow_group(self):
         for persona, name in CALLERS.items():
             with self.subTest(caller=persona):
                 self.assertNotIn("concurrency", _workflow(name))
 
-    def test_review_job_holds_a_per_persona_head_group(self):
+    def test_review_job_holds_persona_group(self):
         for persona, name in CALLERS.items():
             concurrency = _workflow(name)["jobs"][persona]["concurrency"]
             with self.subTest(caller=persona):
@@ -60,17 +60,17 @@ class CallerConcurrencyTest(unittest.TestCase):
 class CancelledReviewTest(unittest.TestCase):
     """A cancelled review publishes no check and reports no failure."""
 
-    def test_check_run_step_skips_a_cancelled_job(self):
+    def test_check_run_skips_cancelled_job(self):
         condition = _review_step("Publish check run")["if"]
         self.assertIn("!cancelled()", condition)
         self.assertIn("steps.cached.outputs.hit != 'true'", condition)
 
-    def test_check_run_script_holds_no_cancelled_branch(self):
+    def test_check_script_lacks_cancelled_branch(self):
         step = _review_step("Publish check run")
         self.assertNotIn("cancelled", step["with"]["script"])
         self.assertNotIn("JOB_STATUS", step.get("env", {}))
 
-    def test_gate_step_skips_a_cancelled_job(self):
+    def test_gate_step_skips_cancelled_job(self):
         self.assertIn("!cancelled()", _review_step("Fail on a gating verdict")["if"])
 
 

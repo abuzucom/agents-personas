@@ -57,30 +57,30 @@ def _lines(result: dict) -> list[str]:
 class CommentLayoutTest(unittest.TestCase):
     """The comment shows the verdict in a heading like the euler review."""
 
-    def test_first_line_is_a_hidden_marker(self):
+    def test_first_line_hidden_marker(self):
         self.assertEqual(_lines(_result())[0], f"<!-- persona-review: euler / quality | head {HEAD_SHA} -->")
 
-    def test_heading_names_persona_mode_and_verdict(self):
+    def test_heading_names_persona_mode_verdict(self):
         self.assertIn("## Euler quality review: APPROVE", _lines(_result()))
 
-    def test_revisions_and_run_link_follow_the_heading(self):
+    def test_revisions_run_link_follow_heading(self):
         lines = _lines(_result())
         self.assertIn(f"Base `{BASE_SHA}`. Head `{HEAD_SHA}`.", lines)
         self.assertIn(f"Workflow run: {RUN_URL}", lines)
 
-    def test_each_chunk_gets_a_verdict_heading(self):
+    def test_chunk_gets_verdict_heading(self):
         lines = _lines(_result())
         self.assertIn("### Chunk 001: APPROVE", lines)
         self.assertIn("### Chunk 002: APPROVE", lines)
 
-    def test_report_sits_inside_a_fence_longer_than_its_backticks(self):
+    def test_report_fence_exceeds_backticks(self):
         result = _result(
             chunk_results=[{"name": "001", "verdict": "BLOCK", "report": "Has ```` four ticks.", "reason": ""}]
         )
         body = output.render(result, fail_on_block=True, run_url=RUN_URL)["comment_body"]
         self.assertIn("`````\nHas ```` four ticks.\n`````", body)
 
-    def test_chunk_without_report_shows_its_reason(self):
+    def test_chunk_without_report_shows_reason(self):
         result = _result(
             verdict="NEEDS-HUMAN",
             chunk_results=[
@@ -95,16 +95,16 @@ class CommentLayoutTest(unittest.TestCase):
         result = _result(verdict="NEEDS-HUMAN", reasons=["1 unreviewed file(s) forbid APPROVE"])
         self.assertIn("- 1 unreviewed file(s) forbid APPROVE", _lines(result))
 
-    def test_missing_run_url_omits_the_link_line(self):
+    def test_missing_url_omits_link(self):
         body = output.render(_result(), fail_on_block=True)["comment_body"]
         self.assertNotIn("Workflow run:", body)
 
-    def test_result_without_chunk_results_uses_reports(self):
+    def test_chunkless_result_uses_reports(self):
         result = _result()
         del result["chunk_results"]
         self.assertIn("### Chunk 001: APPROVE", _lines(result))
 
-    def test_long_comment_stays_under_the_cap(self):
+    def test_long_comment_stays_under_cap(self):
         result = _result(
             chunk_results=[
                 {"name": f"{index:03d}", "verdict": "APPROVE", "report": "x" * 20_000, "reason": ""}

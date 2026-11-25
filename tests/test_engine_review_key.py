@@ -44,10 +44,10 @@ review_key = _load()
 class ReviewKeyTest(unittest.TestCase):
     """The key is stable for equal inputs and changes with any input."""
 
-    def test_equal_inputs_give_the_same_key(self):
+    def test_equal_inputs_give_same_key(self):
         self.assertEqual(review_key.review_key(dict(FIELDS)), review_key.review_key(dict(FIELDS)))
 
-    def test_key_has_a_version_prefix_and_a_sha256_digest(self):
+    def test_key_has_version_digest(self):
         key = review_key.review_key(FIELDS)
         prefix, _, digest = key.partition(":")
         self.assertEqual(prefix, review_key.KEY_VERSION)
@@ -59,7 +59,7 @@ class ReviewKeyTest(unittest.TestCase):
             with self.subTest(field=name):
                 self.assertNotEqual(review_key.review_key({**FIELDS, name: FIELDS[name] + "x"}), original)
 
-    def test_model_command_and_block_gate_are_key_fields(self):
+    def test_model_command_gate_keyed(self):
         # The adapter command changes the verdict. fail_on_block changes the
         # conclusion of a BLOCK. A cached result must match both.
         self.assertIn("MODEL_CALL_COMMAND", review_key.KEY_FIELDS)
@@ -67,11 +67,11 @@ class ReviewKeyTest(unittest.TestCase):
         changed = {**FIELDS, "FAIL_ON_BLOCK": "false"}
         self.assertNotEqual(review_key.review_key(changed), review_key.review_key(FIELDS))
 
-    def test_title_and_body_boundary_cannot_shift(self):
+    def test_title_body_boundary_cannot_shift(self):
         moved = {**FIELDS, "PR_TITLE": "TitleBody", "PR_BODY": " text"}
         self.assertNotEqual(review_key.review_key(moved), review_key.review_key(FIELDS))
 
-    def test_key_holds_no_pull_request_text(self):
+    def test_key_lacks_pr_text(self):
         key = review_key.review_key({**FIELDS, "PR_TITLE": "secret-looking title"})
         self.assertNotIn("secret", key)
 

@@ -38,7 +38,7 @@ def _cases() -> list[dict]:
 class HookCorpusStructureTest(unittest.TestCase):
     """Each hook case names the context vector, a payload, and the expected behavior."""
 
-    def test_cases_exist_and_use_the_context_vector(self):
+    def test_cases_exist_use_context_vector(self):
         cases = _cases()
         self.assertTrue(cases)
         for case in cases:
@@ -55,7 +55,7 @@ class HookCorpusStructureTest(unittest.TestCase):
 class HookExcerptPlacementTest(unittest.TestCase):
     """The real euler prescan quotes the payload. The envelope keeps it untrusted."""
 
-    def test_quoted_payload_stays_in_the_review_target(self):
+    def test_quoted_payload_stays_review_target(self):
         for case in _cases():
             with self.subTest(case=case["id"]), tempfile.TemporaryDirectory() as directory:
                 tree = Path(directory)

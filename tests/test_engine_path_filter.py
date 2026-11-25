@@ -57,14 +57,14 @@ class MatchTest(unittest.TestCase):
     def test_recursive_pattern_matches_nested_file(self):
         self.assertTrue(path_filter.any_match(["src/payments/core/charge.py"], ["src/payments/**"]))
 
-    def test_single_star_stays_in_one_directory(self):
+    def test_single_star_stays_one_directory(self):
         self.assertFalse(path_filter.any_match(["docs/api/a.md"], ["docs/*.md"]))
         self.assertTrue(path_filter.any_match(["docs/a.md"], ["docs/*.md"]))
 
     def test_no_matching_file(self):
         self.assertFalse(path_filter.any_match(["README.md", "src/app.py"], ["src/payments/**"]))
 
-    def test_no_changed_files_never_match_patterns(self):
+    def test_no_files_never_match(self):
         self.assertFalse(path_filter.any_match([], ["src/**"]))
 
 

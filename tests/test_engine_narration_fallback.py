@@ -41,7 +41,7 @@ class NarrationFallbackTest(unittest.TestCase):
     def stored(self) -> dict:
         return json.loads((self.out / "result.json").read_text(encoding="utf-8"))
 
-    def test_two_narrating_replies_record_needs_human_with_findings(self):
+    def test_narrating_replies_need_human(self):
         second = _narrating("APPROVE", [_finding()])
         self.script(_narrating("APPROVE"), second)
         result = fixture.run_review.run_mode(self.options())
@@ -51,24 +51,24 @@ class NarrationFallbackTest(unittest.TestCase):
         self.assertEqual(entry["report"], second)
         self.assertIn("process narration after one retry", entry["reason"])
 
-    def test_narrating_block_records_needs_human_without_confirmation(self):
+    def test_narrating_block_needs_human(self):
         self.script(_narrating("BLOCK", [_finding()]), _narrating("BLOCK", [_finding()]))
         result = fixture.run_review.run_mode(self.options())
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
         self.assertEqual(len(self.prompts()), 2)
 
-    def test_narration_then_a_missing_verdict_fails_the_run(self):
+    def test_narration_missing_verdict_fails(self):
         self.script(_narrating("APPROVE"), "no verdict here")
         with self.assertRaisesRegex(fixture.run_review.ReviewError, "invalid response after one retry"):
             fixture.run_review.run_mode(self.options())
 
-    def test_narration_with_invalid_json_fails_the_run(self):
+    def test_narration_invalid_json_fails_run(self):
         broken = NARRATION + "Mode: PR\nVERDICT: APPROVE\nVERDICT_JSON: {not json\n"
         self.script(_narrating("APPROVE"), broken)
         with self.assertRaisesRegex(fixture.run_review.ReviewError, "invalid response after one retry"):
             fixture.run_review.run_mode(self.options())
 
-    def test_persona_rejection_of_the_narrating_reply_fails_the_run(self):
+    def test_rejected_narrating_reply_fails(self):
         persona_dir = self.root / "reviewers" / "euler"
         (persona_dir / "review_hooks.py").write_text(
             "def validate_reply(payload, response, envelope):\n    return ['persona rule']\n", encoding="utf-8"
@@ -77,7 +77,7 @@ class NarrationFallbackTest(unittest.TestCase):
         with self.assertRaisesRegex(fixture.run_review.ReviewError, "persona rule"):
             fixture.run_review.run_mode(self.options())
 
-    def test_narration_then_a_persona_rejection_fails_the_run(self):
+    def test_narration_then_rejection_fails(self):
         # The first reply narrates. The second reply narrates no line but
         # fails a persona rule. The fallback must not reach the first reply.
         persona_dir = self.root / "reviewers" / "euler"
@@ -88,7 +88,7 @@ class NarrationFallbackTest(unittest.TestCase):
         with self.assertRaisesRegex(fixture.run_review.ReviewError, "invalid response after one retry: persona rule"):
             fixture.run_review.run_mode(self.options())
 
-    def test_clean_retry_keeps_its_own_verdict(self):
+    def test_clean_retry_keeps_own_verdict(self):
         self.script(_narrating("APPROVE"), fixture._reply("APPROVE"))
         self.assertEqual(fixture.run_review.run_mode(self.options())["verdict"], "APPROVE")
 

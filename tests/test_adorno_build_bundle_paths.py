@@ -49,7 +49,7 @@ class OutputContainmentTest(unittest.TestCase):
         with self.assertRaisesRegex(builder.BundleError, "bundles/ is a symlink"):
             builder.output_path(self.root, "ui", "full")
 
-    def test_build_writes_nothing_through_a_symlinked_directory(self):
+    def test_build_skips_symlinked_directory(self):
         self.link_bundles_outside()
         self.assertEqual(builder.main([str(self.root)]), 1)
         self.assertEqual(list(self.outside.iterdir()), [])

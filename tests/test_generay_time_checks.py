@@ -53,7 +53,7 @@ class PatternRuleTest(ScanCase):
     def test_legacy_zone_in_toml(self) -> None:
         self.assertIn("C10.4", self.scan("cfg.toml", 'zone = "Asia/Calcutta"\n'))
 
-    def test_gmt_literal_reported_but_http_header_not(self) -> None:
+    def test_gmt_literal_skips_header(self) -> None:
         self.assertIn("C13.1", self.scan("a.py", 'zone = "GMT"\n'))
         self.assertNotIn("C13.1", self.scan("b.py", 'header = "GMT"  # HTTP date header\n'))
 
@@ -146,7 +146,7 @@ class PythonAstTest(ScanCase):
     def test_module_scope_now(self) -> None:
         self.assertIn("C18.3", self.scan("a.py", "import time\nSTARTED = time.time()\n"))
 
-    def test_function_scope_now_not_reported_as_module_scope(self) -> None:
+    def test_function_scope_not_module(self) -> None:
         self.assertNotIn("C18.3", self.scan("a.py", "import time\n\n\ndef f():\n    return time.time()\n"))
 
     def test_syntax_error_does_not_crash(self) -> None:
@@ -175,7 +175,7 @@ class ConfigScanTest(ScanCase):
             "C27.11", self.scan("chrony.conf", "server a\nserver b\nserver c\nserver d\nmakestep 1 -1\nrtcsync\n")
         )
 
-    def test_open_command_port_and_allow_all(self) -> None:
+    def test_open_command_port_allow(self) -> None:
         text = "server a\nserver b\nserver c\nserver d\nbindcmdaddress 0.0.0.0\nallow\nmakestep 1 3\nrtcsync\n"
         self.assertIn("C27.23", self.scan("chrony.conf", text))
 
@@ -221,7 +221,7 @@ class ConfigScanTest(ScanCase):
     def test_sql_timestamp_column(self) -> None:
         self.assertIn("C22.6", self.scan("s.sql", "CREATE TABLE t (maturity TIMESTAMP NOT NULL);\n"))
 
-    def test_sql_timestamp_with_time_zone_clean(self) -> None:
+    def test_sql_timestamp_time_zone_clean(self) -> None:
         self.assertNotIn("C22.6", self.scan("s.sql", "CREATE TABLE t (maturity TIMESTAMP WITH TIME ZONE);\n"))
 
 
@@ -245,7 +245,7 @@ class RunnerTest(ScanCase):
         self.assertTrue(findings)
         self.assertFalse(any(item.blocking for item in findings))
 
-    def test_every_finding_check_exists_in_the_ledger(self) -> None:
+    def test_finding_check_exists_ledger(self) -> None:
         methods = time_checks.load_methods()
         for item in time_checks.run_checks(list(time_checks.CHECKS), [REPO_ROOT / "eval" / "cases"], REPO_ROOT):
             self.assertIn(item.class_id, methods)

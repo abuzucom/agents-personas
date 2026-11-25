@@ -119,17 +119,17 @@ class ProfileSelectionTest(unittest.TestCase):
         with patch.object(call_model, "_load_config", return_value=_config(large=large)):
             return call_model.select_profile(tokens)
 
-    def test_input_within_active_budget_uses_active_provider(self):
+    def test_small_input_uses_active_provider(self):
         self.assertEqual(self._select(ACTIVE_BUDGET_TOKENS)["model"], "review-model")
 
-    def test_input_over_active_budget_uses_large_provider(self):
+    def test_large_input_uses_large_provider(self):
         self.assertEqual(self._select(ACTIVE_BUDGET_TOKENS + 1)["model"], "large-model")
 
-    def test_input_over_every_budget_is_capacity_error(self):
+    def test_input_over_budget_capacity_error(self):
         with self.assertRaises(call_model.InputTooLargeError):
             self._select(LARGE_BUDGET_TOKENS + 1)
 
-    def test_missing_large_provider_is_capacity_error(self):
+    def test_missing_large_provider_capacity_error(self):
         with self.assertRaises(call_model.InputTooLargeError):
             self._select(ACTIVE_BUDGET_TOKENS + 1, large=False)
 
@@ -137,7 +137,7 @@ class ProfileSelectionTest(unittest.TestCase):
 class ProviderByNameTest(unittest.TestCase):
     """MODEL_PROVIDER selects a table entry by name."""
 
-    def test_named_provider_replaces_the_active_one(self):
+    def test_named_provider_replaces_active_one(self):
         document = {
             "content": [{"type": "text", "text": "named reply"}],
             "usage": {"input_tokens": 5, "output_tokens": 2},
@@ -204,7 +204,7 @@ class RetryTest(unittest.TestCase):
 class HttpRejectionRoutingTest(unittest.TestCase):
     """Only a context rejection retries on the large-input model."""
 
-    def test_overflow_body_retries_on_large_model(self):
+    def test_overflow_body_retries_large_model(self):
         models: list = []
         text, _usage = _call([_http_error(BAD_REQUEST, OVERFLOW_BODY), _FakeResponse("large")], models=models)
         self.assertEqual((text, models), ("large", ["review-model", "large-model"]))
@@ -217,15 +217,15 @@ class HttpRejectionRoutingTest(unittest.TestCase):
         self.assertEqual(str(raised.exception), "provider request failed with HTTP 400")
         self.assertEqual(models, ["review-model"])
 
-    def test_overflow_without_large_model_is_capacity_error(self):
+    def test_overflow_is_capacity_error(self):
         with self.assertRaises(call_model.InputTooLargeError):
             _call([_http_error(BAD_REQUEST, OVERFLOW_BODY)], large=False)
 
-    def test_http_413_reroutes_without_body_evidence(self):
+    def test_http_413_reroutes_without_evidence(self):
         text, _usage = _call([_http_error(PAYLOAD_TOO_LARGE), _FakeResponse("large")])
         self.assertEqual(text, "large")
 
-    def test_rejection_message_omits_the_provider_body(self):
+    def test_rejection_message_omits_provider_body(self):
         with self.assertRaises(call_model.ProviderError) as raised:
             _call([_http_error(BAD_REQUEST, UNRELATED_BODY)])
         self.assertNotIn("temperature", str(raised.exception))

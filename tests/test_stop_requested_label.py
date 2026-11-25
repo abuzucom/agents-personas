@@ -44,11 +44,11 @@ def _path_match(stop: str, scan: str) -> str:
 class PathFilterStopTest(unittest.TestCase):
     """STOP_REQUESTED=true deselects the pull request over every other input."""
 
-    def test_stop_beats_a_matching_file_and_a_scan_request(self):
+    def test_stop_beats_scan_request(self):
         self.assertEqual(_path_match("true", "true"), "paths_match=false")
         self.assertEqual(_path_match("true", ""), "paths_match=false")
 
-    def test_without_the_stop_the_review_runs(self):
+    def test_without_stop_review_runs(self):
         self.assertEqual(_path_match("", ""), "paths_match=true")
 
 
@@ -68,7 +68,7 @@ class ResolveStopTest(unittest.TestCase):
         self.assertEqual(self.steps["Match caller paths"]["env"]["STOP_REQUESTED"],
                          "${{ steps.pull.outputs.stop_requested }}")
 
-    def test_skip_job_publishes_a_skipped_stop_check(self):
+    def test_skip_job_publishes_stop(self):
         job = self.jobs["skip-paths"]
         step = job["steps"][0]
         self.assertEqual(step["env"]["STOP_REQUESTED"], "${{ needs.resolve.outputs.stop_requested }}")
@@ -81,7 +81,7 @@ class ResolveStopTest(unittest.TestCase):
 class CallerUnlabelTest(unittest.TestCase):
     """Removing stop-requested starts each self-review on the current head."""
 
-    def test_callers_run_when_the_stop_label_goes(self):
+    def test_callers_run_stop_label_goes(self):
         for persona, name in CALLERS.items():
             job = _workflow(name)["jobs"][persona]
             with self.subTest(persona=persona):
@@ -98,7 +98,7 @@ class NoticeWorkflowTest(unittest.TestCase):
         self.workflow = _workflow(NOTICE)
         self.job = next(iter(self.workflow["jobs"].values()))
 
-    def test_notice_runs_only_for_the_stop_label(self):
+    def test_notice_runs_stop_label(self):
         self.assertEqual(_trigger(self.workflow)["pull_request_target"], {"types": ["labeled"]})
         self.assertEqual(self.job["if"], "github.event.label.name == 'stop-requested'")
 

@@ -80,11 +80,11 @@ class ManifestTest(unittest.TestCase):
     def test_valid_notes_pass(self):
         self.assertEqual(_findings(), [])
 
-    def test_note_for_an_untrusted_option_is_reported(self):
+    def test_note_untrusted_option_reported(self):
         problems = _findings(option_notes={"exclude_paths": {"": "x"}})
         self.assertIn("sample: option_notes 'exclude_paths' needs a trusted string option", problems)
 
-    def test_note_for_an_undeclared_option_is_reported(self):
+    def test_note_undeclared_option_reported(self):
         self.assertIn(
             "sample: option_notes 'missing' needs a trusted string option", _findings(option_notes={"missing": {}})
         )
@@ -123,12 +123,12 @@ class RenderTest(unittest.TestCase):
     def test_summary_lists_each_note(self):
         self.assertIn(f"Note: {BASELINE_NOTE}", review_output.summary(self.result([BASELINE_NOTE])))
 
-    def test_comment_shows_each_note_before_the_reports(self):
+    def test_comment_shows_note_before_reports(self):
         body = review_output.comment_body(self.result([BASELINE_NOTE]))
         self.assertIn(f"> **Note:** {BASELINE_NOTE}", body)
         self.assertLess(body.index(BASELINE_NOTE), body.index("### Chunk"))
 
-    def test_result_without_notes_renders_as_before(self):
+    def test_result_without_notes_renders_before(self):
         result = self.result([])
         self.assertNotIn("Note:", review_output.summary(result))
         self.assertNotIn("Note:", review_output.comment_body(result))

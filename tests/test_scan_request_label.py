@@ -51,10 +51,10 @@ def _path_match(files: str, scan_requested: str) -> str:
 class PathFilterOverrideTest(unittest.TestCase):
     """SCAN_REQUESTED=true selects the pull request whatever the paths input says."""
 
-    def test_requested_scan_runs_on_excluded_files(self):
+    def test_requested_scan_runs_excluded_files(self):
         self.assertEqual(_path_match('["CHANGELOG.md"]', "true"), "paths_match=true")
 
-    def test_without_the_request_excluded_files_skip(self):
+    def test_without_request_excluded_files_skip(self):
         for value in ("", "false"):
             with self.subTest(value=value):
                 self.assertEqual(_path_match('["CHANGELOG.md"]', value), "paths_match=false")
@@ -67,7 +67,7 @@ class ResolveLabelTest(unittest.TestCase):
         self.job = _workflow("review.yml")["jobs"]["resolve"]
         self.steps = {step["name"]: step for step in self.job["steps"]}
 
-    def test_resolve_step_reports_the_persona_label(self):
+    def test_resolve_step_reports_persona_label(self):
         script = self.steps["Resolve pull request"]["with"]["script"]
         self.assertIn("`${env.INPUT_PERSONA}-scan-requested`", script)
         self.assertIn('core.setOutput("scan_requested"', script)
@@ -85,7 +85,7 @@ class ResolveLabelTest(unittest.TestCase):
 class CallerTriggerTest(unittest.TestCase):
     """Adding the persona label starts that self-review from the default branch."""
 
-    def test_each_caller_listens_for_its_label(self):
+    def test_caller_listens_label(self):
         for persona, name in CALLERS.items():
             workflow = _workflow(name)
             job = workflow["jobs"][persona]
@@ -96,7 +96,7 @@ class CallerTriggerTest(unittest.TestCase):
                 self.assertIn("github.event_name == 'pull_request_target'", job["if"])
                 self.assertIn("github.event.workflow_run.event == 'pull_request'", job["if"])
 
-    def test_concurrency_group_names_the_head_for_both_triggers(self):
+    def test_concurrency_group_names_head_triggers(self):
         for persona, name in CALLERS.items():
             group = _workflow(name)["jobs"][persona]["concurrency"]["group"]
             with self.subTest(caller=name):

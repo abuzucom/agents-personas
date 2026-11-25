@@ -63,7 +63,7 @@ class CaseContextTest(unittest.TestCase):
     def context(self, regimes: str) -> dict:
         return hooks.case_context("/nonexistent", ["app.py"], {"app.py": "+x\n"}, {"regimes": regimes})
 
-    def test_known_and_empty_scopes_pass_with_no_context(self):
+    def test_known_scopes_pass(self):
         for regimes in ("", "  ", "baseline", "undeclared", "all", "eu, us", "gdpr", "us-ca, pipeda"):
             with self.subTest(regimes=regimes):
                 self.assertEqual(self.context(regimes), {"context": {}, "unreviewed": []})
@@ -81,14 +81,14 @@ class CaseContextTest(unittest.TestCase):
 class ScopeNoteTest(unittest.TestCase):
     """A scope without regime deltas carries a note that names the unchecked issues."""
 
-    def test_every_baseline_scope_note_names_the_unchecked_issues(self):
+    def test_baseline_notes_name_unchecked(self):
         for regimes in ("baseline", "undeclared", ""):
             with self.subTest(regimes=regimes):
                 notes = reviewers.option_notes(MANIFEST, {"regimes": regimes})
                 self.assertEqual(len(notes), 1)
                 self.assertIn(UNCHECKED_PHRASE, notes[0])
 
-    def test_a_declared_regime_scope_carries_no_note(self):
+    def test_declared_scope_lacks_note(self):
         self.assertEqual(reviewers.option_notes(MANIFEST, {"regimes": "eu, us"}), [])
 
     def test_manifest_stays_valid(self):
@@ -101,7 +101,7 @@ class UnseenRuleTest(unittest.TestCase):
     def test_audit_carries_the_unseen_rule(self):
         self.assertIn(UNSEEN_RULE, (PERSONA_DIR / "AUDIT.md").read_text(encoding="utf-8"))
 
-    def test_review_bundle_carries_the_unseen_rule(self):
+    def test_review_bundle_carries_unseen_rule(self):
         prompt = MANIFEST["modes"]["privacy"]["prompt"]
         self.assertIn(UNSEEN_RULE, (PERSONA_DIR / prompt).read_text(encoding="utf-8"))
 

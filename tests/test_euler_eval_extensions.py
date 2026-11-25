@@ -115,7 +115,7 @@ class StructureTest(CaseFixture):
         self.write_case("quality", "no-diff", self.valid_expected(), {"input.py": "x = 1\n"})
         self.assertIn("quality/no-diff: PR mode requires diff.patch", self.findings())
 
-    def test_non_pr_case_needs_an_input_file(self):
+    def test_non_pr_case_needs_input(self):
         expected = self.valid_expected(mode="File", expected_verdict="RISK: HIGH")
         self.write_case("file", "no-input", expected, {"diff.patch": "+x\n"})
         self.assertIn("file/no-input: non-PR mode requires an input.<ext> file", self.findings())
@@ -128,7 +128,7 @@ class StructureTest(CaseFixture):
         self.write_case("quality", "no-notes", self.valid_expected(notes=""), {"diff.patch": ""})
         self.assertIn("quality/no-notes: notes must be a non-empty string", self.findings())
 
-    def test_expect_json_is_required_and_boolean(self):
+    def test_expect_json_required_boolean(self):
         expected = self.valid_expected()
         del expected["expect_json"]
         self.write_case("quality", "no-json", expected, {"diff.patch": ""})
@@ -169,7 +169,7 @@ class LiveEvaluationTest(CaseFixture):
         failures = self.failures(self.load("quality", "ok-pr"), GOOD_PR_RESPONSE)
         self.assertIn("classes: missing expected class Q4; unexpected class M1", failures)
 
-    def test_unexpected_finding_class_fails_clean_case(self):
+    def test_unexpected_class_fails_clean(self):
         expected = self.valid_expected(expected_verdict="APPROVE", expected_classes=[])
         self.write_case("quality", "resolved-q4-pr", expected, {"diff.patch": "+x\n"})
         response = "VERDICT: APPROVE - The fix resolves division by zero.\n" + _json_line(
@@ -177,7 +177,7 @@ class LiveEvaluationTest(CaseFixture):
         )
         self.assertIn("classes: unexpected class Q4", self.failures(self.load("quality", "resolved-q4-pr"), response))
 
-    def test_case_text_is_the_euler_envelope(self):
+    def test_case_text_euler_envelope(self):
         files = {"diff.patch": "+x\n", "context.md": "Adds a handler."}
         self.write_case("quality", "ok-pr", self.valid_expected(), files)
         envelope = json.loads(extension.build_model_input(self.load("quality", "ok-pr"), "prompt"))
@@ -186,7 +186,7 @@ class LiveEvaluationTest(CaseFixture):
         self.assertEqual(envelope["REVIEW_TARGET"]["context"], "Adds a handler.")
         self.assertIn("sha256", envelope["REVIEW_TARGET"])
 
-    def test_non_pr_case_carries_prescan_candidates(self):
+    def test_non_pr_case_carries_candidates(self):
         expected = self.valid_expected(mode="File", expected_verdict="RISK: HIGH")
         source = "try:\n    run()\nexcept ValueError:\n    pass\n"
         self.write_case("file", "catch-file", expected, {"input.py": source})
@@ -194,7 +194,7 @@ class LiveEvaluationTest(CaseFixture):
         classes = {item["class"] for item in envelope["TRUSTED_CONTEXT"]["prescan"]}
         self.assertIn("M1", classes)
 
-    def test_timeout_metadata_and_status_are_enforced(self):
+    def test_timeout_metadata_status_enforced(self):
         expected = self.valid_expected(
             expected_verdict="NEEDS-HUMAN",
             expected_classes=[],
@@ -210,13 +210,13 @@ class LiveEvaluationTest(CaseFixture):
         with_status = "REVIEW STATUS: NEEDS-HUMAN - active review time limit reached.\n" + response
         self.assertEqual(self.failures(case, with_status), [])
 
-    def test_verdict_named_only_in_justification_fails(self):
+    def test_verdict_named_justification_fails(self):
         self.write_case("quality", "ok-pr", self.valid_expected(expected_classes=[]), {"diff.patch": "+x\n"})
         response = "VERDICT: APPROVE - no BLOCK finding.\n" + _json_line("PR", "APPROVE")
         failures = self.failures(self.load("quality", "ok-pr"), response)
         self.assertTrue(any(item.startswith("final line") for item in failures), failures)
 
-    def test_risk_verdict_requires_a_token_boundary(self):
+    def test_risk_verdict_requires_token_boundary(self):
         expected = self.valid_expected(mode="File", expected_verdict="RISK: HIGH", expected_classes=[])
         self.write_case("file", "risk-file", expected, {"input.py": "x = 1\n"})
         case = self.load("file", "risk-file")
@@ -231,7 +231,7 @@ class LiveEvaluationTest(CaseFixture):
             "classes: VERDICT_JSON findings must be an array", self.failures(self.load("quality", "ok-pr"), response)
         )
 
-    def test_eval_flags_process_narration_when_requested(self):
+    def test_eval_flags_process_narration_requested(self):
         expected = self.valid_expected(expected_verdict="APPROVE", expected_classes=[], forbid_process_narration=True)
         self.write_case("quality", "review-narration-pr", expected, {"diff.patch": "+x\n"})
         report = "Let me inspect the changed code first.\nVERDICT: APPROVE - No confirmed findings.\n" + _json_line(

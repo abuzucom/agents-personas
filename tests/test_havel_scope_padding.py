@@ -38,7 +38,7 @@ def _notes(regimes: str) -> list[str]:
 class PaddedScopeTest(unittest.TestCase):
     """Spaces around a scope change neither the check nor the note."""
 
-    def test_padded_values_carry_the_note_of_the_trimmed_value(self):
+    def test_padded_values_carry_note(self):
         for padded, trimmed in (("  ", ""), (" baseline ", "baseline"), ("undeclared ", "undeclared")):
             with self.subTest(regimes=padded):
                 notes = _notes(padded)
@@ -46,7 +46,7 @@ class PaddedScopeTest(unittest.TestCase):
                 self.assertEqual(len(notes), 1)
                 self.assertIn(UNCHECKED_PHRASE, notes[0])
 
-    def test_padded_regime_list_carries_no_note(self):
+    def test_padded_list_lacks_note(self):
         self.assertEqual(_notes("  eu ,  us  "), [])
 
     def test_padded_values_pass_the_hook(self):

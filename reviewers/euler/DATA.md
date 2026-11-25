@@ -27,15 +27,15 @@ Each limit names its test:
 
 - The envelope keeps pull request text in `REVIEW_TARGET` only.
   `tests/test_engine_envelope.py` covers this with
-  `test_pull_request_fields_sit_in_review_target_only`.
+  `test_pr_fields_stay_in_target`.
 - Each chunk carries only the prescan candidates of its own files.
   `tests/test_engine_review_hooks.py` covers this with
-  `test_each_chunk_carries_only_its_own_items`.
+  `test_chunk_carries_own_items`.
 - The build step holds no secret. `tests/test_review_workflow_stages.py`
-  covers this with `test_build_step_holds_no_secret_and_runs_the_build_stage`.
+  covers this with `test_build_step_lacks_secret`.
 - Only the review step receives the provider key.
   `tests/test_review_workflow.py` covers this with
-  `test_model_api_key_reaches_only_the_review_step`.
+  `test_api_key_reaches_review`.
 
 Local modes (`file`, `piece`, `wholesale`) run through `engine/run_eval.py`
 on a workstation. A local run sends `QUALITY.md` and one eval case to the

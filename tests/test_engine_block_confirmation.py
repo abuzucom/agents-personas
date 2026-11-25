@@ -43,7 +43,7 @@ class BlockConfirmationTest(unittest.TestCase):
         )
         self.assertEqual(len(self.prompts()), 2)
 
-    def test_new_class_from_the_confirmation_reaches_the_record(self):
+    def test_new_class_confirmation_reaches_record(self):
         self.script(fixture._reply("BLOCK", [_finding("M14")]), fixture._reply("BLOCK", [_finding("M9", "new.py")]))
         result = fixture.run_review.run_mode(self.options())
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
@@ -54,7 +54,7 @@ class BlockConfirmationTest(unittest.TestCase):
         self.script(fixture._reply("BLOCK", [_finding("M14")]), fixture._reply("BLOCK", [_finding("M14")]))
         self.assertEqual(fixture.run_review.run_mode(self.options())["findings"], [_finding("M14")])
 
-    def test_approve_on_confirmation_records_needs_human(self):
+    def test_approve_confirmation_records_needs_human(self):
         self.script(fixture._reply("BLOCK", [_finding("M14")]), fixture._reply("APPROVE"))
         result = fixture.run_review.run_mode(self.options())
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
@@ -64,13 +64,13 @@ class BlockConfirmationTest(unittest.TestCase):
         self.assertIn("APPROVE", reason)
         self.assertIn(reason, result["reasons"])
 
-    def test_block_with_a_new_class_records_needs_human(self):
+    def test_new_class_block_needs_human(self):
         self.script(fixture._reply("BLOCK", [_finding("M14")]), fixture._reply("BLOCK", [_finding("M3")]))
         result = fixture.run_review.run_mode(self.options())
         self.assertEqual(result["verdict"], "NEEDS-HUMAN")
         self.assertIn("BLOCK not confirmed", self.stored()["chunk_results"][0]["reason"])
 
-    def test_capacity_on_confirmation_records_needs_human(self):
+    def test_capacity_confirmation_records_needs_human(self):
         first = fixture._reply("BLOCK", [_finding("M14")])
         self.script(first, CAPACITY_EXIT_CODE)
         result = fixture.run_review.run_mode(self.options())
@@ -78,12 +78,12 @@ class BlockConfirmationTest(unittest.TestCase):
         self.assertEqual(self.stored()["chunk_results"][0]["report"], first)
         self.assertIn("BLOCK not confirmed", self.stored()["chunk_results"][0]["reason"])
 
-    def test_findings_without_a_class_compare_by_file(self):
+    def test_findings_without_class_compare_file(self):
         unclassed = {"file": "app.py", "line": 1, "severity": "HIGH", "title": "t"}
         self.script(fixture._reply("BLOCK", [unclassed]), fixture._reply("BLOCK", [dict(unclassed, line=4)]))
         self.assertEqual(fixture.run_review.run_mode(self.options())["verdict"], "BLOCK")
 
-    def test_confirmation_uses_the_same_prompt_and_its_own_files(self):
+    def test_confirmation_reuses_prompt_own_files(self):
         self.script(fixture._reply("BLOCK", [_finding("M14")]), fixture._reply("BLOCK", [_finding("M14")]))
         fixture.run_review.run_mode(self.options())
         first, second = self.prompts()
@@ -92,12 +92,12 @@ class BlockConfirmationTest(unittest.TestCase):
         self.assertTrue((work / "001.prompt.0.txt").is_file())
         self.assertTrue((work / "001.confirm.prompt.0.txt").is_file())
 
-    def test_confirmation_usage_adds_to_the_total(self):
+    def test_confirmation_usage_adds_total(self):
         self.script(fixture._reply("BLOCK", [_finding("M14")]), fixture._reply("BLOCK", [_finding("M14")]))
         result = fixture.run_review.run_mode(self.options())
         self.assertEqual(result["usage"], {"input_tokens": 200, "output_tokens": 40})
 
-    def test_approve_and_needs_human_get_no_confirmation(self):
+    def test_approve_skips_confirmation(self):
         for verdict in ("APPROVE", "NEEDS-HUMAN"):
             with self.subTest(verdict=verdict):
                 (self.adapter_dir / "count.txt").unlink(missing_ok=True)

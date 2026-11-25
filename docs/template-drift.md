@@ -1,13 +1,16 @@
 # Template drift
 
 This file records local differences from the `abuzucom/agents` template.
-The template revision is `909b93702273befaec9227ee892fe1a2261a4a41`.
+The template revision is `08d88b2c1ee57d7fdccff97f471c032a0d6b53c9` (v2.45.1).
+The previous revision was `909b93702273befaec9227ee892fe1a2261a4a41`.
 
 ## Taken
 
 - `AGENTS.md` and all eight synchronized copies. `scripts/sync.py` generates
   the copies.
 - Every file under `scripts/`, `hooks/`, and `tools/hook-trace/`.
+- Every skill under `skills/`, `.claude/skills/`, and `.agents/skills/`.
+- `docs/enforcement-matrix.md`.
 - Every file under `tests/` except the modules listed below.
 - `.claude/settings.json`, `.codex/config.toml`, `.codex/hooks.json`,
   `.gemini/settings.json`, and `.agents/hooks.json`.
@@ -18,11 +21,12 @@ The template revision is `909b93702273befaec9227ee892fe1a2261a4a41`.
 - `docs/agent-policy/adoption.md`, `enforcement.md`, `clients.md`,
   `github.md`, and `security.md`.
 - `.github/workflows/sync-check.yml`, `agents-compliance.yml`,
-  `agents-md-compliance.yml`, and `gate-integrity.yml`.
+  `agents-md-compliance.yml`, `gate-integrity.yml`, and
+  `immutable-conflict-check.yml`.
 
 ## Declined
 
-- `.github/workflows/immutable-conflict-check.yml`, `release.yml`,
+- `.github/workflows/release.yml`,
   `policy-size-report.yml`, `security-review-pr.yml`, and
   `quality-review-pr.yml`. The source repository owns these workflows.
 - `ci/`. Plan step 3 moves the review engine into `engine/`.
@@ -33,13 +37,7 @@ The template revision is `909b93702273befaec9227ee892fe1a2261a4a41`.
 
 | Module | Declined dependency |
 |---|---|
-| `test_check_compliance_tree.py` | `immutable-conflict-check.yml` |
-| `test_compliance_tree_event_isolation.py` | imports `test_immutable_compliance.py` |
-| `test_check_conflict_markers.py` | `immutable-conflict-check.yml`, source `README.md`, `plan/` |
-| `test_ci_branch_fixtures.py` | `immutable-conflict-check.yml` |
-| `test_immutable_auth_wiring.py` | `immutable-conflict-check.yml` |
-| `test_immutable_compliance.py` | `immutable-conflict-check.yml` |
-| `test_trusted_install_forms.py` | `immutable-conflict-check.yml` |
+| `test_check_conflict_markers.py` | source `README.md`, `plan/` |
 | `test_scan_and_hash_wiring.py` | checker installs in declined workflows |
 | `test_policy_distribution.py` | source local policy block in `AGENTS.md` |
 | `test_policy_marker_names.py` | `source-orientation.md` |
@@ -59,6 +57,15 @@ The template revision is `909b93702273befaec9227ee892fe1a2261a4a41`.
 
 ## Current drift
 
+- `AGENTS.md` rewraps eight template lines longer than 120 characters at
+  80 columns. The words match the template. The euler policy check in
+  `tests/test_euler_quality_policy.py` rejects lines over 120 characters.
+  The template carries the long lines at v2.45.1.
+- 447 persona and engine test names shrink to at most five words after
+  `test_`. Two test comments drop personal pronouns. The adopted
+  `tests/test_check_all_test_names.py` enforces both rules. Names changed.
+  Test bodies and assertions stayed the same. The active human approved the
+  renames under Rule 3 on 2026-11-25.
 - `AGENTS.md` holds the policy section of `--print-adoptable` output only.
   That output also appends `docs/agent-policy/` and orientation files.
   `scripts/sync.py` appends those files again during copy generation. An
@@ -66,21 +73,10 @@ The template revision is `909b93702273befaec9227ee892fe1a2261a4a41`.
 - `docs/project-orientation.md` stays below 404 bytes. Assembly appends it to
   the policy. The template policy leaves 403 bytes below the 64 KiB limit.
 - `tests/test_adopter_branch_fixtures.py` holds an unchanged copy of the
-  portable `CiBranchFixtureTest` class from `test_ci_branch_fixtures.py`.
+  portable `CiBranchFixtureTest` class from the adopted
+  `test_ci_branch_fixtures.py`.
   That class gives hook coverage of the valid-branch paths in
   `hooks/enforce_branch_name.py`.
-- `agents-compliance.yml` runs `pr-checks` on draft pull requests. The
-  template skips drafts. Rule 5 makes every agent pull request a draft. The
-  template condition therefore keeps `check_agent_prose_gate.py` from
-  running until a person marks the pull request ready.
-  `tests/test_pr_checks_draft_coverage.py` covers the condition. The
-  comments in `agents-md-compliance.yml` and `sync-check.yml` describe the
-  new behavior.
-- `tests/test_sync_digest_index.py` disables `maintenance.auto` and `gc.auto`
-  in the `BackfillHistory` template repository. Detached Git maintenance
-  otherwise removes `.git/objects/maintenance.lock` during `copy_into`. CI
-  failed twice on that race. `tests/test_digest_fixture_maintenance.py`
-  covers the settings. The active human approved the test edit under Rule 3.
 - `Makefile` names this repository's prose files in `PROSE_FILES`.
 - `Makefile` adds the `lint-code` target. The target runs ruff, mypy, and
   yamllint from `requirements-dev.txt` over the engine, the personas, the

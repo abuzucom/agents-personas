@@ -80,15 +80,15 @@ class ManifestTest(unittest.TestCase):
     def test_trusted_option_validates(self):
         self.assertEqual(_persona_findings(OPTIONS), [])
 
-    def test_non_boolean_trusted_flag_is_reported(self):
+    def test_non_boolean_trusted_flag_reported(self):
         options = {"regimes": {"type": "string", "default": "", "trusted": "yes"}}
         self.assertIn("sample: option 'regimes': trusted must be true or false", _persona_findings(options))
 
-    def test_trusted_values_hold_only_trusted_options(self):
+    def test_trusted_values_hold_trusted_options(self):
         resolved = reviewers.resolve_options(MANIFEST, '{"regimes": "eu, us", "exclude_paths": "tests/**"}')
         self.assertEqual(reviewers.trusted_option_values(MANIFEST, resolved), {"regimes": "eu, us"})
 
-    def test_trusted_value_that_fails_validation_is_refused(self):
+    def test_trusted_value_fails_validation_refused(self):
         with self.assertRaisesRegex(reviewers.ReviewerError, "option 'regimes' must be a string"):
             reviewers.resolve_options(MANIFEST, '{"regimes": 3}')
 
@@ -106,7 +106,7 @@ class EnvelopeTest(unittest.TestCase):
         second = _envelope(options={"regimes": "us"})["TRUSTED_CONTEXT"]["sha256"]
         self.assertNotEqual(first, second)
 
-    def test_envelope_without_trusted_values_keeps_the_old_shape(self):
+    def test_plain_envelope_keeps_shape(self):
         old = json.loads(envelope.build_envelope("sample", "privacy", {"a.py": "+x\n"}, "T", "B", {"chunk": "1/1"}))
         for sent in (_envelope(), _envelope(options={})):
             with self.subTest(sent=sent):
@@ -162,12 +162,12 @@ class EngineRunTest(unittest.TestCase):
         run_review.run_mode(options)
         return json.loads((self.out / "case" / "envelopes" / "001.json").read_text(encoding="utf-8"))
 
-    def test_build_writes_the_caller_value_of_a_trusted_option(self):
+    def test_build_writes_caller_option(self):
         sent = self.build('{"regimes": "eu, us", "exclude_paths": "tests/**"}')
         self.assertEqual(sent["TRUSTED_CONTEXT"]["options"], {"regimes": "eu, us"})
         self.assertNotIn("tests/**", json.dumps(sent))
 
-    def test_build_writes_the_default_without_a_caller_value(self):
+    def test_build_writes_default_option(self):
         sent = self.build("")
         self.assertEqual(sent["TRUSTED_CONTEXT"]["options"], {"regimes": "undeclared"})
 

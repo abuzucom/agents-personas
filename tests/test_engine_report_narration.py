@@ -49,7 +49,7 @@ def _response(report: str) -> str:
 class ProcessOpenerTest(unittest.TestCase):
     """A line that opens with a review-process verb fails validation."""
 
-    def test_each_opener_fails_with_its_line_number(self):
+    def test_opener_fails_line_number(self):
         for opener in NARRATION_OPENERS:
             for prefix in LINE_PREFIXES:
                 report = f"**Mode:** PR\n{prefix}{opener} all 18 changed files in the diff."
@@ -65,7 +65,7 @@ class ProcessOpenerTest(unittest.TestCase):
         report = "**Mode:** PR\n```\nReviewed-by: quoted commit trailer\n```"
         self.assertEqual(validator.process_narration_lines(_response(report)), [])
 
-    def test_longer_word_with_an_opener_prefix_passes(self):
+    def test_longer_word_opener_prefix_passes(self):
         for statement in ("Checkedness stays unchanged.", "Verifiedness flags stay set.", "Lookedup is a name."):
             with self.subTest(statement=statement):
                 self.assertEqual(validator.process_narration_lines(_response(statement)), [])
@@ -85,21 +85,21 @@ class CoverageLineTest(unittest.TestCase):
 class FormatSuffixTest(unittest.TestCase):
     """The trusted format suffix names both coverage lines and forbids narration."""
 
-    def test_suffix_requires_scope_and_unseen_after_the_mode_line(self):
+    def test_suffix_requires_scope_unseen(self):
         suffix = call_model.REPORT_FORMAT_SUFFIX
         self.assertIn("`Scope:`", suffix)
         self.assertIn("`Unseen:`", suffix)
         self.assertLess(suffix.index("**Mode:**"), suffix.index("`Scope:`"))
         self.assertLess(suffix.index("`Scope:`"), suffix.index("`Unseen:`"))
 
-    def test_suffix_shows_the_three_opening_lines(self):
+    def test_suffix_shows_three_opening_lines(self):
         suffix = call_model.REPORT_FORMAT_SUFFIX
         self.assertIn("  **Mode:** <mode>\n  Scope: <", suffix)
         self.assertIn("\n  Unseen: <", suffix)
 
     def test_suffix_names_no_forbidden_opener(self):
-        # A list of banned words in the prompt can prime the model to use
-        # them. The validator alone keeps the list.
+        # A list of banned words in the prompt can prime the model toward
+        # those words. The validator alone keeps the list.
         for opener in NARRATION_OPENERS:
             with self.subTest(opener=opener):
                 self.assertIsNone(re.search(rf"\b{opener}\b", call_model.REPORT_FORMAT_SUFFIX))

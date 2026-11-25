@@ -54,33 +54,33 @@ class LocalModeSchemaTest(unittest.TestCase):
         findings = _findings({**FILE_MODE, "local": "yes"})
         self.assertTrue(any("'local' must be true or false" in item for item in findings), findings)
 
-    def test_mode_without_any_delivery_is_reported(self):
+    def test_mode_without_any_delivery_reported(self):
         mode = {key: value for key, value in FILE_MODE.items() if key != "local"}
         self.assertTrue(any("no delivery" in item for item in _findings(mode)))
 
-    def test_verdicts_must_be_a_string_list(self):
+    def test_verdicts_must_string_list(self):
         findings = _findings({**FILE_MODE, "verdicts": "HIGH"})
         self.assertTrue(any("'verdicts' must be" in item for item in findings), findings)
 
-    def test_verdict_line_must_be_printable_ascii(self):
+    def test_verdict_line_must_printable_ascii(self):
         findings = _findings({**FILE_MODE, "verdict_line": "RISK\n"})
         self.assertTrue(any("'verdict_line' must be" in item for item in findings), findings)
 
-    def test_verdict_keys_require_a_local_only_mode(self):
+    def test_verdict_keys_require_local_mode(self):
         mode = {**FILE_MODE, "review": True}
         findings = _findings(mode)
         self.assertTrue(any("local-only" in item for item in findings), findings)
 
-    def test_local_mode_has_no_review_delivery(self):
+    def test_local_mode_skips_delivery(self):
         manifest = {"persona": "foucault", "modes": {"security": REVIEW_MODE, "file": FILE_MODE}}
         with self.assertRaisesRegex(reviewers.ReviewerError, "no review delivery"):
             reviewers.resolve_review_modes(manifest, "file")
 
-    def test_verdict_rules_default_to_the_engine_verdicts(self):
+    def test_verdict_rules_default_engine_verdicts(self):
         rules = reviewers.verdict_rules(REVIEW_MODE)
         self.assertEqual(rules, ("VERDICT", ("APPROVE", "BLOCK", "NEEDS-HUMAN")))
 
-    def test_verdict_rules_read_a_local_mode(self):
+    def test_verdict_rules_read_local_mode(self):
         rules = reviewers.verdict_rules(FILE_MODE)
         self.assertEqual(rules, ("RISK", ("CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE-FOUND")))
 

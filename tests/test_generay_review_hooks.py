@@ -107,7 +107,7 @@ class CaseContextTest(unittest.TestCase):
         self.tree = Path(self.temp.name)
         (self.tree / "app.py").write_text(NAIVE_NOW, encoding="utf-8")
 
-    def test_added_naive_now_becomes_an_advisory_candidate(self):
+    def test_naive_now_becomes_advisory(self):
         result = hooks.case_context(self.tree, ["app.py"], {"app.py": _patch(NAIVE_NOW)}, {"exclude_paths": ""})
         checks = {item["check"] for item in result["context"]["prescan"]}
         self.assertIn("C9.1", checks)
@@ -128,7 +128,7 @@ class ValidateReplyTest(unittest.TestCase):
     def problems(self, reply: str, **envelope_changes) -> list[str]:
         return hooks.validate_reply({}, reply, _envelope(**envelope_changes))
 
-    def test_resolved_prescan_and_valid_finding_pass(self):
+    def test_resolved_prescan_valid_finding_pass(self):
         reply = _reply(
             "APPROVE", [{"id": "P1", "status": "dismissed", "reason": "zone set upstream"}], [_finding(severity="LOW")]
         )
@@ -144,7 +144,7 @@ class ValidateReplyTest(unittest.TestCase):
         problems = self.problems(_reply("APPROVE", findings=[_finding(method="wrong")]))
         self.assertTrue(any("must carry method" in problem for problem in problems), problems)
 
-    def test_finding_outside_the_changed_files_fails(self):
+    def test_finding_outside_changed_files_fails(self):
         problems = self.problems(_reply("APPROVE", findings=[_finding(file="other.py")]))
         self.assertIn("finding cites other.py outside the changed files", problems)
 
@@ -205,13 +205,13 @@ class EngineRunTest(unittest.TestCase):
     def sent(self) -> dict:
         return json.loads((self.out / "case" / "envelopes" / "001.json").read_text(encoding="utf-8"))
 
-    def test_prescan_rides_in_the_review_target(self):
+    def test_prescan_rides_review_target(self):
         run_review.run_mode(self.options(stage="build"))
         sent = self.sent()
         self.assertTrue(sent["REVIEW_TARGET"]["prescan"])
         self.assertNotIn("prescan", json.dumps(sent["TRUSTED_CONTEXT"]))
 
-    def test_valid_reply_approves_with_both_policies_in_the_prompt(self):
+    def test_valid_reply_approves_policies_prompt(self):
         run_review.run_mode(self.options(stage="build"))
         resolutions = [
             {"id": item["id"], "status": "dismissed", "reason": "zone set upstream"}

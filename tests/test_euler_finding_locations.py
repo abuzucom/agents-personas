@@ -54,12 +54,12 @@ class FindingLocationTest(unittest.TestCase):
     def problems(self, context: checker.ReviewContext, **changes) -> list[str]:
         return checker.finding_problems(_finding(**changes), context, CLASSES)
 
-    def test_added_and_context_lines_inside_the_hunk_pass(self):
+    def test_hunk_lines_pass(self):
         for line in (10, 11, 13):
             with self.subTest(line=line):
                 self.assertEqual(self.problems(_engine_context(), line=line), [])
 
-    def test_pr_line_outside_every_hunk_fails(self):
+    def test_pr_line_outside_hunk_fails(self):
         for context in (_engine_context(), _euler_pr_context()):
             for line in (9, 14, 500):
                 with self.subTest(line=line):
@@ -68,25 +68,25 @@ class FindingLocationTest(unittest.TestCase):
                         self.problems(context, line=line),
                     )
 
-    def test_line_must_be_a_positive_integer(self):
+    def test_line_must_positive_integer(self):
         for line in (0, -3, True, "11"):
             with self.subTest(line=line):
                 self.assertIn("finding line must be a positive integer", self.problems(_engine_context(), line=line))
 
-    def test_local_finding_needs_a_file_in_the_target(self):
+    def test_local_finding_needs_file_target(self):
         for file in ("", "other.py"):
             with self.subTest(file=file):
                 problems = self.problems(_local_context(), file=file, line=1)
                 self.assertTrue(any("outside the review target" in item for item in problems), problems)
 
-    def test_local_line_must_fall_inside_the_file(self):
+    def test_local_line_inside_file(self):
         self.assertEqual(self.problems(_local_context(), file="input.py", line=3), [])
         self.assertIn(
             "finding line 4 is outside the review target for input.py",
             self.problems(_local_context(), file="input.py", line=4),
         )
 
-    def test_non_string_file_still_reports_without_a_crash(self):
+    def test_non_string_file_reports(self):
         for file in (["app.py"], {"path": "app.py"}, None):
             with self.subTest(file=file):
                 self.assertIn("finding file must be a string", self.problems(_engine_context(), file=file))

@@ -84,7 +84,7 @@ class ClassRuleTest(PolicyFixtureCase):
         violations = policy.find_violations(self.write_policy(text))
         self.assertIn("duplicate class: Q1", violations)
 
-    def test_parse_classes_reads_tier_and_script(self) -> None:
+    def test_parse_classes_reads_tier_script(self) -> None:
         text = "### Q3 Regex backtracking (Graded +script)\n### Q1 Logic (Blocking)\n"
         classes = policy.parse_classes(text)
         self.assertEqual(classes["Q3"], policy.PolicyClass("Q3", "Regex backtracking", "Graded", True))
@@ -146,7 +146,7 @@ class DashRuleTest(PolicyFixtureCase):
         violations = policy.find_violations(self.write_policy(text))
         self.assertTrue(any("prose dash" in item for item in violations))
 
-    def test_code_span_bullet_and_comment_pass(self) -> None:
+    def test_code_span_bullet_comment_pass(self) -> None:
         extra = "\n- A bullet with `a -- b` inside a code span.\n<!-- an HTML comment -->\n| a | - |\n"
         self.assertEqual(policy.find_violations(self.write_policy(self.valid_text() + extra)), [])
 
@@ -158,15 +158,15 @@ class DashRuleTest(PolicyFixtureCase):
         text = "# Doc\n\n~~~\nrun --flag - value\n~~~\n"
         self.assertEqual(policy.find_line_violations(text), [])
 
-    def test_shorter_backtick_line_stays_inside_longer_fence(self) -> None:
+    def test_short_backticks_stay_fenced(self) -> None:
         text = "# Doc\n\n````\n```\nrun --flag - value\n```\n````\n"
         self.assertEqual(policy.find_line_violations(text), [])
 
-    def test_prose_after_tilde_fence_is_checked(self) -> None:
+    def test_prose_after_tilde_fence_checked(self) -> None:
         text = "# Doc\n\n~~~\ncode\n~~~\nThe build failed - the cache was stale.\n"
         self.assertEqual(policy.find_line_violations(text), ["line 6 uses a prose dash"])
 
-    def test_tilde_line_does_not_close_backtick_fence(self) -> None:
+    def test_tilde_keeps_backtick_fence(self) -> None:
         text = "# Doc\n\n```\n~~~\nrun --flag - value\n```\n"
         self.assertEqual(policy.find_line_violations(text), [])
 
@@ -174,7 +174,7 @@ class DashRuleTest(PolicyFixtureCase):
 class LineEndingAttributeTest(unittest.TestCase):
     """Windows checks out text with CRLF unless .gitattributes pins LF. The checker rejects CRLF."""
 
-    def test_git_checks_out_the_prompt_with_lf_on_every_platform(self) -> None:
+    def test_prompt_checks_out_lf(self) -> None:
         completed = subprocess.run(
             ["git", "check-attr", "eol", "--", "reviewers/euler/QUALITY.md"],
             cwd=REPO_ROOT.parent.parent,

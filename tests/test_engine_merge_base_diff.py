@@ -31,17 +31,17 @@ class MovedBaseTest(fixture.RepositoryFixture):
         _git(self.repo, "commit", "-q", "-m", "release on main")
         self.moved_base = _git(self.repo, "rev-parse", "HEAD")
 
-    def test_changed_files_come_from_the_pull_request_only(self):
+    def test_changed_files_come_pull_request(self):
         manifest = self.build(base=self.moved_base, head=self.feature)
         self.assertEqual(manifest["changed_files"], ["feature.py"])
 
-    def test_newer_base_commits_never_reach_the_patches(self):
+    def test_newer_base_commits_excluded(self):
         manifest = self.build(base=self.moved_base, head=self.feature)
         files = self.envelopes(manifest)[0]["REVIEW_TARGET"]["files"]
         self.assertEqual(sorted(files), ["feature.py"])
         self.assertNotIn("CHANGELOG.md", str(self.envelopes(manifest)))
 
-    def test_recorded_base_stays_the_branch_tip(self):
+    def test_recorded_base_stays_branch_tip(self):
         self.assertEqual(self.build(base=self.moved_base, head=self.feature)["base_sha"], self.moved_base)
 
 

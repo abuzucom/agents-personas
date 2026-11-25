@@ -55,13 +55,13 @@ class ContractTest(unittest.TestCase):
         self.assertEqual({name for name, spec in inputs.items() if spec.get("required")}, REQUIRED_INPUTS)
         self.assertEqual(set(inputs) - REQUIRED_INPUTS, OPTIONAL_INPUTS)
 
-    def test_gating_defaults_match_the_source_workflows(self):
+    def test_gating_defaults_match_source_workflows(self):
         inputs = _trigger(_workflow())["inputs"]
         self.assertIs(inputs["fail_on_block"]["default"], True)
         self.assertIs(inputs["pr_comment"]["default"], True)
         self.assertIs(inputs["fork_review"]["default"], False)
 
-    def test_only_model_api_key_is_declared_and_optional(self):
+    def test_model_api_key_declared_optional(self):
         secrets = _trigger(_workflow())["secrets"]
         self.assertEqual(set(secrets), {"MODEL_API_KEY"})
         self.assertIs(secrets["MODEL_API_KEY"]["required"], False)
@@ -70,7 +70,7 @@ class ContractTest(unittest.TestCase):
 class PinTest(unittest.TestCase):
     """Every action uses the approved full-SHA pin."""
 
-    def test_every_action_uses_an_approved_pin(self):
+    def test_action_uses_approved_pin(self):
         for job_name, step in _steps(_workflow()):
             uses = step.get("uses")
             if not uses:
@@ -98,7 +98,7 @@ class CheckoutTest(unittest.TestCase):
             with self.subTest(job=job_name, step=step.get("name")):
                 self.assertIs(step["with"]["persist-credentials"], False)
 
-    def test_no_checkout_targets_the_pull_request_head(self):
+    def test_checkout_avoids_pr_head(self):
         for job_name, step in self.checkouts():
             with self.subTest(job=job_name, step=step.get("name")):
                 ref = str(step["with"].get("ref", ""))
@@ -124,16 +124,16 @@ class ForkRuleTest(unittest.TestCase):
         self.assertIn("skipped", text)
         self.assertIn("Skipped for fork pull request", text)
 
-    def test_fork_review_job_uses_the_protected_environment(self):
+    def test_fork_job_uses_protected_environment(self):
         jobs = _workflow()["jobs"]
         self.assertEqual(jobs["fork-review"]["environment"], "fork-review")
         self.assertNotIn("environment", jobs["review"])
 
-    def test_both_review_jobs_share_one_step_list(self):
+    def test_review_jobs_share_steps(self):
         jobs = _workflow()["jobs"]
         self.assertEqual(jobs["review"]["steps"], jobs["fork-review"]["steps"])
 
-    def test_review_job_runs_only_same_repository_pull_requests(self):
+    def test_review_job_skips_forks(self):
         condition = str(_workflow()["jobs"]["review"]["if"])
         self.assertIn("same_repository", condition)
         self.assertIn("fork_review", condition)
@@ -149,23 +149,23 @@ class SecretScopeTest(unittest.TestCase):
                 names.add(step["name"])
         return names
 
-    def test_model_api_key_reaches_only_the_review_step(self):
+    def test_api_key_reaches_review(self):
         self.assertEqual(self.steps_referencing("secrets.MODEL_API_KEY"), {"Run review"})
 
-    def test_github_token_reaches_only_the_head_fetch_step(self):
+    def test_token_reaches_head_fetch(self):
         self.assertEqual(self.steps_referencing("github.token"), {"Fetch pull request head object"})
 
 
 class NeedsHumanWarningTest(unittest.TestCase):
     """The review jobs emit the rendered NEEDS-HUMAN warning on the run."""
 
-    def test_gate_step_emits_the_rendered_warning(self):
+    def test_gate_step_emits_rendered_warning(self):
         steps = {step["name"]: step for job, step in _steps(_workflow()) if job == "review"}
         body = steps["Fail on a gating verdict"]["run"]
         self.assertIn("::warning", body)
         self.assertIn('rendered["warning"]', body)
 
-    def test_fail_on_block_input_names_block_only(self):
+    def test_fail_block_input_names_block(self):
         description = _trigger(_workflow())["inputs"]["fail_on_block"]["description"]
         self.assertIn("BLOCK", description)
         self.assertIn("NEEDS-HUMAN warns", description)
@@ -177,16 +177,16 @@ class CommentLayoutWiringTest(unittest.TestCase):
     def review_steps(self) -> dict:
         return {step["name"]: step for job, step in _steps(_workflow()) if job == "review"}
 
-    def test_render_step_passes_the_run_url(self):
+    def test_render_step_passes_run_url(self):
         step = self.review_steps()["Render review output"]
         self.assertIn("--run-url", step["run"])
         self.assertIn("RUN_URL", step["env"])
 
-    def test_comment_step_posts_the_rendered_body(self):
+    def test_comment_step_posts_rendered_body(self):
         script = self.review_steps()["Post review comment"]["with"]["script"]
         self.assertIn("body: rendered.comment_body", script)
 
-    def test_earlier_comment_lookup_matches_the_hidden_marker(self):
+    def test_comment_lookup_matches_marker(self):
         resolve = {step["name"]: step for job, step in _steps(_workflow()) if job == "resolve"}
         script = resolve["Find earlier review comments"]["with"]["script"]
         self.assertIn("<!-- persona-review: ", script)
@@ -195,7 +195,7 @@ class CommentLayoutWiringTest(unittest.TestCase):
 class ScriptInjectionTest(unittest.TestCase):
     """Scripts read values from env. No expression expands inside a script body."""
 
-    def test_no_expression_inside_run_or_script(self):
+    def test_run_lacks_expressions(self):
         for job_name, step in _steps(_workflow()):
             body = step.get("run") or step.get("with", {}).get("script", "")
             with self.subTest(job=job_name, step=step.get("name")):

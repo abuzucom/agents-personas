@@ -58,8 +58,9 @@ class PytestFormTest(unittest.TestCase):
         cls.gate = _load_gate_module()
 
     def decide(self, command: str, project_dir: str = PROJECT_DIR) -> tuple:
-        """Return the gate decision with PATH lookup held outside the repository."""
-        with patch.object(self.gate, "_repository_program_path", return_value=""):
+        """Return the untrusted gate decision with PATH lookup held outside the repository."""
+        with patch.object(self.gate, "_repository_program_path", return_value=""), \
+                patch.object(self.gate, "_trusted_project", return_value=False):
             return self.gate.workflow_decision(command, project_dir)
 
     def test_accepted_forms_ask(self) -> None:
@@ -75,7 +76,8 @@ class PytestFormTest(unittest.TestCase):
                 self.assertIn(self.decide(command)[0], ("", "deny"))
 
     def test_accepted_form_is_read_only(self) -> None:
-        with patch.object(self.gate, "_repository_program_path", return_value=""):
+        with patch.object(self.gate, "_repository_program_path", return_value=""), \
+                patch.object(self.gate, "_trusted_project", return_value=False):
             self.assertTrue(self.gate.read_only_workflow("pytest -q tests", PROJECT_DIR))
 
     def test_chain_with_ruff_asks(self) -> None:
@@ -101,13 +103,13 @@ class PytestLookupTest(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
 
-    def test_root_module_file_shadows_module_launch(self) -> None:
+    def test_root_module_file_shadows(self) -> None:
         (self.root / "pytest.py").write_text("", encoding="utf-8")
         decision, reason = self.gate.workflow_decision("python -m pytest tests", str(self.root))
         self.assertEqual(decision, "deny")
         self.assertIn("pytest.py", reason)
 
-    def test_root_package_directory_shadows_module_launch(self) -> None:
+    def test_root_package_shadows(self) -> None:
         (self.root / "pytest").mkdir()
         decision, reason = self.gate.workflow_decision("python3 -m pytest", str(self.root))
         self.assertEqual(decision, "deny")

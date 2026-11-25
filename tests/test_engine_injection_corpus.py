@@ -52,7 +52,7 @@ class CorpusStructureTest(unittest.TestCase):
     def test_corpus_is_not_empty(self):
         self.assertGreaterEqual(len(_cases()), len(VECTORS))
 
-    def test_every_case_has_the_required_keys(self):
+    def test_case_has_required_keys(self):
         for case in _cases():
             with self.subTest(case=case.get("id")):
                 self.assertEqual(set(case), REQUIRED_KEYS)
@@ -70,7 +70,7 @@ class CorpusStructureTest(unittest.TestCase):
 class CorpusContainmentTest(unittest.TestCase):
     """Each payload stays inside REVIEW_TARGET."""
 
-    def test_payload_appears_only_in_review_target(self):
+    def test_payload_appears_review_target(self):
         for case in _cases():
             with self.subTest(case=case["id"]):
                 document = _envelope_for(case)

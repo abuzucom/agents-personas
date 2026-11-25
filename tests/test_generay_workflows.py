@@ -45,30 +45,30 @@ class WrapperTest(unittest.TestCase):
         self.call = _trigger(self.workflow)["workflow_call"]
         self.job = self.workflow["jobs"]["review"]
 
-    def test_wrapper_declares_engine_and_generay_inputs(self):
+    def test_wrapper_declares_engine_generay_inputs(self):
         self.assertEqual(set(self.call["inputs"]), FORWARDED_INPUTS | GENERAY_INPUTS)
         engine_inputs = _trigger(_load(ENGINE))["workflow_call"]["inputs"]
         for name in FORWARDED_INPUTS:
             with self.subTest(input=name):
                 self.assertEqual(self.call["inputs"][name]["type"], engine_inputs[name]["type"])
 
-    def test_generay_inputs_keep_the_source_types_and_defaults(self):
+    def test_generay_inputs_keep_types(self):
         inputs = self.call["inputs"]
         self.assertEqual((inputs["exclude_paths"]["type"], inputs["exclude_paths"]["default"]), ("string", ""))
         self.assertEqual((inputs["max_chunks"]["type"], inputs["max_chunks"]["default"]), ("number", 20))
 
-    def test_wrapper_forwards_every_engine_input_by_name(self):
+    def test_wrapper_forwards_engine_input_name(self):
         self.assertEqual(self.job["uses"], "./.github/workflows/review.yml")
         self.assertEqual(self.job["with"]["persona"], "generay")
         for name in FORWARDED_INPUTS:
             with self.subTest(input=name):
                 self.assertEqual(self.job["with"][name], f"${{{{ inputs.{name} }}}}")
 
-    def test_exclude_paths_and_max_chunks_reach_the_engine(self):
+    def test_exclude_max_chunks_reach_engine(self):
         self.assertIn("toJSON(inputs.exclude_paths)", self.job["with"]["persona_options"])
         self.assertEqual(self.job["with"]["max_chunks"], "${{ format('{0}', inputs.max_chunks) }}")
 
-    def test_wrapper_requires_the_model_key_only(self):
+    def test_wrapper_requires_model_key(self):
         self.assertEqual(set(self.call["secrets"]), {"MODEL_API_KEY"})
         self.assertIs(self.call["secrets"]["MODEL_API_KEY"]["required"], True)
         self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.MODEL_API_KEY }}"})
@@ -85,10 +85,10 @@ class SelfCallerTest(unittest.TestCase):
         self.workflow = _load(SELF_CALLER)
         self.job = self.workflow["jobs"]["generay"]
 
-    def test_caller_excludes_every_file_so_only_the_label_runs_a_review(self):
+    def test_label_alone_runs_excluded_review(self):
         self.assertEqual(self.job["with"]["paths"].split(), ["!**"])
 
-    def test_caller_starts_on_ci_completion_and_on_its_labels(self):
+    def test_caller_starts_ci_completion_labels(self):
         trigger = _trigger(self.workflow)
         self.assertEqual(trigger["workflow_run"], {"workflows": ["Convention Sync Check"], "types": ["completed"]})
         self.assertEqual(trigger["pull_request_target"], {"types": ["labeled", "unlabeled"]})
@@ -96,7 +96,7 @@ class SelfCallerTest(unittest.TestCase):
         self.assertIn("github.event.label.name == 'generay-scan-requested'", condition)
         self.assertIn("github.event.action == 'unlabeled' && github.event.label.name == 'stop-requested'", condition)
 
-    def test_caller_uses_the_default_branch_engine_and_the_ollama_key(self):
+    def test_caller_uses_default_engine_key(self):
         self.assertEqual(self.job["uses"], "./.github/workflows/generay-time-review.yml")
         self.assertEqual(self.job["with"]["personas_ref"], "${{ github.sha }}")
         self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.OLLAMA_API_KEY }}"})

@@ -93,7 +93,7 @@ class CheckFileTest(unittest.TestCase):
             with self.subTest(path=path.name):
                 self.assertEqual(headings(path.read_text(encoding="utf-8")), CHECK_HEADINGS)
 
-    def test_no_definition_site_in_a_check_file(self):
+    def test_no_definition_site_check_file(self):
         for path in CHECKS_DIR.glob("2.*.md"):
             with self.subTest(path=path.name):
                 self.assertNotRegex(path.read_text(encoding="utf-8"), r"^### \[2\.\d+@")
@@ -131,26 +131,26 @@ class ReferenceGraphTest(unittest.TestCase):
     def test_every_anchor_is_referenced(self):
         self.assertEqual(sorted(set(self.anchors) - set(self.references)), [])
 
-    def test_every_token_names_a_known_class_and_slug(self):
+    def test_token_names_known_class_slug(self):
         known = {path.stem for path in CHECKS_DIR.glob("2.*.md")}
         for number, slug in sorted(self.references):
             with self.subTest(token=f"{number}@{slug}"):
                 self.assertIn(number, known)
                 self.assertIn(slug, FROZEN_SLUGS)
 
-    def test_each_anchor_has_one_definition_site(self):
+    def test_anchor_has_one_definition_site(self):
         for token, files in sorted(self.anchors.items()):
             with self.subTest(token=token):
                 self.assertEqual(len(set(files)), 1)
 
-    def test_checker_passes_on_the_real_tree(self):
+    def test_checker_passes_real_tree(self):
         self.assertEqual(checker.main([str(REPO_ROOT)]), 0)
 
 
 class RegimeCurrencyTest(unittest.TestCase):
     """Every regime file carries a usable header."""
 
-    def test_review_date_parses_and_is_not_future(self):
+    def test_review_date_parses_not_future(self):
         for path in regime_files():
             with self.subTest(path=path.name):
                 match = checker.REVIEWED_PATTERN.search(path.read_text(encoding="utf-8"))
@@ -178,16 +178,16 @@ class ScopeProfileTest(unittest.TestCase):
             with self.subTest(profile=name):
                 self.assertEqual(sorted(expansion - FROZEN_SLUGS), [])
 
-    def test_every_slug_reachable_from_a_profile(self):
+    def test_slug_reachable_profile(self):
         reachable = set()
         for expansion in PROFILES["profiles"].values():
             reachable |= expansion
         self.assertEqual(sorted(FROZEN_SLUGS - reachable), [])
 
-    def test_all_expands_to_the_frozen_set(self):
+    def test_expands_frozen_set(self):
         self.assertEqual(PROFILES["profiles"]["all"], FROZEN_SLUGS)
 
-    def test_audit_section_2a_names_every_profile_it_cites(self):
+    def test_audit_names_cited_profiles(self):
         text = (REPO_ROOT / "AUDIT.md").read_text(encoding="utf-8")
         body = text[text.index("## 2A.") : text.index("## 3.")]
         for name in re.findall(r"`([a-z-]+)`", body):
@@ -228,7 +228,7 @@ class NoDeltaDuplicationTest(unittest.TestCase):
             with self.subTest(token=f"{number}@{slug}"):
                 self.assertNotRegex(body, re.compile(r"^\d+\. ", re.MULTILINE))
 
-    def test_every_delta_states_a_severity_shift(self):
+    def test_delta_states_severity_shift(self):
         for name, number, slug, body in self._deltas():
             with self.subTest(token=f"{number}@{slug}"):
                 self.assertRegex(body, re.compile(r"^Severity shift:[^\S\n]*\S", re.MULTILINE))

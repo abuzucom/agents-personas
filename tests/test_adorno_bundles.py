@@ -83,7 +83,7 @@ class DeadPointerTest(unittest.TestCase):
     is the reason the bundle exists.
     """
 
-    def test_full_tier_carries_every_path_it_references(self):
+    def test_full_tier_carries_path_references(self):
         for scope, tier in declared_pairs():
             if tier != "full":
                 continue

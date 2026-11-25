@@ -121,25 +121,25 @@ class EngineRunTest(unittest.TestCase):
     def sent(self) -> dict:
         return json.loads((self.out / "case" / "envelopes" / "001.json").read_text(encoding="utf-8"))
 
-    def test_declared_scope_rides_in_trusted_context(self):
+    def test_declared_scope_rides_trusted_context(self):
         run_review.run_mode(self.options(stage="build"))
         sent = self.sent()
         self.assertEqual(sent["TRUSTED_CONTEXT"]["options"], {"regimes": "eu"})
         self.assertNotIn("us-ut", json.dumps(sent["TRUSTED_CONTEXT"]))
 
-    def test_reply_with_the_disclaimer_approves_on_the_bundle_prompt(self):
+    def test_reply_disclaimer_approves_bundle_prompt(self):
         result = self.run_steps(_reply("APPROVE"))
         self.assertEqual(result["verdict"], "APPROVE")
         prompt = (self.out / "case" / "envelopes" / "001.prompt.0.txt").read_text(encoding="utf-8")
         self.assertIn("# Havel audit bundle: all (full tier)", prompt)
         self.assertIn("TRUSTED_CONTEXT.options.regimes takes precedence", prompt)
 
-    def test_reply_without_the_disclaimer_is_retried(self):
+    def test_reply_without_disclaimer_retried(self):
         result = self.run_steps(_reply("APPROVE", disclaimer=False), _reply("APPROVE"))
         self.assertEqual(result["verdict"], "APPROVE")
         self.assertEqual((self.adapter_dir / "count.txt").read_text(encoding="utf-8"), "2")
 
-    def test_two_replies_without_the_disclaimer_never_pass(self):
+    def test_disclaimerless_replies_fail(self):
         with self.assertRaises(run_review.ReviewError):
             self.run_steps(_reply("APPROVE", disclaimer=False), _reply("APPROVE", disclaimer=False))
 

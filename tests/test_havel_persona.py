@@ -59,20 +59,20 @@ class ManifestTest(unittest.TestCase):
     def test_manifest_passes_the_engine_schema(self):
         self.assertEqual(reviewers.validate_persona(PERSONA_DIR), [])
 
-    def test_privacy_is_the_default_review_mode(self):
+    def test_privacy_default_review_mode(self):
         mode = _manifest()["modes"][REVIEW_MODE]
         self.assertIs(mode.get("review"), True)
         self.assertIs(mode.get("default"), True)
         self.assertIs(mode.get("require_coverage"), True)
         self.assertEqual(mode.get("json_mode"), "PR")
 
-    def test_review_findings_carry_the_regime_key(self):
+    def test_review_findings_carry_regime_key(self):
         rules = _manifest()["modes"][REVIEW_MODE]["finding_rules"]
         self.assertEqual(set(rules["keys"]), {"severity", "class", "regime", "file", "line", "title"})
         self.assertEqual(rules["severities"], ["CRITICAL", "HIGH", "MEDIUM", "LOW"])
         self.assertEqual(rules["class_prefix"], "2.")
 
-    def test_local_modes_keep_the_section_6_verdict_lines(self):
+    def test_local_modes_keep_verdicts(self):
         modes = _manifest()["modes"]
         for name, (json_mode, verdict_line) in LOCAL_MODES.items():
             with self.subTest(mode=name):
@@ -80,12 +80,12 @@ class ManifestTest(unittest.TestCase):
                 self.assertEqual(modes[name]["json_mode"], json_mode)
                 self.assertEqual(modes[name]["verdict_line"], verdict_line)
 
-    def test_regimes_is_a_trusted_string_option(self):
+    def test_regimes_trusted_string_option(self):
         option = _manifest()["options"]["regimes"]
         self.assertEqual(option["type"], "string")
         self.assertIs(option["trusted"], True)
 
-    def test_baseline_and_undeclared_scopes_carry_notes(self):
+    def test_baseline_undeclared_scopes_carry_notes(self):
         notes = _manifest()["option_notes"]["regimes"]
         self.assertEqual(set(notes), {"", "baseline", "undeclared"})
         self.assertEqual(reviewers.option_notes(_manifest(), {"regimes": "undeclared"}), [notes["undeclared"]])
@@ -94,12 +94,12 @@ class ManifestTest(unittest.TestCase):
 class ReviewPromptTest(unittest.TestCase):
     """The review mode sends the scope profiles, every regime, and the boundary."""
 
-    def test_every_mode_sends_the_full_all_regime_bundle(self):
+    def test_mode_sends_full_regime_bundle(self):
         for name, mode in _manifest()["modes"].items():
             with self.subTest(mode=name):
                 self.assertEqual(mode["prompt"], "bundles/all-full.md")
 
-    def test_prompt_carries_every_file_the_hub_points_at(self):
+    def test_prompt_carries_file_hub_points(self):
         prompt = _review_prompt()
         sources = [PERSONA_DIR / "docs" / "regimes" / "scope-profiles.md", PERSONA_DIR / "docs" / "scope-boundary.md"]
         checks = sorted((PERSONA_DIR / "docs" / "checks").glob("2.*.md"))
@@ -109,12 +109,12 @@ class ReviewPromptTest(unittest.TestCase):
                 body = path.read_text(encoding="utf-8").strip()
                 self.assertIn(body, prompt)
 
-    def test_scope_arrives_through_the_trusted_option(self):
+    def test_scope_arrives_through_trusted_option(self):
         prompt = _review_prompt()
         self.assertIn("TRUSTED_CONTEXT.options.regimes", prompt)
         self.assertNotIn("A workflow input arrives as the `DECLARED_SCOPE:` line", prompt)
 
-    def test_trusted_option_outranks_the_bundle_header(self):
+    def test_trusted_option_outranks_bundle_header(self):
         self.assertIn(
             "TRUSTED_CONTEXT.options.regimes takes precedence over the `DECLARED_SCOPE:` line of the bundle header",
             _review_prompt(),
@@ -139,7 +139,7 @@ class ReplyRuleTest(unittest.TestCase):
     def problems(self, response: str) -> list[str]:
         return self.hooks.validate_reply({}, response, {})
 
-    def test_havel_reads_no_repository_file_beyond_the_diff(self):
+    def test_havel_reads_only_diff(self):
         context = self.hooks.case_context("/nonexistent", ["app.py"], {"app.py": "+x\n"}, {"regimes": ""})
         self.assertEqual(context, {"context": {}, "unreviewed": []})
         self.assertFalse(hasattr(self.hooks, "forced_verdict"))
@@ -150,15 +150,15 @@ class ReplyRuleTest(unittest.TestCase):
     def test_missing_disclaimer_is_a_problem(self):
         self.assertTrue(self.problems(self.reply("VERDICT: APPROVE - no personal data")))
 
-    def test_disclaimer_away_from_the_verdict_is_a_problem(self):
+    def test_disclaimer_away_verdict_problem(self):
         response = self.reply(DISCLAIMER, "Summary.", "VERDICT: APPROVE - no personal data")
         self.assertTrue(self.problems(response))
 
-    def test_altered_disclaimer_text_is_a_problem(self):
+    def test_altered_disclaimer_text_problem(self):
         response = self.reply("NOT LEGAL ADVICE: compliant.", "VERDICT: APPROVE - no personal data")
         self.assertTrue(self.problems(response))
 
-    def test_quoted_disclaimer_above_an_earlier_verdict_does_not_count(self):
+    def test_quoted_disclaimer_ignored(self):
         response = self.reply(DISCLAIMER, "VERDICT: BLOCK - quoted", "Body.", "VERDICT: APPROVE - final")
         self.assertTrue(self.problems(response))
 

@@ -157,7 +157,7 @@ class ResourceLeakCheckTest(CheckerCase):
         )
         self.assert_clean("resource-leak", "Q11", {"a.py": source})
 
-    def test_exit_stack_callback_with_resource_flagged(self) -> None:
+    def test_exit_stack_callback_resource_flagged(self) -> None:
         # callback() registers the file object as a callable and never closes it.
         source = (
             "import contextlib\n\n"
@@ -321,7 +321,7 @@ class UnpinnedCheckTest(CheckerCase):
         self.assertIn("package.json", warning)
         self.assertIn("dependencies", warning)
 
-    def test_top_level_array_package_json_warns(self) -> None:
+    def test_array_package_json_warns(self) -> None:
         # A parser with enough stack returns the deep fixture below as a list.
         # The checker must still report the skip.
         warning = self.unpinned_stderr({"package.json": "[[1]]"})
@@ -425,7 +425,7 @@ class ParserLimitTest(CheckerCase):
             self.assertFalse(quality_checks.exceeds_parser_limits(paths[0]))
         self.assertFalse(quality_checks.exceeds_parser_limits(paths[1]))
 
-    def test_toml_decode_error_within_parser_limits(self) -> None:
+    def test_toml_error_within_limits(self) -> None:
         paths = self.write_files({"broken.toml": "a = \n"})
         self.assertFalse(quality_checks.exceeds_parser_limits(paths[0]))
 

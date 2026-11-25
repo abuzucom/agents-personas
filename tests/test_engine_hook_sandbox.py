@@ -78,20 +78,20 @@ class ModeTest(unittest.TestCase):
         with self.assertRaisesRegex(sandbox.SandboxUnavailable, "PERSONAS_REQUIRE_SANDBOX"):
             sandbox.wrap(["true"], workdir=Path("/tmp"), read_only=[], writable=[])
 
-    def test_default_without_the_tool_fails_closed(self):
+    def test_default_without_tool_fails_closed(self):
         for mode in (None, "", "1"):
             with self.subTest(mode=mode):
                 self.without_bwrap(mode)
                 with self.assertRaisesRegex(sandbox.SandboxUnavailable, "bubblewrap"):
                     sandbox.wrap(["true"], workdir=Path("/tmp"), read_only=[], writable=[])
 
-    def test_zero_without_the_tool_falls_back_with_a_warning(self):
+    def test_zero_without_tool_warns(self):
         self.without_bwrap("0")
         with self.assertWarnsRegex(RuntimeWarning, "without a sandbox"):
             command = sandbox.wrap(["true"], workdir=Path("/tmp"), read_only=[], writable=[])
         self.assertEqual(command, ["true"])
 
-    def test_off_runs_the_plain_command_without_a_warning(self):
+    def test_off_runs_plain_command(self):
         os.environ["PERSONAS_REQUIRE_SANDBOX"] = "off"
         with warnings.catch_warnings():
             warnings.simplefilter("error")
@@ -133,7 +133,7 @@ class TrustedPathTest(unittest.TestCase):
 class CommandTest(unittest.TestCase):
     """The bubblewrap command isolates everything and binds only what the hook needs."""
 
-    def test_command_unshares_and_binds_only_the_listed_paths(self):
+    def test_command_unshares_binds_listed_paths(self):
         with tempfile.TemporaryDirectory() as workdir:
             tree = Path(workdir) / "tree"
             tree.mkdir()
@@ -149,7 +149,7 @@ class CommandTest(unittest.TestCase):
         self.assertIn(("--chdir", str(Path(workdir).resolve())), pairs)
         self.assertNotIn(str(Path.home()), [value for flag, value in pairs if "bind" in flag])
 
-    def test_etc_binds_only_the_runtime_files(self):
+    def test_etc_binds_runtime_files(self):
         with tempfile.TemporaryDirectory() as workdir:
             command = sandbox.sandbox_command(["true"], workdir=Path(workdir), read_only=[], writable=[])
         pairs = list(zip(command, command[1:]))
@@ -157,7 +157,7 @@ class CommandTest(unittest.TestCase):
         etc_sources = {value for flag, value in pairs if flag == "--ro-bind-try" and value.startswith("/etc")}
         self.assertEqual(etc_sources, set(sandbox.ETC_RUNTIME_FILES))
 
-    def test_the_engine_interpreter_runs_in_the_sandbox(self):
+    def test_engine_interpreter_runs_sandbox(self):
         with tempfile.TemporaryDirectory() as workdir:
             command = sandbox.sandbox_command(
                 [sandbox.interpreter(), "-c", "import sys"], workdir=Path(workdir), read_only=[], writable=[]
@@ -165,7 +165,7 @@ class CommandTest(unittest.TestCase):
             completed = subprocess.run(command, capture_output=True, text=True, check=False)
         self.assertEqual(completed.returncode, 0, completed.stderr)
 
-    def test_python_reached_through_a_symlinked_directory_runs(self):
+    def test_python_via_symlink_runs(self):
         with tempfile.TemporaryDirectory() as workdir, tempfile.TemporaryDirectory() as outside:
             # The link sits outside every bind, like a uv or toolcache alias directory.
             link_dir = Path(outside) / "linked-python"

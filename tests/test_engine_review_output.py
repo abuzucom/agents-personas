@@ -52,7 +52,7 @@ class VerdictCombinationTest(unittest.TestCase):
     def test_all_approve_stays_approve(self):
         self.assertEqual(output.combine_verdicts(["APPROVE", "APPROVE"], []), ("APPROVE", []))
 
-    def test_unreviewed_files_turn_approve_into_needs_human(self):
+    def test_unreviewed_files_need_human(self):
         verdict, reasons = output.combine_verdicts(["APPROVE"], ["big.bin"])
         self.assertEqual(verdict, "NEEDS-HUMAN")
         self.assertTrue(any("unreviewed" in reason for reason in reasons))
@@ -60,7 +60,7 @@ class VerdictCombinationTest(unittest.TestCase):
     def test_unreviewed_files_keep_block(self):
         self.assertEqual(output.combine_verdicts(["BLOCK"], ["big.bin"])[0], "BLOCK")
 
-    def test_no_chunks_and_no_unreviewed_files_approves(self):
+    def test_empty_review_approves(self):
         verdict, reasons = output.combine_verdicts([], [])
         self.assertEqual(verdict, "APPROVE")
         self.assertTrue(reasons)
@@ -79,10 +79,10 @@ class ConclusionTest(unittest.TestCase):
     def test_block_fails_when_gating(self):
         self.assertEqual(output.conclusion("BLOCK", True), "failure")
 
-    def test_block_is_neutral_when_not_gating(self):
+    def test_block_neutral_not_gating(self):
         self.assertEqual(output.conclusion("BLOCK", False), "neutral")
 
-    def test_needs_human_is_neutral_whatever_fail_on_block_says(self):
+    def test_needs_human_stays_neutral(self):
         for fail_on_block in (True, False):
             with self.subTest(fail_on_block=fail_on_block):
                 self.assertEqual(output.conclusion("NEEDS-HUMAN", fail_on_block), "neutral")
@@ -100,7 +100,7 @@ class WarningTest(unittest.TestCase):
             with self.subTest(verdict=verdict):
                 self.assertEqual(output.render(_result(verdict=verdict), fail_on_block=True)["warning"], "")
 
-    def test_warning_holds_no_workflow_command_characters(self):
+    def test_warning_lacks_command_characters(self):
         self.assertNotIn("::", output.NEEDS_HUMAN_WARNING)
         self.assertNotIn("\n", output.NEEDS_HUMAN_WARNING)
 
@@ -120,7 +120,7 @@ class RenderTest(unittest.TestCase):
         self.assertEqual((annotation["path"], annotation["start_line"], annotation["end_line"]), ("app.py", 4, 4))
         self.assertEqual(annotation["annotation_level"], "failure")
 
-    def test_finding_outside_changed_files_gets_no_annotation(self):
+    def test_outside_finding_lacks_annotation(self):
         result = _result(findings=[{"file": "other.py", "line": 1, "title": "x"}])
         self.assertEqual(output.render(result, fail_on_block=True)["annotations"], [])
 

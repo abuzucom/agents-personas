@@ -28,7 +28,7 @@ class ChunkResultsTest(unittest.TestCase):
         fixture.run_review.run_mode(self.options())
         self.assertEqual(self.stored()["base_sha"], self.base)
 
-    def test_chunk_entry_carries_name_verdict_and_report(self):
+    def test_chunk_entry_carries_report(self):
         reply = fixture._reply("APPROVE")
         self.script(reply)
         fixture.run_review.run_mode(self.options())

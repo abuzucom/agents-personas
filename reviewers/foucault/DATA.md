@@ -12,14 +12,14 @@ Each limit names its test:
 
 - The envelope keeps pull request text in `REVIEW_TARGET` only.
   `tests/test_engine_envelope.py` covers this with
-  `test_pull_request_fields_sit_in_review_target_only` and
-  `test_metadata_carrying_pull_request_text_is_rejected`.
+  `test_pr_fields_stay_in_target` and
+  `test_pr_text_metadata_rejected`.
 - The envelope caps the title and body. `tests/test_engine_envelope.py`
-  covers this with `test_long_title_is_truncated_and_recorded` and
-  `test_long_body_is_truncated_and_recorded`.
+  covers this with `test_long_title_truncated_recorded` and
+  `test_long_body_truncated_recorded`.
 - Only the review step receives the provider key.
   `tests/test_review_workflow.py` covers this with
-  `test_model_api_key_reaches_only_the_review_step`.
+  `test_api_key_reaches_review`.
 
 Local modes (`file`, `piece`, `wholesale`) run through `engine/run_eval.py`
 on a workstation. A local run sends `AUDIT.md` and one eval case to the

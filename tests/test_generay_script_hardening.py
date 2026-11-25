@@ -69,13 +69,13 @@ def _local_context() -> time_reply.ReviewContext:
 class RegistryNestingTest(unittest.TestCase):
     """Deep nesting returns a validation error, not a RecursionError."""
 
-    def test_nesting_past_the_limit_is_a_validation_error(self):
+    def test_nesting_past_limit_validation_error(self):
         value = _nested_list(registry.MAX_NESTING_DEPTH + 1)
         errors = registry.validate(value, NESTED_SCHEMA, NESTED_SCHEMA)
         self.assertEqual(len(errors), 1)
         self.assertIn(f"nesting exceeds {registry.MAX_NESTING_DEPTH} levels", errors[0])
 
-    def test_far_deeper_nesting_still_returns_an_error(self):
+    def test_deeper_nesting_returns_error(self):
         errors = registry.validate(_nested_list(sys.getrecursionlimit() * 2), NESTED_SCHEMA, NESTED_SCHEMA)
         self.assertEqual(len(errors), 1)
 
@@ -87,7 +87,7 @@ class RegistryNestingTest(unittest.TestCase):
 class RegistryExitStatusTest(unittest.TestCase):
     """main returns the named status for an unsupported schema."""
 
-    def test_unsupported_schema_returns_the_named_status(self):
+    def test_unsupported_schema_returns_named_status(self):
         with tempfile.TemporaryDirectory() as temp:
             schema = Path(temp) / "schema.json"
             schema.write_text(json.dumps({"oneOf": []}), encoding="utf-8")
@@ -106,12 +106,12 @@ class FindingLocationTest(unittest.TestCase):
     def problems(self, context: time_reply.ReviewContext, **changes) -> list[str]:
         return time_reply.finding_problems(_finding(**changes), context, CHECKS)
 
-    def test_added_and_context_lines_inside_the_hunk_pass(self):
+    def test_hunk_lines_pass(self):
         for line in (10, 11, 13):
             with self.subTest(line=line):
                 self.assertEqual(self.problems(_engine_context(), line=line), [])
 
-    def test_pr_line_outside_every_hunk_fails(self):
+    def test_pr_line_outside_hunk_fails(self):
         for line in (9, 14, 500):
             with self.subTest(line=line):
                 self.assertIn(
@@ -119,30 +119,30 @@ class FindingLocationTest(unittest.TestCase):
                     self.problems(_engine_context(), line=line),
                 )
 
-    def test_line_must_be_a_positive_integer(self):
+    def test_line_must_positive_integer(self):
         for line in (0, -3, True, "11"):
             with self.subTest(line=line):
                 self.assertIn("finding line must be a positive integer", self.problems(_engine_context(), line=line))
 
-    def test_generay_pr_envelope_checks_hunk_lines(self):
+    def test_generay_envelope_checks_hunks(self):
         envelope = {"mode": "PR", "TRUSTED_CONTEXT": {"prescan": []}, "REVIEW_TARGET": {"files": {"app.py": PATCH}}}
         context = time_reply.context_from_envelope(envelope, [])
         self.assertEqual(self.problems(context, line=11), [])
         self.assertIn("finding line 999 is outside the review target for app.py", self.problems(context, line=999))
 
-    def test_unhashable_file_is_a_problem_not_a_crash(self):
+    def test_unhashable_file_problem_not_crash(self):
         for file in (["app.py"], {"path": "app.py"}):
             with self.subTest(file=file):
                 problems = self.problems(_engine_context(), file=file)
                 self.assertIn(f"finding cites {file} outside the changed files", problems)
 
-    def test_local_finding_needs_a_file_in_the_target(self):
+    def test_local_finding_needs_file_target(self):
         for file in (None, "", "other.py"):
             with self.subTest(file=file):
                 problems = self.problems(_local_context(), file=file, line=1)
                 self.assertTrue(any("outside the review target" in item for item in problems), problems)
 
-    def test_local_line_must_fall_inside_the_file(self):
+    def test_local_line_inside_file(self):
         self.assertEqual(self.problems(_local_context(), file="input.py", line=3), [])
         self.assertIn(
             "finding line 4 is outside the review target for input.py",

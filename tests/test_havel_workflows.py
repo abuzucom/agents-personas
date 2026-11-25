@@ -53,33 +53,33 @@ class WrapperTest(unittest.TestCase):
         self.call = _trigger(self.workflow)["workflow_call"]
         self.job = self.workflow["jobs"]["review"]
 
-    def test_wrapper_declares_the_engine_inputs_and_regimes(self):
+    def test_wrapper_declares_engine_inputs_regimes(self):
         self.assertEqual(set(self.call["inputs"]), FORWARDED_INPUTS | {"regimes"})
         engine_inputs = _trigger(_load(ENGINE))["workflow_call"]["inputs"]
         for name in FORWARDED_INPUTS:
             with self.subTest(input=name):
                 self.assertEqual(self.call["inputs"][name]["type"], engine_inputs[name]["type"])
 
-    def test_regimes_input_matches_the_manifest_default(self):
+    def test_regimes_input_matches_manifest_default(self):
         regimes = self.call["inputs"]["regimes"]
         manifest_default = json.loads(MANIFEST.read_text(encoding="utf-8"))["options"]["regimes"]["default"]
         self.assertEqual(
             (regimes["type"], regimes["required"], regimes["default"]), ("string", False, manifest_default)
         )
 
-    def test_wrapper_forwards_every_input_and_fixes_the_persona(self):
+    def test_wrapper_forwards_input_fixes_persona(self):
         self.assertEqual(self.job["uses"], "./.github/workflows/review.yml")
         self.assertEqual(self.job["with"]["persona"], "havel")
         for name in FORWARDED_INPUTS:
             with self.subTest(input=name):
                 self.assertEqual(self.job["with"][name], f"${{{{ inputs.{name} }}}}")
 
-    def test_regimes_reach_the_engine_as_an_escaped_option(self):
+    def test_regimes_reach_engine_escaped_option(self):
         options = self.job["with"]["persona_options"]
         self.assertIn('"regimes"', options)
         self.assertIn("toJSON(inputs.regimes)", options)
 
-    def test_wrapper_keeps_the_model_key_optional(self):
+    def test_wrapper_keeps_model_key_optional(self):
         self.assertEqual(set(self.call["secrets"]), {"MODEL_API_KEY"})
         self.assertIs(self.call["secrets"]["MODEL_API_KEY"]["required"], False)
         self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.MODEL_API_KEY }}"})
@@ -96,17 +96,17 @@ class SelfCallerTest(unittest.TestCase):
         self.workflow = _load(SELF_CALLER)
         self.job = self.workflow["jobs"]["havel"]
 
-    def test_caller_excludes_every_file_so_only_the_label_runs_a_review(self):
+    def test_label_alone_runs_excluded_review(self):
         self.assertEqual(self.job["with"]["paths"].split(), ["!**"])
 
-    def test_caller_reviews_with_the_baseline_scope(self):
+    def test_caller_reviews_baseline_scope(self):
         self.assertEqual(self.job["with"]["regimes"], "baseline")
 
-    def test_caller_passes_only_inputs_the_wrapper_declares(self):
+    def test_caller_passes_inputs_wrapper_declares(self):
         declared = set(_trigger(_load(WRAPPER))["workflow_call"]["inputs"])
         self.assertLessEqual(set(self.job["with"]), declared)
 
-    def test_caller_starts_on_ci_completion_and_on_its_labels(self):
+    def test_caller_starts_ci_completion_labels(self):
         trigger = _trigger(self.workflow)
         self.assertEqual(trigger["workflow_run"], {"workflows": ["Convention Sync Check"], "types": ["completed"]})
         self.assertEqual(trigger["pull_request_target"], {"types": ["labeled", "unlabeled"]})
@@ -115,7 +115,7 @@ class SelfCallerTest(unittest.TestCase):
         self.assertIn("github.event.label.name == 'havel-scan-requested'", condition)
         self.assertIn("github.event.action == 'unlabeled' && github.event.label.name == 'stop-requested'", condition)
 
-    def test_caller_holds_a_job_level_head_group(self):
+    def test_caller_holds_job_group(self):
         self.assertNotIn("concurrency", self.workflow)
         concurrency = self.job["concurrency"]
         self.assertTrue(concurrency["group"].startswith("havel-"))
@@ -123,7 +123,7 @@ class SelfCallerTest(unittest.TestCase):
             self.assertIn(expression, concurrency["group"])
         self.assertIs(concurrency["cancel-in-progress"], True)
 
-    def test_caller_uses_the_default_branch_engine_and_the_ollama_key(self):
+    def test_caller_uses_default_engine_key(self):
         self.assertEqual(self.job["uses"], "./.github/workflows/havel-privacy-review.yml")
         self.assertEqual(self.job["with"]["personas_ref"], "${{ github.sha }}")
         self.assertEqual(self.job["secrets"], {"MODEL_API_KEY": "${{ secrets.OLLAMA_API_KEY }}"})

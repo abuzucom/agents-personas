@@ -80,11 +80,11 @@ class ValidateExpectedTest(unittest.TestCase):
         problems = extension.validate_expected("file", _expected(expected_classes=["2.99"]))
         self.assertIn("unknown class '2.99' in expected_classes", problems)
 
-    def test_delta_token_needs_a_known_slug(self):
+    def test_delta_token_needs_known_slug(self):
         problems = extension.validate_expected("file", _expected(expected_classes=["2.1@atlantis"]))
         self.assertIn("expected_classes token '2.1@atlantis' needs the form 2.N@slug with a known slug", problems)
 
-    def test_regimes_beyond_the_declared_scope_are_reported(self):
+    def test_regimes_beyond_declared_scope_reported(self):
         problems = extension.validate_expected("file", _expected(expected_regimes=["ccpa"]))
         self.assertIn("expected_regimes names ccpa beyond the reach of declared_scope 'eu'", problems)
 
@@ -125,7 +125,7 @@ class BuildModelInputTest(unittest.TestCase):
         self.assertEqual(envelope["TRUSTED_CONTEXT"], {"options": {"regimes": "eu"}})
         self.assertNotIn("eu", envelope["REVIEW_TARGET"]["text"])
 
-    def test_ask_branch_case_carries_no_trusted_context(self):
+    def test_ask_case_lacks_context(self):
         case = _case()
         del case["expected"]["declared_scope"]
         self.assertNotIn("TRUSTED_CONTEXT", json.loads(extension.build_model_input(case, "prompt")))
@@ -141,7 +141,7 @@ class GradeResponseTest(unittest.TestCase):
     def test_missing_disclaimer_fails(self):
         self.assertFalse(_grades(_reply(disclaimer=False))["not-legal-advice line"][0])
 
-    def test_disclaimer_follows_the_mode_verdict_label(self):
+    def test_disclaimer_follows_mode_verdict_label(self):
         self.assertFalse(_grades(_reply(label="VERDICT"))["not-legal-advice line"][0])
 
     def test_missing_regime_delta_fails(self):

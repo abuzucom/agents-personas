@@ -51,7 +51,7 @@ class EngineScriptVerdictTest(unittest.TestCase):
                 self.assertEqual(decision, "ask")
                 self.assertIn("execution consent", reason)
 
-    def test_provider_callers_and_unsafe_arguments_stay_unmatched(self) -> None:
+    def test_unsafe_callers_stay_unmatched(self) -> None:
         for command in UNLISTED_ENGINE_COMMANDS:
             with self.subTest(command=command):
                 self.assertEqual(self.decide(command), ("", ""))

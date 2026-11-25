@@ -30,6 +30,7 @@ import ntpath
 import os
 import posixpath
 import shlex
+import stat
 import subprocess
 import sys
 import threading
@@ -424,6 +425,24 @@ def push_verdict(args: list, cwd: str = "", global_args: list = None,
 
 READ_SUBCOMMANDS = frozenset({"status", "diff", "log", "show", "blame",
                               "grep", "shortlog", "whatchanged"})
+PLAN_MODE = "plan"
+# Plan mode keeps these inspection-only subcommands open. Each one reads
+# objects, refs, or the index without writing any of them.
+PLAN_MODE_GIT_SUBCOMMANDS = READ_SUBCOMMANDS | frozenset({
+    "describe", "rev-parse", "rev-list", "ls-files", "ls-tree",
+    "check-attr", "show-ref", "version",
+})
+# Options that write files or run a program in any position. An inspection
+# subcommand with one of them leaves the inspection set.
+PLAN_MODE_DENIED_GIT_OPTIONS = frozenset({
+    "--output", "--output-directory", "-o", "-O", "--open-files-in-pager",
+    "--ext-diff", "--textconv",
+})
+# Global options before the subcommand that set config, a pager, or the
+# helper path. After the subcommand, `-p` and `-c` carry read meanings.
+PLAN_MODE_DENIED_GLOBAL_GIT_OPTIONS = frozenset({
+    "-c", "--config-env", "-p", "--paginate", "--exec-path",
+})
 
 
 KNOWN_SUBCOMMANDS = frozenset({
@@ -642,6 +661,66 @@ def git_verdict(args: list, cwd: str = "", environment: list = None,
     if reader:
         return reader(rest)
     return _git_flag_verdict(subcommand, rest)
+
+
+def plan_mode_git_verdict(mode: str, args: list, cwd: str = "",
+                          environment: list = None, base: tuple = ("", "")) -> tuple:
+    """Return the final (decision, reason) for a git command under `mode`.
+
+    `base` holds the gate's ordinary git verdict. Every mode except plan
+    returns it unchanged. Plan mode permits inspection only:
+
+    - A git subcommand outside the inspection set denies. A plan-mode
+      session therefore cannot rename a branch, commit, or push.
+    - Each allowed subcommand outside READ_SUBCOMMANDS gets the same
+      config and environment check that `git_read_verdict` gives reads.
+    - An ask denies. An approved ask would still run the named program.
+
+    A bare `git --version` names no subcommand and stays open.
+    """
+    if mode != PLAN_MODE:
+        return base
+    rule = _plan_mode_git_rule(args)
+    if rule[0]:
+        return rule
+    subcommand, _rest = git_subcommand(args)
+    merged = base
+    if subcommand and subcommand.casefold() not in READ_SUBCOMMANDS:
+        merged = strongest(base, git_read_verdict(args, cwd, environment or []))
+    if merged[0] == "ask":
+        return "deny", f"{merged[1]}. Plan mode permits inspection only"
+    return merged
+
+
+def _plan_mode_git_rule(args: list) -> tuple:
+    """Return a plan-mode deny for an unsafe option or a write subcommand."""
+    subcommand, rest = git_subcommand(args)
+    global_options = args[:len(args) - len(rest) - 1] if subcommand else args
+    unsafe = _plan_mode_unsafe_option(global_options, PLAN_MODE_DENIED_GLOBAL_GIT_OPTIONS)
+    unsafe = unsafe or _plan_mode_unsafe_option(args, PLAN_MODE_DENIED_GIT_OPTIONS)
+    if unsafe:
+        return "deny", (f"git option {sanitize(unsafe)} writes files or runs a program. "
+                        "Plan mode permits inspection only")
+    if not subcommand or subcommand.casefold() in PLAN_MODE_GIT_SUBCOMMANDS:
+        return "", ""
+    return "deny", (f"git {sanitize(subcommand)} writes repository state. Plan "
+                    "mode permits inspection only")
+
+
+def _plan_mode_unsafe_option(tokens: list, denied: frozenset) -> str:
+    """Return the first token that names an option in `denied`, or an empty string.
+
+    A long option matches with or without an `=value` suffix. A short option
+    also matches with its value attached, such as `-Ocat`.
+    """
+    for token in tokens:
+        name = token.split("=", 1)[0]
+        if name in denied:
+            return name
+        short = token[:SHORT_OPTION_LENGTH]
+        if not token.startswith("--") and short in denied:
+            return short
+    return ""
 
 
 def unparseable_verdict(command: str, keywords: tuple) -> tuple:
@@ -977,6 +1056,8 @@ KUBERNETES_FILENAMES = frozenset({
     "chart.yaml", "chart.yml", "helmfile.yaml", "helmfile.yml",
     "kustomization.yaml", "kustomization.yml", "values.yaml", "values.yml",
 })
+KUBERNETES_VALUE_PREFIXES = ("values-", "values.")
+KUBERNETES_VALUE_SUFFIXES = (".yaml", ".yml")
 INFRASTRUCTURE_SCAN_SKIP = frozenset({".git", ".venv", "node_modules", "__pycache__"})
 MAX_INFRASTRUCTURE_FILE_BYTES = 65536
 MAX_INFRASTRUCTURE_SCAN_FILES = 20000
@@ -1154,7 +1235,13 @@ def prohibited_command_verdict(program: str, args: list) -> tuple:
 
 
 def _infrastructure_manifest_text(path: str) -> str:
-    """Return a bounded manifest prefix without exposing it to the caller."""
+    """Return a bounded manifest prefix without exposing it to the caller.
+
+    The gate reads the file on every check, so a file that another process
+    replaces within one hook run reaches the gate with its current
+    content. A cached prefix would classify the file by content that the
+    file no longer holds.
+    """
     try:
         details = os.stat(path)
         if not os.path.isfile(path) or details.st_size > MAX_INFRASTRUCTURE_FILE_BYTES:
@@ -1177,6 +1264,17 @@ def strip_windows_drive(normalized: str) -> str:
     return normalized[SLASH_DRIVE_PREFIX_LENGTH:] if has_drive else normalized
 
 
+def _is_kubernetes_values_file(basename: str) -> bool:
+    """Return whether a file name is a Helm values file.
+
+    A Helm values file carries a YAML extension. The name alone must not
+    reach the protected set. A source file named `values.ts` carries no
+    Kubernetes configuration.
+    """
+    return (basename.startswith(KUBERNETES_VALUE_PREFIXES)
+            and basename.endswith(KUBERNETES_VALUE_SUFFIXES))
+
+
 def is_protected_infrastructure_path(path: str, cwd: str = "", content: str = "") -> bool:
     """Return whether a path reaches protected infrastructure configuration."""
     candidate = path.strip().strip('"').strip("'")
@@ -1194,7 +1292,7 @@ def is_protected_infrastructure_path(path: str, cwd: str = "", content: str = ""
         return True
     if any(marker in padded for marker in KUBERNETES_DIRECTORY_MARKERS):
         return True
-    if basename in KUBERNETES_FILENAMES or basename.startswith(("values-", "values.")):
+    if basename in KUBERNETES_FILENAMES or _is_kubernetes_values_file(basename):
         return True
     terraform_suffixes = (".tf", ".tf.json", ".tfvars", ".tfvars.json")
     if basename.endswith(terraform_suffixes):
@@ -1779,6 +1877,7 @@ POWERSHELL_WRITE_PARAMETERS = {
 }
 PROTECTED_PATH_PARTS = frozenset({
     "hooks", ".claude", "scripts", ".agents", ".codex", ".gemini", ".git",
+    "skills",
 })
 # The canonical policy, its synced copies, and supporting policy documents
 # load as agent instructions.
@@ -2579,6 +2678,32 @@ def environment_assignment_verdict(program: str, args: list) -> tuple:
             return "ask", (f"exporting {sanitize(name)} changes how a later "
                            "git read resolves or executes programs")
     return "", ""
+
+
+def cmd_set_assignment_verdict(program: str, args: list) -> tuple:
+    """Gate a CMD `set` of a variable that alters Git reads."""
+    if normalize_windows_command_name(program) != "set":
+        return "", ""
+    for token in args:
+        if token.startswith("/"):
+            continue
+        name = token.strip('"').split("=", 1)[0].strip().upper()
+        if is_relevant_git_environment(name):
+            return "ask", (f"setting {sanitize(name)} changes how a later git "
+                           "read resolves or executes programs")
+        return "", ""
+    return "", ""
+
+
+def plan_mode_harden(mode: str, verdict: tuple) -> tuple:
+    """Return `verdict` with an ask turned into a deny while `mode` is plan.
+
+    Plan mode permits inspection only. An approved ask would still run the
+    program the assignment names.
+    """
+    if mode != PLAN_MODE or verdict[0] != "ask":
+        return verdict
+    return "deny", f"{verdict[1]}. Plan mode permits inspection only"
 
 
 def resolve_alias(cwd: str, subcommand: str) -> str:
@@ -3438,6 +3563,21 @@ def filesystem_repair_verdict(program: str, args: list) -> tuple:
 # Deleting a repository, a release, or a tag on the forge destroys work
 # that is not in any local clone.
 FORGE_PROGRAMS = frozenset({"gh", "glab", "hub", "tea"})
+# Every CI workflow filters pull requests on the stable branches. A pull
+# request into any other base runs no CI, so the gates deny that base.
+PRIMARY_BRANCH_FILE_PARTS = ("hooks", "primary-branch.txt")
+DEFAULT_PRIMARY_BRANCH = "main"
+# The develop branch is the staging branch. Not every repository has these
+# branches. A pull request into an absent branch fails on the forge.
+EXTRA_STABLE_BRANCHES = ("test", "develop")
+MAX_PRIMARY_BRANCH_BYTES = 256
+MAX_BRANCH_NAME_LENGTH = 200
+REJECTED_PRIMARY_BRANCHES = frozenset({"master", "HEAD"})
+BRANCH_NAME_CHARACTERS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._/-")
+GH_PULL_BASE_OPTIONS = frozenset({"--base", "-B"})
+GH_PULL_BASE_COMMANDS = frozenset({("pr", "create"), ("pr", "edit")})
+PRIMARY_READ_FLAGS = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
 FORGE_DELETE_NOUNS = frozenset({"repo", "repository", "release", "project",
                                  "org", "organization", "gist", "secret",
                                  "environment", "cache", "run", "variable",
@@ -3897,6 +4037,94 @@ def github_routing_verdict(program: str, args: list, cwd: str) -> tuple:
     return "", ""
 
 
+def is_primary_branch_name(name: str) -> bool:
+    """Return whether a name can serve as the primary branch."""
+    return (0 < len(name) <= MAX_BRANCH_NAME_LENGTH and name[0].isalnum() and name.isascii()
+            and set(name) <= BRANCH_NAME_CHARACTERS and name not in REJECTED_PRIMARY_BRANCHES
+            and not any(part in ("", ".", "..") for part in name.split("/")))
+
+
+def _is_reparse_point(details: os.stat_result) -> bool:
+    """Return whether Windows file attributes mark a reparse point such as a junction."""
+    attributes = getattr(details, "st_file_attributes", 0)
+    return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0))
+
+
+def primary_branch(repository: str) -> str:
+    """Return the branch in hooks/primary-branch.txt, or main when the file is absent.
+
+    The read follows no link and accepts only a regular file. An unusable
+    file raises ValueError, so callers fail closed.
+    """
+    path = os.path.join(repository, *PRIMARY_BRANCH_FILE_PARTS)
+    try:
+        link_details = os.lstat(path)
+    except FileNotFoundError:
+        return DEFAULT_PRIMARY_BRANCH
+    except OSError as error:
+        raise ValueError(
+            f"hooks/primary-branch.txt cannot be read ({type(error).__name__})") from error
+    # Windows lacks O_NOFOLLOW, so lstat rejects a link or reparse point before the open.
+    if stat.S_ISLNK(link_details.st_mode) or _is_reparse_point(link_details):
+        raise ValueError("hooks/primary-branch.txt is a link")
+    try:
+        descriptor = os.open(path, PRIMARY_READ_FLAGS)
+    except OSError as error:
+        raise ValueError(
+            f"hooks/primary-branch.txt cannot be opened ({type(error).__name__})") from error
+    opened_details = os.fstat(descriptor)
+    # A swap between lstat and open changes the file identity. fdopen rejects a
+    # directory descriptor, so these checks run on the raw descriptor first.
+    if (not stat.S_ISREG(opened_details.st_mode)
+            or (opened_details.st_dev, opened_details.st_ino)
+            != (link_details.st_dev, link_details.st_ino)):
+        os.close(descriptor)
+        raise ValueError("hooks/primary-branch.txt is not the regular file it named")
+    with os.fdopen(descriptor, "rb") as handle:
+        content = handle.read(MAX_PRIMARY_BRANCH_BYTES + 1)
+    lines = content.splitlines()
+    name = lines[0].decode("ascii", errors="replace") if len(lines) == 1 else ""
+    if len(content) > MAX_PRIMARY_BRANCH_BYTES or not is_primary_branch_name(name):
+        raise ValueError("hooks/primary-branch.txt must hold one valid branch name")
+    return name
+
+
+def stable_branches(repository: str) -> frozenset:
+    """Return the primary branch plus test and develop.
+
+    An unusable primary branch file raises ValueError, so callers fail closed.
+    """
+    return frozenset((primary_branch(repository), *EXTRA_STABLE_BRANCHES))
+
+
+def _stable_branch_list(primary: str, stable: frozenset) -> str:
+    """Name the stable branches with the primary branch first."""
+    ordered = [primary, *sorted(stable - {primary})]
+    return ", ".join(f"`{name}`" for name in ordered)
+
+
+def pull_request_base_verdict(args: list, repository: str) -> tuple:
+    """Deny gh pr create or gh pr edit with a base outside the stable branches."""
+    command = _github_command_args(args)
+    if tuple(_github_command_path(command)[:GH_COMMAND_PATH_WORDS]) not in GH_PULL_BASE_COMMANDS:
+        return "", ""
+    bases = _option_values(command, GH_PULL_BASE_OPTIONS)
+    if not bases:
+        return "", ""
+    try:
+        primary = primary_branch(repository)
+    except ValueError as error:
+        return "deny", f"{error}, so the gate cannot check the pull request base"
+    stable = frozenset((primary, *EXTRA_STABLE_BRANCHES))
+    other = next((base for base in bases if base not in stable), None)
+    if other is None:
+        return "", ""
+    return "deny", (f"pull request base `{sanitize(other)}` is not a stable branch "
+                    f"({_stable_branch_list(primary, stable)}). The primary branch is "
+                    f"`{primary}`. CI workflows run only for pull requests into a stable "
+                    f"branch. Open the pull request against a stable branch")
+
+
 def forge_verdict(program: str, args: list, cwd: str = "") -> tuple:
     """Return (decision, reason) for a destructive forge command."""
     name = os.path.basename(program).lower().removesuffix(".exe")
@@ -3912,6 +4140,9 @@ def forge_verdict(program: str, args: list, cwd: str = "") -> tuple:
         name = "gh"
         args = wrapped
     if name == "gh":
+        decision, reason = pull_request_base_verdict(args, repository)
+        if decision:
+            return decision, reason
         decision, reason = github_cli_verdict(args, repo_owner=owner)
         if decision:
             return decision, reason

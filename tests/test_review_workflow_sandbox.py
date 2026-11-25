@@ -27,12 +27,12 @@ def _steps(job: str) -> list[dict]:
 class SandboxWiringTest(unittest.TestCase):
     """Each review job installs bubblewrap and requires it in both stage steps."""
 
-    def test_review_jobs_run_on_the_pinned_image(self):
+    def test_review_jobs_run_pinned_image(self):
         for job in REVIEW_JOBS:
             with self.subTest(job=job):
                 self.assertEqual(_jobs()[job]["runs-on"], "ubuntu-24.04")
 
-    def test_install_step_pins_bubblewrap_before_the_build(self):
+    def test_install_pins_bubblewrap(self):
         for job in REVIEW_JOBS:
             names = [step["name"] for step in _steps(job)]
             with self.subTest(job=job):
@@ -48,7 +48,7 @@ class SandboxWiringTest(unittest.TestCase):
                 with self.subTest(job=job, step=name):
                     self.assertEqual(steps[name]["env"]["PERSONAS_REQUIRE_SANDBOX"], "1")
 
-    def test_no_step_turns_the_sandbox_off(self):
+    def test_no_step_turns_sandbox_off(self):
         self.assertNotIn("PERSONAS_REQUIRE_SANDBOX: off", WORKFLOW_PATH.read_text(encoding="utf-8"))
         self.assertNotIn("PERSONAS_REQUIRE_SANDBOX: \"off\"", WORKFLOW_PATH.read_text(encoding="utf-8"))
 
@@ -64,13 +64,13 @@ class SandboxCheckWorkflowTest(unittest.TestCase):
         self.workflow = yaml.safe_load(SANDBOX_CHECK_PATH.read_text(encoding="utf-8"))
         self.job = self.workflow["jobs"]["sandbox"]
 
-    def test_job_runs_on_pull_requests_with_read_permissions(self):
+    def test_job_reads_pull_requests(self):
         trigger = self.workflow.get("on", self.workflow.get(True))
         self.assertIn("pull_request", trigger)
         self.assertEqual(self.workflow["permissions"], {"contents": "read"})
         self.assertEqual(self.job["runs-on"], "ubuntu-24.04")
 
-    def test_job_installs_the_pinned_bubblewrap_and_requires_it(self):
+    def test_job_installs_pinned_bubblewrap_requires(self):
         steps = {step["name"]: step for step in self.job["steps"]}
         self.assertIn(BUBBLEWRAP_INSTALL, steps["Install bubblewrap"]["run"])
         run = steps["Run sandbox tests"]
@@ -89,7 +89,7 @@ PROFILE_LOAD = "sudo apparmor_parser -r /etc/apparmor.d/bwrap"
 class AppArmorProfileTest(unittest.TestCase):
     """Ubuntu 24.04 restricts unprivileged user namespaces. One profile lets bwrap alone create them."""
 
-    def test_profile_grants_userns_to_bwrap_only(self):
+    def test_profile_grants_userns_bwrap(self):
         text = PROFILE_PATH.read_text(encoding="ascii")
         self.assertIn("profile bwrap /usr/bin/bwrap flags=(unconfined) {", text)
         self.assertIn("  userns,", text)
@@ -98,7 +98,7 @@ class AppArmorProfileTest(unittest.TestCase):
                                  "profile bwrap /usr/bin/bwrap flags=(unconfined) {", "userns,",
                                  "include if exists <local/bwrap>", "}"])
 
-    def test_review_jobs_load_the_engine_profile_before_the_build(self):
+    def test_review_jobs_load_profile(self):
         for job in REVIEW_JOBS:
             install = next(step for step in _steps(job) if step["name"] == "Install bubblewrap")
             with self.subTest(job=job):
@@ -106,7 +106,7 @@ class AppArmorProfileTest(unittest.TestCase):
                               install["run"])
                 self.assertIn(PROFILE_LOAD, install["run"])
 
-    def test_sandbox_check_loads_the_repository_profile(self):
+    def test_sandbox_check_loads_repository_profile(self):
         workflow = yaml.safe_load(SANDBOX_CHECK_PATH.read_text(encoding="utf-8"))
         install = next(step for step in workflow["jobs"]["sandbox"]["steps"] if step["name"] == "Install bubblewrap")
         self.assertIn("sudo install -m 0644 engine/apparmor/bwrap /etc/apparmor.d/bwrap", install["run"])

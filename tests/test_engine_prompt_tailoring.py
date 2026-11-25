@@ -54,7 +54,7 @@ class FormatNoteTest(unittest.TestCase):
                 system, _user = _texts(protocol, format_note=NOTE)
                 self.assertEqual(system, "SYSTEM\n" + NOTE)
 
-    def test_profile_without_a_note_keeps_the_system_prompt(self):
+    def test_noteless_profile_keeps_prompt(self):
         for protocol in call_model.ALLOWED_PROTOCOLS:
             with self.subTest(protocol=protocol):
                 self.assertEqual(_texts(protocol)[0], "SYSTEM")
@@ -65,7 +65,7 @@ class FormatNoteTest(unittest.TestCase):
                 with self.assertRaises(call_model.ProviderError):
                     call_model.format_note({"format_note": note})
 
-    def test_shipped_active_profile_carries_a_note(self):
+    def test_shipped_active_profile_carries_note(self):
         config = json.loads((ENGINE_DIR / "model_providers.json").read_text(encoding="utf-8"))
         profile = call_model._load_profile(config["active_provider"])
         self.assertIn("Scope:", call_model.format_note(profile))
@@ -79,7 +79,7 @@ class ClosingReminderTest(unittest.TestCase):
             with self.subTest(protocol=protocol):
                 self.assertEqual(_texts(protocol)[1], "CASE" + call_model.REPORT_REMINDER)
 
-    def test_reminder_names_the_opening_and_closing_lines(self):
+    def test_reminder_names_opening_closing_lines(self):
         reminder = call_model.REPORT_REMINDER
         for marker in ("**Mode:**", "Scope:", "Unseen:", "VERDICT", "VERDICT_JSON", "REVIEW_TARGET"):
             with self.subTest(marker=marker):

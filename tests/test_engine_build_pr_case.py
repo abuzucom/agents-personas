@@ -99,7 +99,7 @@ class RepositoryFixture(unittest.TestCase):
 class BuildPrCaseTest(RepositoryFixture):
     """build() writes chunked envelopes and a manifest of unreviewed files."""
 
-    def test_one_chunk_holds_every_text_file(self):
+    def test_one_chunk_holds_text_file(self):
         manifest = self.build()
         self.assertEqual(len(manifest["chunks"]), 1)
         files = self.envelopes(manifest)[0]["REVIEW_TARGET"]["files"]
@@ -126,7 +126,7 @@ class BuildPrCaseTest(RepositoryFixture):
         for document in self.envelopes(manifest):
             self.assertEqual(document["TRUSTED_CONTEXT"]["mode"], "quality")
 
-    def test_chunks_past_the_limit_become_unreviewed(self):
+    def test_chunks_past_limit_become_unreviewed(self):
         skeleton = len(
             envelope.build_envelope(
                 "euler",
@@ -143,7 +143,7 @@ class BuildPrCaseTest(RepositoryFixture):
         self.assertEqual(len(manifest["chunks"]), 1)
         self.assertTrue(any(path.startswith("file") for path in manifest["unreviewed"]))
 
-    def test_every_envelope_respects_the_byte_budget(self):
+    def test_envelope_respects_byte_budget(self):
         budget = 200_000
         manifest = self.build(max_envelope_bytes=budget)
         for chunk in manifest["chunks"]:
@@ -202,7 +202,7 @@ class CliTest(RepositoryFixture):
         ]
         return subprocess.run(command, capture_output=True, text=True, check=False)
 
-    def test_high_request_is_clamped_with_notice(self):
+    def test_high_request_clamped_notice(self):
         result = self.run_cli("--persona", "euler", "--mode", "quality", "--max-chunks", "9")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("exceeds the mode cap", result.stderr)
@@ -222,7 +222,7 @@ class CliTest(RepositoryFixture):
 class PureHelpersTest(unittest.TestCase):
     """The ported chunking helpers keep their euler behavior."""
 
-    def test_pack_chunks_splits_by_budget_and_reports_oversized(self):
+    def test_pack_chunks_reports_oversized(self):
         patches = {"a": "x" * 4, "b": "x" * 4, "c": "x" * 20}
         chunks, oversized = builder.pack_chunks(patches, 10)
         self.assertEqual((chunks, oversized), ([["a", "b"]], ["c"]))
@@ -230,7 +230,7 @@ class PureHelpersTest(unittest.TestCase):
     def test_limit_chunks_returns_overflow_files(self):
         self.assertEqual(builder.limit_chunks([["a"], ["b", "c"]], 1), ([["a"]], ["b", "c"]))
 
-    def test_split_raw_and_patches_keeps_paths_with_spaces(self):
+    def test_split_keeps_spaced_paths(self):
         output = b":100644 100644 a b M\0my file.py\0\0diff --git a/my file.py b/my file.py\n+x\n"
         paths, patches = builder.split_raw_and_patches(output)
         self.assertEqual(paths, [b"my file.py"])

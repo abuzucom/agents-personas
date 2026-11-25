@@ -45,7 +45,7 @@ class CapSchemaTest(unittest.TestCase):
     def test_boolean_cap_is_reported(self):
         self.assertTrue(any("max_chunks" in item for item in _findings({"max_chunks": True})))
 
-    def test_cap_above_engine_ceiling_is_reported(self):
+    def test_cap_above_engine_ceiling_reported(self):
         findings = _findings({"max_envelope_bytes": reviewers.CAP_CEILINGS["max_envelope_bytes"] + 1})
         self.assertTrue(any("max_envelope_bytes" in item for item in findings))
 
@@ -65,7 +65,7 @@ class CapResolutionTest(unittest.TestCase):
         caps = reviewers.resolve_caps(self.MODE, {"max_chunks": 3})
         self.assertEqual((caps["max_chunks"], caps["clamped"]), (3, []))
 
-    def test_higher_request_is_clamped_and_recorded(self):
+    def test_higher_request_clamped_recorded(self):
         caps = reviewers.resolve_caps(self.MODE, {"max_chunks": 50})
         self.assertEqual((caps["max_chunks"], caps["clamped"]), (8, ["max_chunks"]))
 

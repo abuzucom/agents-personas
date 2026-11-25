@@ -17,7 +17,7 @@ from tests.test_enforce_branch_name import BLOCKING_EXIT_CODE, REPO_ROOT, hook
 class CiBranchFixtureTest(unittest.TestCase):
     """Use real compliant metadata for every valid-branch handler path."""
 
-    def test_valid_branch_dispatch_uses_isolated_metadata(self) -> None:
+    def test_valid_dispatch_uses_isolated_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
             (root / ".git").mkdir()
