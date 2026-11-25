@@ -14,6 +14,31 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] (2026-11-25)
+
+### Added
+- Adopt the `abuzucom/agents` template at `08d88b2` (v2.45.1). The previous
+  template revision was `909b937` (v2.28.5).
+- Add the template skills under `skills/`, `.claude/skills/`, and
+  `.agents/skills/`. Add `docs/enforcement-matrix.md`.
+- Add the template hooks for session zones, single questions, GitHub MCP
+  writes, prose options, and the pull request base. Add the matching
+  shared modules, checkers, and tests.
+- Adopt `.github/workflows/immutable-conflict-check.yml` and its six test
+  modules. `test_check_conflict_markers.py` stays declined.
+
+### Changed
+- Update every taken hook, script, test, client setting, workflow, and
+  policy document to the template bytes. Local drift carries over through
+  a three-way merge.
+- Shorten 447 persona and engine test names to at most five words after
+  `test_`. Two test comments drop personal pronouns. Test bodies stay the
+  same.
+- Rewrap eight template policy lines longer than 120 characters at 80
+  columns. The words stay the same.
+- Record the new revision, the taken files, and the resolved drift items in
+  `docs/template-drift.md`.
+
 ## [0.19.4] (2026-11-24)
 
 ### Added
