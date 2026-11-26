@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.22.0] (2026-11-26)
+## [0.22.1] (2026-11-26)
 
 ### Added
 - Adopt the `abuzucom/agents` template at `4797f14` (v2.46.0). The previous
@@ -33,6 +33,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   template bytes. Regenerate the policy copies and `shared-files.json`.
 - Take the template `AGENTS.md` wrap. The local rewrap of eight long lines
   leaves `docs/template-drift.md`.
+- Pin the five wrapper workflow digests in
+  `.compliance-tree-exemptions.json` to the `same_repository_only`
+  wrapper content from abuzucom/agents-personas#42. The trusted
+  `immutable-compliance` scan reads this manifest from `main` only.
 
 ## [0.21.0] (2026-11-25)
 
