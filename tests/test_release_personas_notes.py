@@ -43,9 +43,22 @@ Intro text.
 def run_git(repository: Path, *arguments: str) -> str:
     """Run one Git command in a fixture repository and return its output."""
     result = subprocess.run(
-        ["git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
-         "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", *arguments],
-        cwd=repository, capture_output=True, text=True, check=True,
+        [
+            "git",
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "tag.gpgsign=false",
+            *arguments,
+        ],
+        cwd=repository,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return result.stdout.strip()
 
@@ -174,8 +187,9 @@ class NotesWorkflowTest(unittest.TestCase):
 
     def test_rerun_refreshes_draft_notes(self):
         runs = release_runs()
-        self.assertIn('gh release edit "$tag" --repo "$repo" --draft --notes-file "$RUNNER_TEMP/release-notes.md"',
-                      runs)
+        self.assertIn(
+            'gh release edit "$tag" --repo "$repo" --draft --notes-file "$RUNNER_TEMP/release-notes.md"', runs
+        )
 
 
 if __name__ == "__main__":

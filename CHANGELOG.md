@@ -14,7 +14,7 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.24.0] (2026-11-26)
+## [0.24.1] (2026-11-26)
 
 ### Added
 - Add the `previous-tag` subcommand to `tools/release_personas.py`. It
@@ -44,6 +44,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `*-review-pr.yml` callers and `stop-requested-notice.yml` with the
   secret name, the write permissions, and the SHA-256 pins. It excludes
   `reviewers/*/eval/cases/` from the Rule 7 scan.
+
+### Fixed
+- Format `tests/test_release_personas_notes.py` to the `ruff format`
+  layout that `make lint-code` checks.
 
 ### Changed
 - Keep the version headings in the release notes. The notes hold every
