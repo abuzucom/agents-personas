@@ -50,9 +50,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `reviewers/*/eval/cases/` from the Rule 7 scan.
 
 ### Fixed
-- Re-pin the five wrapper workflow digests in
-  `.compliance-tree-exemptions.json` to the `same_repository_only`
-  wrapper content.
 - Format `tests/test_release_personas_notes.py` to the `ruff format`
   layout that `make lint-code` checks.
 
@@ -67,6 +64,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   template bytes. Regenerate the policy copies and `shared-files.json`.
 - Take the template `AGENTS.md` wrap. The local rewrap of eight long lines
   leaves `docs/template-drift.md`.
+- Pin the five wrapper workflow digests in
+  `.compliance-tree-exemptions.json` to the `same_repository_only`
+  wrapper content from abuzucom/agents-personas#42. The trusted
+  `immutable-compliance` scan reads this manifest from `main` only.
 
 ## [0.21.0] (2026-11-25)
 
