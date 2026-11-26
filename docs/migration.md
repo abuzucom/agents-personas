@@ -87,6 +87,43 @@ Give the CI workflow no path filter when branch protection requires a review
 check. Keep each check from the label caller optional. A required check from
 that caller stops each pull request without the label from merging.
 
+## Migration pull request
+
+The pull request that moves a caller to the wrappers runs under the old
+callers on the base branch. Green local tests do not cover these hazards:
+
+- Land the caller change alone and small, against the base branch, before
+  any large change. The old `workflow_run` callers on the base branch review
+  the migration pull request. An old caller with `fail_on_block` also fails
+  on NEEDS-HUMAN. A large change stacked on the migration can stop there
+  before the new engine runs.
+- Keep each vendored adapter directory until no configuration read from the
+  base branch names it. The CodeQL default setup reads
+  `.github/codeql/config.yml` from the base branch. A path there that names a
+  deleted directory aborts the analysis. Remove the directory in a later pull
+  request.
+- Update rulesets and branch protection for the new check names before the
+  merge. The required checks become `foucault / security` and
+  `euler / quality`.
+- Keep a status function such as `!cancelled()` on a review job that needs a
+  job skipped for forks. Without one, GitHub skips the review job too. The
+  wrapper then publishes no skipped fork check, and a required check never
+  arrives.
+
+### Do not skip a review on an existing check
+
+A caller must not skip a review because a check run with the persona check
+name and a `VERDICT:` title already exists on the head. Any workflow with
+`checks: write` can publish such a check. The checks API records no producer
+that a caller can verify. The `external_id` and `details_url` fields take any
+value the publisher sends.
+
+The engine owns the same-head skip. It reuses an earlier check run only when
+the run carries the exact review key and concluded `failure`. A planted check
+can therefore only fail a review. It never suppresses one. Passing results
+always rerun the review. Call the wrapper on every event and drop any caller
+prefilter on existing checks.
+
 ## foucault
 
 foucault moves from `abuzucom/foucault` to the `foucault` persona.

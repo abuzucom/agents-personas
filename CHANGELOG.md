@@ -14,9 +14,13 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.22.0] (2026-11-26)
+## [0.22.1] (2026-11-26)
 
 ### Added
+- Add a migration pull request section to `docs/migration.md`. It covers
+  the landing order, vendored adapter directories, ruleset updates, the
+  fork job status function, and the ban on a caller skip that trusts an
+  existing check run. Mirror the points in `examples/always-on-caller.yml`.
 - Adopt the `abuzucom/agents` template at `4797f14` (v2.46.0). The previous
   template revision was `08d88b2` (v2.45.1).
 - Add the ten template tests for the compliance tree exemptions, the
