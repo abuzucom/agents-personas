@@ -10,6 +10,17 @@
 # A required check posted from workflow_run attaches to the head SHA. A
 # skipped CI run posts no review check, so branch protection waits. See
 # docs/migration.md for that caveat.
+#
+# The "Migration pull request" section of docs/migration.md covers these
+# hazards. Land this caller alone and small. The old callers on the base
+# branch review the migration pull request. Keep a vendored adapter directory
+# until no configuration read from the base branch names it. The CodeQL paths
+# count. Update rulesets for the new check names before the merge.
+#
+# Never skip a job because a check run with a VERDICT: title exists. Any
+# workflow with checks: write can publish one. The engine reuses only failing
+# checks with its own review key. A review job that needs a job skipped for
+# forks keeps a status function such as !cancelled() in its if: condition.
 
 name: persona-review
 

@@ -87,6 +87,70 @@ Give the CI workflow no path filter when branch protection requires a review
 check. Keep each check from the label caller optional. A required check from
 that caller stops each pull request without the label from merging.
 
+### Trust boundary for pull_request_target callers
+
+A `pull_request_target` caller runs with the base repository token and the
+provider secret. `examples/label-caller.yml` uses that trigger. The engine
+keeps these properties:
+
+- The review job checks out the caller base commit and the engine only. Both
+  checkouts set `persist-credentials: false`.
+- The head arrives as git objects through `git fetch --no-tags`. No step
+  checks out or executes the head.
+- `MODEL_API_KEY` reaches the `Run review` step only. That step runs engine
+  code from `personas_ref`.
+- A fork pull request without `fork_review: true` gets a skipped check from
+  a job that holds no provider key.
+
+`tests/test_review_workflow_trust_boundary.py` pins each property. Set
+`same_repository_only: true` for a structural guard in the caller. The
+resolve job then fails on a fork head before any job that receives a
+secret. No skipped fork check appears. The guard wins over
+`fork_review: true`. The default `false` keeps the fork rule above.
+
+```yaml
+    with:
+      personas_ref: "<sha>"
+      same_repository_only: true
+```
+
+## Migration pull request
+
+The pull request that moves a caller to the wrappers runs under the old
+callers on the base branch. Green local tests do not cover these hazards:
+
+- Land the caller change alone and small, against the base branch, before
+  any large change. The old `workflow_run` callers on the base branch review
+  the migration pull request. An old caller with `fail_on_block` also fails
+  on NEEDS-HUMAN. A large change stacked on the migration can stop there
+  before the new engine runs.
+- Keep each vendored adapter directory until no configuration read from the
+  base branch names it. The CodeQL default setup reads
+  `.github/codeql/config.yml` from the base branch. A path there that names a
+  deleted directory aborts the analysis. Remove the directory in a later pull
+  request.
+- Update rulesets and branch protection for the new check names before the
+  merge. The required checks become `foucault / security` and
+  `euler / quality`.
+- Keep a status function such as `!cancelled()` on a review job that needs a
+  job skipped for forks. Without one, GitHub skips the review job too. The
+  wrapper then publishes no skipped fork check, and a required check never
+  arrives.
+
+### Do not skip a review on an existing check
+
+A caller must not skip a review because a check run with the persona check
+name and a `VERDICT:` title already exists on the head. Any workflow with
+`checks: write` can publish such a check. The checks API records no producer
+that a caller can verify. The `external_id` and `details_url` fields take any
+value the publisher sends.
+
+The engine owns the same-head skip. It reuses an earlier check run only when
+the run carries the exact review key and concluded `failure`. A planted check
+can therefore only fail a review. It never suppresses one. Passing results
+always rerun the review. Call the wrapper on every event and drop any caller
+prefilter on existing checks.
+
 ## foucault
 
 foucault moves from `abuzucom/foucault` to the `foucault` persona.

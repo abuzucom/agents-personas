@@ -14,9 +14,32 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.22.1] (2026-11-26)
+## [0.24.4] (2026-11-26)
 
 ### Added
+- Add `tests/test_compliance_exemption_pins.py`. It checks every digest
+  in `.compliance-tree-exemptions.json` against the workflow file in the
+  tree and reports the expected digest. It folds CRLF to LF first. A
+  Windows checkout then hashes the same bytes as the committed blob.
+- Add the `previous-tag` subcommand to `tools/release_personas.py`. It
+  prints the highest `vX.Y.Z` tag below a version.
+- Add a fixed "Using this version" block to the release notes. It holds
+  the pins with a `# vX.Y.Z` comment, the checksum check, and
+  `gh attestation verify` with `--signer-workflow` for both assets.
+- Append GitHub generated notes to the draft notes in `release.yml`. A
+  rerun refreshes the draft notes with `gh release edit --draft`. Add
+  `tests/test_release_personas_notes.py`.
+- Add the optional `same_repository_only` input to `review.yml` and the
+  five persona wrappers. The default `false` keeps the fork rule. `true`
+  fails the resolve job on a fork head before any job receives a secret.
+- Add `tests/test_review_workflow_trust_boundary.py`. It pins the head
+  checkout ban, the `MODEL_API_KEY` scope, and the guard. Add a trust
+  boundary section for `pull_request_target` callers to
+  `docs/migration.md`.
+- Add a migration pull request section to `docs/migration.md`. It covers
+  the landing order, vendored adapter directories, ruleset updates, the
+  fork job status function, and the ban on a caller skip that trusts an
+  existing check run. Mirror the points in `examples/always-on-caller.yml`.
 - Adopt the `abuzucom/agents` template at `4797f14` (v2.46.0). The previous
   template revision was `08d88b2` (v2.45.1).
 - Add the ten template tests for the compliance tree exemptions, the
@@ -26,7 +49,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   secret name, the write permissions, and the SHA-256 pins. It excludes
   `reviewers/*/eval/cases/` from the Rule 7 scan.
 
+### Fixed
+- Format `tests/test_release_personas_notes.py` to the `ruff format`
+  layout that `make lint-code` checks.
+
 ### Changed
+- Keep the version headings in the release notes. The notes hold every
+  changelog section newer than the previous stable tag. The release job
+  checkout fetches the full history for that tag lookup. The fixed block
+  replaces the "Pin this version" block.
 - Update `scripts/check_compliance_tree.py`,
   `scripts/check_gate_pr_integrity.py`,
   `scripts/complete_gate_adoption.py`, and `scripts/lint_style.py` to the

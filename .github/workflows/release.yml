@@ -66,6 +66,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          # The notes range starts after the previous stable tag. A shallow
+          # checkout holds no tags.
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Python
@@ -122,9 +125,22 @@ jobs:
           python tools/release_personas.py check-assets "$assets" "$version" --require-bundles
 
       - name: Write checksums and notes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          repo="$GITHUB_REPOSITORY"
+          notes="$RUNNER_TEMP/release-notes.md"
           python tools/release_personas.py checksums "$RUNNER_TEMP/release-assets"
-          python tools/release_personas.py notes "${GITHUB_REF_NAME#v}" "$GITHUB_SHA" "$RUNNER_TEMP/release-notes.md"
+          python tools/release_personas.py notes "${GITHUB_REF_NAME#v}" "$GITHUB_SHA" "$notes"
+          # GitHub generated notes follow the fixed block. Each run asks for
+          # them again, so a rerun refreshes the draft notes.
+          previous="$(python tools/release_personas.py previous-tag "${GITHUB_REF_NAME#v}")"
+          generate=(--method POST "repos/$repo/releases/generate-notes" -f "tag_name=$tag")
+          if [ -n "$previous" ]; then generate+=(-f "previous_tag_name=$previous"); fi
+          printf '\n' >> "$notes"
+          gh api "${generate[@]}" --jq '.body' >> "$notes"
           cat "$RUNNER_TEMP/release-assets/SHA256SUMS.txt"
 
       - name: Attest checksums file
@@ -147,7 +163,9 @@ jobs:
               echo "Release $tag is already published. This job only fills drafts."
               exit 1
             fi
-            echo "Reusing the draft for $tag."
+            echo "Reusing the draft for $tag. Refreshing its notes."
+            # --draft keeps the release a draft. A person publishes it by hand.
+            gh release edit "$tag" --repo "$repo" --draft --notes-file "$RUNNER_TEMP/release-notes.md"
           else
             gh release create "$tag" --repo "$repo" --draft --verify-tag \
               --title "agents-personas $tag" \

@@ -26,7 +26,8 @@ engine workflow then runs these stages:
 1. **Resolve.** The workflow finds the pull request from the event and reads
    its live labels. A fork pull request gets a skipped check unless the
    caller sets `fork_review: true`. That path waits for approval in the
-   protected `fork-review` environment.
+   protected `fork-review` environment. `same_repository_only: true` fails
+   this stage on a fork head instead.
 2. **Match paths.** The `paths` input selects the pull requests to review. A
    pull request without a match gets a skipped check and no model call. The
    `<persona>-scan-requested` label overrides the filter. The
@@ -80,11 +81,14 @@ generay, and havel run only under the matching scan label.
 - The tag must equal `v` plus the top `CHANGELOG.md` version.
 - The tag must point to a commit on `main`.
 - The `release` job runs in the `release` environment. Give that
-  environment a required reviewer in the repository settings.
+  environment a required reviewer in the repository settings. Repository
+  files cannot set the reviewer. Without one the job runs unapproved.
 - The draft holds a source archive of the tagged tree, its Sigstore bundle,
   and `SHA256SUMS.txt`. `gh attestation verify` checks the archive.
-- The draft notes hold the changelog section and the pin block for the
-  tagged commit.
+- The draft notes hold every changelog section newer than the previous
+  stable tag, headings included. A fixed "Using this version" block
+  follows with the pins, the checksum check, and the attestation check.
+  GitHub generated notes come last. A rerun refreshes the draft notes.
 - A person publishes the draft by hand.
 - `python tools/release_personas.py --help` lists the build steps.
 

@@ -22,6 +22,7 @@ FORWARDED_INPUTS = {
     "pr_comment",
     "fail_on_block",
     "fork_review",
+    "same_repository_only",
     "paths",
 }
 REVIEW_PERMISSIONS = {"checks": "write", "contents": "read", "pull-requests": "write"}
