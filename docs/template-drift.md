@@ -1,8 +1,8 @@
 # Template drift
 
 This file records local differences from the `abuzucom/agents` template.
-The template revision is `08d88b2c1ee57d7fdccff97f471c032a0d6b53c9` (v2.45.1).
-The previous revision was `909b93702273befaec9227ee892fe1a2261a4a41`.
+The template revision is `4797f1441eefb6c082dadea3130d28021b30f9a9` (v2.46.0).
+The previous revision was `08d88b2c1ee57d7fdccff97f471c032a0d6b53c9` (v2.45.1).
 
 ## Taken
 
@@ -60,10 +60,14 @@ The previous revision was `909b93702273befaec9227ee892fe1a2261a4a41`.
   declined template workflow of the same name. `tools/release_personas.py`
   builds its files. The template `scripts/release.py` stays unused. The
   template `test_release_*.py` modules stay declined.
-- `AGENTS.md` rewraps eight template lines longer than 120 characters at
-  80 columns. The words match the template. The euler policy check in
-  `tests/test_euler_quality_policy.py` rejects lines over 120 characters.
-  The template carries the long lines at v2.45.1.
+- `.compliance-tree-exemptions.json` is a local manifest. It lists the
+  five `*-review-pr.yml` callers and `stop-requested-notice.yml` for the
+  reviewed `pull_request_target` rule set of
+  `scripts/check_compliance_tree.py`. Each entry pins the workflow
+  SHA-256 and the bound wrapper SHA-256. A caller or wrapper edit needs a
+  matching manifest pin. `reviewers/*/eval/cases/` skips the Rule 7 scan.
+  The eval cases hold planted defects. The active human approved each
+  entry on 2026-11-26.
 - 447 persona and engine test names shrink to at most five words after
   `test_`. Two test comments drop personal pronouns. The adopted
   `tests/test_check_all_test_names.py` enforces both rules. Names changed.
