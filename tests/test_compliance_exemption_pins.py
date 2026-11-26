@@ -19,7 +19,7 @@ def compute_file_sha256(path: Path) -> str:
     """Return the SHA-256 hex digest of one file with LF line endings.
 
     The trusted scan hashes the committed LF blob. A Windows checkout can
-    convert the working copy to CRLF, so the digest folds CRLF back to LF.
+    convert the working copy to CRLF. The digest folds CRLF back to LF.
     """
     return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 

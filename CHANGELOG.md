@@ -14,13 +14,13 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.24.3] (2026-11-26)
+## [0.24.4] (2026-11-26)
 
 ### Added
 - Add `tests/test_compliance_exemption_pins.py`. It checks every digest
   in `.compliance-tree-exemptions.json` against the workflow file in the
-  tree and reports the expected digest. It folds CRLF to LF first, so a
-  Windows checkout hashes the same bytes as the committed blob.
+  tree and reports the expected digest. It folds CRLF to LF first. A
+  Windows checkout then hashes the same bytes as the committed blob.
 - Add the `previous-tag` subcommand to `tools/release_personas.py`. It
   prints the highest `vX.Y.Z` tag below a version.
 - Add a fixed "Using this version" block to the release notes. It holds
