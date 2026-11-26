@@ -9,6 +9,7 @@ root:
     python tools/release_personas.py archive 0.21.0 <asset-folder>
     python tools/release_personas.py check-assets <asset-folder> 0.21.0
     python tools/release_personas.py checksums <asset-folder>
+    python tools/release_personas.py previous-tag 0.21.0
     python tools/release_personas.py notes 0.21.0 <commit-sha> <output-file>
 
 check-tag fails unless the tag equals "v" plus the top CHANGELOG.md version.
@@ -17,8 +18,11 @@ time and no file name, so each build of one commit yields identical bytes. A
 rerun of the workflow therefore matches the archive already on the draft.
 check-assets fails unless a folder holds exactly the expected files.
 checksums writes SHA256SUMS.txt in the sha256sum format.
-notes writes the CHANGELOG section of one version, then the caller pin block.
-Callers pin full commit SHAs, so the pin block names the tagged commit.
+previous-tag prints the highest vX.Y.Z tag below a version, or an empty line.
+notes writes every CHANGELOG section newer than that tag with its heading.
+The fixed "Using this version" block follows. Callers pin full commit SHAs,
+so the block names the tagged commit. It also shows the checksum and
+attestation checks.
 """
 
 import argparse
@@ -43,6 +47,7 @@ HASH_CHUNK_BYTES = 1024 * 1024
 GZIP_MTIME = 0
 GZIP_LEVEL = 9
 VERSION_PATTERN = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)")
+SIGNER_WORKFLOW = f"{REPOSITORY}/.github/workflows/release.yml"
 COMMIT_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 CHANGELOG_HEADING = re.compile(r"^## \[([^\]\n]*)\]", re.MULTILINE)
 # The wrapper workflows that callers pin, in docs/migration.md order.
@@ -53,13 +58,20 @@ CALLER_WORKFLOWS = (
     "generay-time-review.yml",
     "havel-privacy-review.yml",
 )
-PIN_NOTES_HEADER = """\
-## Pin this version
+USAGE_NOTES_HEADER = """\
+## Using this version
 
 Pin `uses:` and `personas_ref` to the same full commit SHA. A tag or branch
 name fails validation. `docs/migration.md` covers the caller inputs.
 
 ```yaml
+"""
+VERIFY_NOTES_HEADER = """\
+
+Download the archive and SHA256SUMS.txt from this release. Check the digests
+and the build provenance:
+
+```bash
 """
 
 
@@ -169,33 +181,86 @@ def write_checksums(folder: Path) -> Path:
     return output
 
 
-def extract_changelog_section(changelog: str, version: str) -> str:
-    """Return the body of one version's section without its heading."""
-    headings = list(CHANGELOG_HEADING.finditer(changelog))
-    for index, heading in enumerate(headings):
-        if heading.group(1) != version:
+def parse_version_key(version: str) -> tuple[int, ...]:
+    """Return the numeric (major, minor, patch) key of a X.Y.Z version."""
+    return tuple(int(part) for part in require_version(version).split("."))
+
+
+def _list_version_tags(root: Path) -> list[str]:
+    """Return every tag name that starts with the tag prefix."""
+    result = subprocess.run(
+        ["git", "-C", str(root), "tag", "--list", f"{TAG_PREFIX}*"],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=GIT_TIMEOUT_SECONDS,
+    )
+    if result.returncode:
+        raise ValueError(f"git tag failed: {result.stderr.strip()}. Run from a Git checkout with tags.")
+    return result.stdout.splitlines()
+
+
+def find_previous_stable_tag(root: Path, version: str) -> str:
+    """Return the highest vX.Y.Z tag below the version, or an empty string."""
+    current = parse_version_key(version)
+    older = []
+    for tag in _list_version_tags(root):
+        candidate = tag[len(TAG_PREFIX) :]
+        # Pre-release and malformed tags never bound the notes range.
+        if not VERSION_PATTERN.fullmatch(candidate):
             continue
-        body_start = changelog.index("\n", heading.start()) + 1
-        end = headings[index + 1].start() if index + 1 < len(headings) else len(changelog)
-        return changelog[body_start:end].strip()
-    raise ValueError(f"{CHANGELOG_FILE} holds no section for {version}. Add the entry first.")
+        key = parse_version_key(candidate)
+        if key < current:
+            older.append((key, tag))
+    return max(older)[1] if older else ""
 
 
-def build_pin_block(sha: str) -> str:
-    """Return the caller pin block for one full commit SHA."""
+def _find_range_end(changelog: str, start: int, previous_version: str) -> int:
+    """Return the offset of the first heading after start at or below the previous version."""
+    if not previous_version:
+        return len(changelog)
+    floor = parse_version_key(previous_version)
+    for heading in CHANGELOG_HEADING.finditer(changelog, start + 1):
+        name = heading.group(1)
+        if VERSION_PATTERN.fullmatch(name) and parse_version_key(name) <= floor:
+            return heading.start()
+    return len(changelog)
+
+
+def extract_changelog_range(changelog: str, version: str, previous_version: str) -> str:
+    """Return every section from the version down to the previous version, headings included.
+
+    An empty previous version selects every section from the version to the end.
+    """
+    start = next((heading for heading in CHANGELOG_HEADING.finditer(changelog) if heading.group(1) == version), None)
+    if start is None:
+        raise ValueError(f"{CHANGELOG_FILE} holds no section for {version}. Add the entry first.")
+    end = _find_range_end(changelog, start.start(), previous_version)
+    return changelog[start.start() : end].strip()
+
+
+def build_usage_block(sha: str, version: str) -> str:
+    """Return the fixed Using this version block for one tagged commit."""
     if not COMMIT_SHA_PATTERN.fullmatch(sha):
         raise ValueError(f"{sha!r} is not a full lowercase commit SHA.")
-    lines = [f"uses: {REPOSITORY}/.github/workflows/{workflow}@{sha}" for workflow in CALLER_WORKFLOWS]
-    lines.append("with:")
-    lines.append(f'  personas_ref: "{sha}"')
-    return PIN_NOTES_HEADER + "\n".join(lines) + "\n```\n"
+    tag = f"{TAG_PREFIX}{version}"
+    pins = [f"uses: {REPOSITORY}/.github/workflows/{workflow}@{sha}  # {tag}" for workflow in CALLER_WORKFLOWS]
+    pins.extend(["with:", f'  personas_ref: "{sha}"  # {tag}'])
+    attest = f"--repo {REPOSITORY} --signer-workflow {SIGNER_WORKFLOW}"
+    checks = [
+        f"sha256sum --check {CHECKSUM_FILE}",
+        f"gh attestation verify {archive_name(version)} {attest}",
+        f"gh attestation verify {CHECKSUM_FILE} {attest}",
+    ]
+    return USAGE_NOTES_HEADER + "\n".join(pins) + "\n```\n" + VERIFY_NOTES_HEADER + "\n".join(checks) + "\n```\n"
 
 
 def build_notes(root: Path, version: str, sha: str) -> str:
-    """Return the CHANGELOG section of one version followed by the pin block."""
+    """Return the changelog range since the previous stable tag, then the usage block."""
     changelog = (root / CHANGELOG_FILE).read_text(encoding="utf-8")
-    section = extract_changelog_section(changelog, version)
-    return f"{section}\n\n{build_pin_block(sha)}"
+    previous_tag = find_previous_stable_tag(root, version)
+    section = extract_changelog_range(changelog, version, previous_tag[len(TAG_PREFIX) :])
+    return f"{section}\n\n{build_usage_block(sha, version)}"
 
 
 def _report(problems: list[str]) -> int:
@@ -220,6 +285,9 @@ def _run(arguments: argparse.Namespace) -> int:
     if arguments.command == "checksums":
         print(f"Wrote {write_checksums(arguments.folder).name}.")
         return 0
+    if arguments.command == "previous-tag":
+        print(find_previous_stable_tag(root, require_version(arguments.version)))
+        return 0
     notes = build_notes(root, require_version(arguments.version), arguments.sha)
     arguments.output.write_text(notes, encoding="utf-8")
     return 0
@@ -241,6 +309,8 @@ def _build_parser() -> argparse.ArgumentParser:
     assets.add_argument("--require-bundles", action="store_true")
     sums = commands.add_parser("checksums", help="Write SHA256SUMS.txt for a folder.")
     sums.add_argument("folder", type=Path)
+    previous = commands.add_parser("previous-tag", help="Print the previous stable tag of one version.")
+    previous.add_argument("version")
     notes = commands.add_parser("notes", help="Write the notes of one version.")
     notes.add_argument("version")
     notes.add_argument("sha")

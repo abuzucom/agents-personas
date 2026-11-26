@@ -14,9 +14,17 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.23.0] (2026-11-26)
+## [0.24.0] (2026-11-26)
 
 ### Added
+- Add the `previous-tag` subcommand to `tools/release_personas.py`. It
+  prints the highest `vX.Y.Z` tag below a version.
+- Add a fixed "Using this version" block to the release notes. It holds
+  the pins with a `# vX.Y.Z` comment, the checksum check, and
+  `gh attestation verify` with `--signer-workflow` for both assets.
+- Append GitHub generated notes to the draft notes in `release.yml`. A
+  rerun refreshes the draft notes with `gh release edit --draft`. Add
+  `tests/test_release_personas_notes.py`.
 - Add the optional `same_repository_only` input to `review.yml` and the
   five persona wrappers. The default `false` keeps the fork rule. `true`
   fails the resolve job on a fork head before any job receives a secret.
@@ -38,6 +46,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `reviewers/*/eval/cases/` from the Rule 7 scan.
 
 ### Changed
+- Keep the version headings in the release notes. The notes hold every
+  changelog section newer than the previous stable tag. The release job
+  checkout fetches the full history for that tag lookup. The fixed block
+  replaces the "Pin this version" block.
 - Update `scripts/check_compliance_tree.py`,
   `scripts/check_gate_pr_integrity.py`,
   `scripts/complete_gate_adoption.py`, and `scripts/lint_style.py` to the

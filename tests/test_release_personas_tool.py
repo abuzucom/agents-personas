@@ -236,12 +236,14 @@ class NotesTest(RepositoryFixture):
         return run_tool(self.root, "notes", version, sha, str(self.notes_path))
 
     def test_notes_hold_section_and_pin(self):
+        # The v1.2.2 tag bounds the notes range to the 1.2.3 section.
+        run_git(self.root, "tag", "v1.2.2")
         result = self.write_notes(VERSION, self.head)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         notes = self.notes_path.read_text(encoding="utf-8")
         self.assertIn("- Add the feature.", notes)
         self.assertNotIn("- Fix the bug.", notes)
-        self.assertNotIn("## [1.2.3]", notes)
+        self.assertIn("## [1.2.3]", notes)
         for wrapper in TOOL.CALLER_WORKFLOWS:
             with self.subTest(wrapper=wrapper):
                 self.assertIn(f"abuzucom/agents-personas/.github/workflows/{wrapper}@{self.head}", notes)

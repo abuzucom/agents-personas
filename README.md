@@ -81,11 +81,14 @@ generay, and havel run only under the matching scan label.
 - The tag must equal `v` plus the top `CHANGELOG.md` version.
 - The tag must point to a commit on `main`.
 - The `release` job runs in the `release` environment. Give that
-  environment a required reviewer in the repository settings.
+  environment a required reviewer in the repository settings. Repository
+  files cannot set the reviewer. Without one the job runs unapproved.
 - The draft holds a source archive of the tagged tree, its Sigstore bundle,
   and `SHA256SUMS.txt`. `gh attestation verify` checks the archive.
-- The draft notes hold the changelog section and the pin block for the
-  tagged commit.
+- The draft notes hold every changelog section newer than the previous
+  stable tag, headings included. A fixed "Using this version" block
+  follows with the pins, the checksum check, and the attestation check.
+  GitHub generated notes come last. A rerun refreshes the draft notes.
 - A person publishes the draft by hand.
 - `python tools/release_personas.py --help` lists the build steps.
 

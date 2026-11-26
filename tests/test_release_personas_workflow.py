@@ -103,7 +103,10 @@ class DraftJobTest(unittest.TestCase):
     def test_draft_created_never_published(self):
         self.assertIn("gh release create", self.runs)
         self.assertIn("--draft --verify-tag", self.runs)
-        self.assertNotIn("gh release edit", self.runs)
+        edits = [line for line in self.runs.splitlines() if "gh release edit" in line]
+        for line in edits:
+            with self.subTest(line=line.strip()):
+                self.assertIn(" --draft ", line)
         self.assertNotIn("--draft=false", self.runs)
 
     def test_published_release_stops_job(self):
