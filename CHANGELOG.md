@@ -14,9 +14,19 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.24.4] (2026-11-26)
+## [1.0.0] (2026-11-26)
 
 ### Added
+- Adopt the `abuzucom/agents` template at `e05985f` (v2.50.0). The previous
+  template revision was `4797f14` (v2.46.0).
+- Add `scripts/plan_template_upgrade.py` and its four forms in the shared
+  `hooks/workflow-scripts.txt`.
+- Add `hooks/workflow-scripts.local.txt`. It holds the review engine and
+  persona script forms unchanged. The shared list matches the template.
+- Add the template tests `test_fetch_prune_tags_git.py`,
+  `test_fetch_tag_gate.py`, `test_hook_error_paths.py`,
+  `test_plan_template_upgrade.py`, `test_reviewed_nonmapping_jobs.py`, and
+  `test_trusted_git_no_tags.py`.
 - Add `tests/test_compliance_exemption_pins.py`. It checks every digest
   in `.compliance-tree-exemptions.json` against the workflow file in the
   tree and reports the expected digest. It folds CRLF to LF first. A
@@ -54,6 +64,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   layout that `make lint-code` checks.
 
 ### Changed
+- Version 1.0.0 marks the workflow inputs, engine command line flags, and
+  check run names as the stable public API.
+- Update `hooks/_gate_core.py`, `hooks/detect_prose_options.py`,
+  `hooks/enforce_pr_base.py`, the three `gate-adoption` skill copies,
+  `shared-files.json`, `scripts/trusted_git.py`,
+  `scripts/check_compliance_tree.py`, `docs/agent-policy/adoption.md`, and
+  `docs/agent-policy/github.md` to the template bytes. The shell gates and
+  `scripts/trusted_git.py fetch` now refuse local tag writes.
+- Update `tests/test_gate_parity.py`, `tests/test_trusted_git_hardening.py`,
+  and `tests/test_trusted_git_state.py` to the template bytes. The active
+  human approved each edit under Rule 3 on 2026-11-26.
+- The shared `hooks/workflow-scripts.txt` drops the four
+  `scripts/release.py` forms. `tools/release_personas.py` builds the
+  persona assets.
 - Keep the version headings in the release notes. The notes hold every
   changelog section newer than the previous stable tag. The release job
   checkout fetches the full history for that tag lookup. The fixed block
@@ -68,6 +92,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `.compliance-tree-exemptions.json` to the `same_repository_only`
   wrapper content from abuzucom/agents-personas#42. The trusted
   `immutable-compliance` scan reads this manifest from `main` only.
+
+### Removed
+- Remove `scripts/check_pr_review_response.py`,
+  `tests/test_check_pr_review_response.py`, and
+  `tests/test_review_response_narration.py`. Template v2.50.0 removed the three files.
+  `engine/check_review_response.py` validates each reply. The active human
+  approved each delete under Rule 2 on 2026-11-26.
 
 ## [0.21.0] (2026-11-25)
 
