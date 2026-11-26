@@ -14,6 +14,26 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] (2026-11-26)
+
+### Added
+- Adopt the `abuzucom/agents` template at `4797f14` (v2.46.0). The previous
+  template revision was `08d88b2` (v2.45.1).
+- Add the ten template tests for the compliance tree exemptions, the
+  policy line length, and the skill install.
+- Add `.compliance-tree-exemptions.json`. It lists the five persona
+  `*-review-pr.yml` callers and `stop-requested-notice.yml` with the
+  secret name, the write permissions, and the SHA-256 pins. It excludes
+  `reviewers/*/eval/cases/` from the Rule 7 scan.
+
+### Changed
+- Update `scripts/check_compliance_tree.py`,
+  `scripts/check_gate_pr_integrity.py`,
+  `scripts/complete_gate_adoption.py`, and `scripts/lint_style.py` to the
+  template bytes. Regenerate the policy copies and `shared-files.json`.
+- Take the template `AGENTS.md` wrap. The local rewrap of eight long lines
+  leaves `docs/template-drift.md`.
+
 ## [0.21.0] (2026-11-25)
 
 ### Added

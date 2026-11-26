@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "pull_request_target": {
+    ".github/workflows/adorno-ui-review-pr.yml": {
+      "secrets": [
+        "OLLAMA_API_KEY"
+      ],
+      "sha256": "b480175c0ea615c9a391a6cce8dd9007f9b547e88b0571e17e694da7c7c0db39",
+      "reusable_workflows": {
+        "./.github/workflows/adorno-ui-review.yml": "bdfa586a8932124493592f9f6e371b82a744a0e1e4dd450ad33b5e3c767e5448"
+      },
+      "permissions": {
+        "checks": "write",
+        "pull-requests": "write"
+      }
+    },
+    ".github/workflows/euler-quality-review-pr.yml": {
+      "secrets": [
+        "OLLAMA_API_KEY"
+      ],
+      "sha256": "a9ac02842d6ffb09c9e1e31c353c494e23362d624f85a4ec3e08584c6e55c0c0",
+      "reusable_workflows": {
+        "./.github/workflows/euler-quality-review.yml": "30f2ee78ed0aa6f73c6292f9ddab1fbfe17ee46cc55913ada0f6182cca8de99f"
+      },
+      "permissions": {
+        "checks": "write",
+        "pull-requests": "write"
+      }
+    },
+    ".github/workflows/foucault-security-review-pr.yml": {
+      "secrets": [
+        "OLLAMA_API_KEY"
+      ],
+      "sha256": "1212b5a87ad93eee6fa23b1d89af4c165db9755f6fed004cfb0a2d73c960a169",
+      "reusable_workflows": {
+        "./.github/workflows/foucault-security-review.yml": "c0ce7041e0bb185e9f59ba134086aa56603fd87515bdb143bcbf9d6d52079a84"
+      },
+      "permissions": {
+        "checks": "write",
+        "pull-requests": "write"
+      }
+    },
+    ".github/workflows/generay-time-review-pr.yml": {
+      "secrets": [
+        "OLLAMA_API_KEY"
+      ],
+      "sha256": "c7bb5e7bb8b280a1404582bd281848a7e45381caacde7dd9c86e5c3a8be067f9",
+      "reusable_workflows": {
+        "./.github/workflows/generay-time-review.yml": "1bf359fc3aa9142f95d6cbf7a165c63526dd61f4cfd688b71bdd6a72a67b6a3c"
+      },
+      "permissions": {
+        "checks": "write",
+        "pull-requests": "write"
+      }
+    },
+    ".github/workflows/havel-privacy-review-pr.yml": {
+      "secrets": [
+        "OLLAMA_API_KEY"
+      ],
+      "sha256": "baf09e8f84078f2749858cce9e07a14d3722f181b817c455ee19ea6ac9fac49c",
+      "reusable_workflows": {
+        "./.github/workflows/havel-privacy-review.yml": "c2d91fc852bee0d8f804e66d7ff9980f4a1c5284a066bb40a417ffed09596464"
+      },
+      "permissions": {
+        "checks": "write",
+        "pull-requests": "write"
+      }
+    },
+    ".github/workflows/stop-requested-notice.yml": {
+      "secrets": [],
+      "sha256": "43fe69831ac0bf2f679e2629aaa853fe0198d6f896566221763ebe1874def6e7",
+      "permissions": {
+        "pull-requests": "write"
+      }
+    }
+  },
+  "rule7_excluded_trees": [
+    "reviewers/*/eval/cases/"
+  ]
+}
