@@ -72,6 +72,11 @@ name: generay-time-review
         required: false
         type: boolean
         default: false
+      same_repository_only:
+        description: "Fail closed on a fork head before any job receives a secret. The guard wins over fork_review."
+        required: false
+        type: boolean
+        default: false
       paths:
         description: >-
           Optional newline-separated globs. The review runs only when a changed file matches. A leading !
@@ -117,6 +122,7 @@ jobs:
       pr_comment: ${{ inputs.pr_comment }}
       fail_on_block: ${{ inputs.fail_on_block }}
       fork_review: ${{ inputs.fork_review }}
+      same_repository_only: ${{ inputs.same_repository_only }}
       paths: ${{ inputs.paths }}
       # toJSON escapes the globs. The engine checks the object against the
       # options that reviewers/generay/reviewer.json declares.

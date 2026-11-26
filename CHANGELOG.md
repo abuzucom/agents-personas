@@ -14,9 +14,16 @@ into the entry. Dates never decrease. Ask the active human when a date is in
 doubt.
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.22.1] (2026-11-26)
+## [0.23.0] (2026-11-26)
 
 ### Added
+- Add the optional `same_repository_only` input to `review.yml` and the
+  five persona wrappers. The default `false` keeps the fork rule. `true`
+  fails the resolve job on a fork head before any job receives a secret.
+- Add `tests/test_review_workflow_trust_boundary.py`. It pins the head
+  checkout ban, the `MODEL_API_KEY` scope, and the guard. Add a trust
+  boundary section for `pull_request_target` callers to
+  `docs/migration.md`.
 - Add a migration pull request section to `docs/migration.md`. It covers
   the landing order, vendored adapter directories, ruleset updates, the
   fork job status function, and the ban on a caller skip that trusts an

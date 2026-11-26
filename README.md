@@ -26,7 +26,8 @@ engine workflow then runs these stages:
 1. **Resolve.** The workflow finds the pull request from the event and reads
    its live labels. A fork pull request gets a skipped check unless the
    caller sets `fork_review: true`. That path waits for approval in the
-   protected `fork-review` environment.
+   protected `fork-review` environment. `same_repository_only: true` fails
+   this stage on a fork head instead.
 2. **Match paths.** The `paths` input selects the pull requests to review. A
    pull request without a match gets a skipped check and no model call. The
    `<persona>-scan-requested` label overrides the filter. The

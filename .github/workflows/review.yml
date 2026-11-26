@@ -88,6 +88,13 @@ name: persona-review
         required: false
         type: boolean
         default: false
+      same_repository_only:
+        description: >-
+          Fail the resolve job on a fork head before any job receives a secret. The guard wins over
+          fork_review. False keeps the fork rule.
+        required: false
+        type: boolean
+        default: false
       paths:
         description: >-
           Optional newline-separated globs. The review runs only when a changed file matches. A leading !
@@ -154,6 +161,7 @@ jobs:
           INPUT_HEAD_REPO_FULL_NAME: ${{ inputs.head_repo_full_name }}
           INPUT_MAX_CHUNKS: ${{ inputs.max_chunks }}
           INPUT_MAX_ENVELOPE_BYTES: ${{ inputs.max_envelope_bytes }}
+          INPUT_SAME_REPOSITORY_ONLY: ${{ inputs.same_repository_only }}
         with:
           script: |
             const sha = /^[0-9a-f]{40}$/;
@@ -219,12 +227,18 @@ jobs:
               throw new Error("pull request head repository is invalid");
             }
             const base = `${context.repo.owner}/${context.repo.repo}`;
+            const sameRepository = headName.toLowerCase() === base.toLowerCase();
+            // A privileged caller opts in to fail closed on a fork head. Every
+            // job that receives a secret needs this job, so none of them runs.
+            if (env.INPUT_SAME_REPOSITORY_ONLY === "true" && !sameRepository) {
+              throw new Error("same_repository_only rejects a fork pull request head");
+            }
             core.setOutput("pr_number", String(number));
             core.setOutput("base_sha", baseSha);
             core.setOutput("head_sha", headSha);
             core.setOutput("head_repo_url", headUrl);
             core.setOutput("head_repo_full_name", headName);
-            core.setOutput("same_repository", String(headName.toLowerCase() === base.toLowerCase()));
+            core.setOutput("same_repository", String(sameRepository));
             core.setOutput("pr_title", pull.title || "");
             // A person with triage access or higher can add this label to
             // request the review whatever the paths input selects.
