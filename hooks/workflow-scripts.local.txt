@@ -1,0 +1,37 @@
+# Repository scripts that only abuzucom/agents-personas ships.
+#
+# The line format matches hooks/workflow-scripts.txt. The shared list stays
+# byte-identical to the template. These forms stay out of it.
+
+# Review engine. Persona and mode names are single tokens, so <path> matches
+# them. engine/call_model.py and engine/run_model_command.py stay unlisted:
+# both reach the model provider with the API key and run in CI only.
+allow engine/check_reviewers.py
+allow engine/check_reviewers.py --root <path>
+allow engine/render_context.py --persona <path> --mode <path>
+allow engine/render_context.py --root <path> --persona <path> --mode <path>
+allow engine/check_review_response.py <path>
+allow engine/check_review_response.py <path> --mode <path>
+consent-write engine/build_pr_case.py --persona <path> --mode <path> --base <revision> --head <revision> --pr-number <path> --out-dir <path>
+
+# Persona evals and checkers. run_eval.py without --model-call checks case
+# structure and calls no model. The --model-call form sends every case to the
+# provider with the API key, so it routes to consent. The form names the
+# engine adapter literally: <path> rejects the colon, and no other module
+# can run. The persona checkers read files and print findings only.
+allow engine/run_eval.py --persona <path>
+allow engine/run_eval.py --persona <path> --mode <path>
+allow engine/run_eval.py --persona <path> --case <path>
+consent-read engine/run_eval.py --persona <path> --model-call engine.call_model:call_model
+consent-read engine/run_eval.py --persona <path> --mode <path> --model-call engine.call_model:call_model
+consent-read engine/run_eval.py --persona <path> --model-call engine.call_model:call_model --repeat <path>
+consent-read engine/run_eval.py --persona <path> --mode <path> --model-call engine.call_model:call_model --repeat <path>
+allow reviewers/euler/scripts/check_quality_policy.py <path>
+allow reviewers/euler/scripts/check_quality_policy.py <path> --prose-only
+allow reviewers/euler/scripts/check_code_quality.py all <paths>
+allow reviewers/foucault/scripts/check_audit_policy.py <path>
+allow reviewers/generay/scripts/check_doc_policy.py <path>
+allow reviewers/generay/scripts/check_doc_policy.py <path> --prose-only
+allow reviewers/generay/scripts/check_ledger_coverage.py --root <path>
+allow reviewers/generay/scripts/check_time_handling.py all <paths>
+allow reviewers/generay/scripts/validate_registry.py

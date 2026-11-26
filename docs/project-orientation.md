@@ -1,6 +1,6 @@
 # Project orientation
 Repository: `abuzucom/agents-personas`. It holds PR reviewer personas.
-Policy source: `abuzucom/agents` at `4797f14`.
+Policy source: `abuzucom/agents` at `e05985f`.
 
 ## Commands
 - `python scripts/run_tests.py`

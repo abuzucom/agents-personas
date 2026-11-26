@@ -1,8 +1,8 @@
 # Template drift
 
 This file records local differences from the `abuzucom/agents` template.
-The template revision is `4797f1441eefb6c082dadea3130d28021b30f9a9` (v2.46.0).
-The previous revision was `08d88b2c1ee57d7fdccff97f471c032a0d6b53c9` (v2.45.1).
+The template revision is `e05985f21a78780bc1758e9bfe008c15a1d26832` (v2.50.0).
+The previous revision was `4797f1441eefb6c082dadea3130d28021b30f9a9` (v2.46.0).
 
 ## Taken
 
@@ -26,8 +26,11 @@ The previous revision was `08d88b2c1ee57d7fdccff97f471c032a0d6b53c9` (v2.45.1).
 
 ## Declined
 
-- The template `.github/workflows/release.yml`, `policy-size-report.yml`, `security-review-pr.yml`, and
-  `quality-review-pr.yml`. The source repository owns these workflows.
+- The template `.github/workflows/release.yml`, `policy-size-report.yml`, `security-review-pr.yml`,
+  `quality-review-pr.yml`, and `persona-review-labels.yml`. The source
+  repository owns these workflows.
+- The template `hooks/workflow-scripts.local.txt`. It lists the source
+  `scripts/release.py` forms.
 - `ci/`. Plan step 3 moves the review engine into `engine/`.
 - `docs/agent-policy/source-orientation.md`, `DRIFT.md`, `adopters/`,
   `policy-digests.json`, and `plan/`. These belong to the source repository.
@@ -53,6 +56,9 @@ The previous revision was `08d88b2c1ee57d7fdccff97f471c032a0d6b53c9` (v2.45.1).
 | `test_release_hardening.py` | `release.yml`, source `README.md` |
 | `test_release_latest_stable.py` | `release.yml` |
 | `test_release_workflow_wiring.py` | `release.yml` |
+| `test_review_verdict_producer.py` | `security-review-pr.yml`, `quality-review-pr.yml` |
+| `test_source_publishing_scripts.py` | source `hooks/workflow-scripts.local.txt` |
+| `test_persona_label_review_wiring.py` | `persona-review-labels.yml` |
 
 ## Current drift
 
@@ -89,9 +95,10 @@ The previous revision was `08d88b2c1ee57d7fdccff97f471c032a0d6b53c9` (v2.45.1).
   yamllint from `requirements-dev.txt` over the engine, the personas, the
   matching tests, and the workflows this repository owns. `make lint` stays
   standard-library only.
-- `hooks/workflow-scripts.txt` adds a review engine section and a persona
-  section. The active human approved the persona entries under Rule 22 on
-  2026-11-22. `tests/test_engine_script_gate.py` and
+- `hooks/workflow-scripts.local.txt` holds a review engine section and a
+  persona section. The active human approved the persona entries under
+  Rule 22 on 2026-11-22. The active human approved the move from the shared
+  list on 2026-11-26. `tests/test_engine_script_gate.py` and
   `tests/test_persona_script_gate.py` cover both sections.
 - `scripts/check_agent_prose_gate.py` names the same prose files in
   `TARGET_FILES`. `tests/test_check_agent_prose_gate.py` requires that list

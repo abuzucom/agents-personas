@@ -761,6 +761,9 @@ Client settings live under `.agents/`, `.claude/`, `.codex/`, and `.gemini/`.
 Preserve checker flags, hook payloads, reusable workflows, and copied policy
 files.
 
+The `gate-adoption` skill holds the template upgrade merge order and the
+source publishing tooling rule.
+
 ## Scope decisions
 Keep helper functions and imports required by the request in scope.
 
@@ -1150,6 +1153,16 @@ applicable denial or consent path.
 Agents never create, push, move, or delete Git tags. Agents never create,
 edit, publish, or delete releases.
 
+Tag auto-follow writes local tags during a fetch. The shell gates deny every
+`git fetch` and `git pull` without `--no-tags`. Fetch also needs
+`--no-prune-tags`. Pull needs `--no-prune`. The gates also deny `--tags`,
+`--prune-tags`, a `tag` operand, a refspec destination in `refs/tags/`, and a
+`-c` or `--config-env` override of `tagOpt`. `scripts/trusted_git.py fetch` always passes
+`--no-tags` and rejects a tag destination. Read a tag tree into a
+remote-tracking ref with this form:
+
+`python scripts/trusted_git.py fetch <repository> <remote> refs/tags/<tag>:refs/remotes/<name>/<tag>`
+
 Managed sandboxes may set `127.0.0.1:9`, `localhost:9`, or `[::1]:9` as a
 closed loopback proxy placeholder or block outbound sockets by default.
 `scripts/trusted_gh.py` strips loopback discard proxies on port 9 and reports
@@ -1339,7 +1352,7 @@ locks and CLI configuration, plus Kubernetes, Helm, and Kustomize manifests
 and project directories.
 # Project orientation
 Repository: `abuzucom/agents-personas`. It holds PR reviewer personas.
-Policy source: `abuzucom/agents` at `4797f14`.
+Policy source: `abuzucom/agents` at `e05985f`.
 
 ## Commands
 - `python scripts/run_tests.py`
